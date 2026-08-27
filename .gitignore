@@ -1,0 +1,83 @@
+# Built application files
+*.apk
+*.aar
+*.ap_
+*.aab
+
+# Files for the ART/Dalvik VM
+*.dex
+
+# Java class files
+*.class
+
+# Generated files
+bin/
+gen/
+out/
+build/
+app/build/
+.gradle/
+
+# Android Studio & IntelliJ IDEA
+*.iml
+.idea/
+.idea/caches/
+.idea/libraries/
+.idea/modules.xml
+.idea/workspace.xml
+.idea/navEditor.xml
+.idea/assetWizardSettings.xml
+*.iws
+*.ipr
+
+# Visual Studio Code
+.vscode/
+
+# Local configuration file (sdk.dir, ndk.dir, api keys)
+local.properties
+
+# Log files
+*.log
+
+# Android Signing Keys & Security Credentials
+*.jks
+*.keystore
+*.key
+*.p12
+*.pem
+*.p8
+*.pubxml
+*.cer
+*.crt
+*.der
+*.pfx
+secrets.properties
+google-services.json
+.env
+.env.*
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+[Dd]esktop.ini
+
+# Python bytecode & cache
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+
+# Root temp db
+/medvoice_master.db
+
+# Room schema export
+schemas/
+
+# C/C++ build artifacts
+.cxx/
+.externalNativeBuild/
