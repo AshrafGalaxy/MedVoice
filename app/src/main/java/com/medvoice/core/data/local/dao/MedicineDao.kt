@@ -58,10 +58,9 @@ interface MedicineDao {
                s.vernacular_salt_desc_hi, s.vernacular_salt_desc_mr,
                r.rule_code, r.food_relation, r.vernacular_instruction_hi, r.vernacular_instruction_mr
         FROM medicines m
-        JOIN medicines_fts fts ON m.id = fts.rowid
         JOIN active_salts s ON m.primary_salt_id = s.id
         JOIN food_temporal_rules r ON m.timing_rule_id = r.id
-        WHERE medicines_fts MATCH :query || '*'
+        WHERE m.brand_name LIKE '%' || :query || '%' OR s.salt_name LIKE '%' || :query || '%'
         LIMIT 1
     """)
     suspend fun findMedicineByFts(query: String): MedicineQueryResult?
