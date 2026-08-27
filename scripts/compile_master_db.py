@@ -24,77 +24,69 @@ def init_database(db_path):
     cursor.execute("PRAGMA page_size = 4096;")
     cursor.execute("PRAGMA foreign_keys = ON;")
     
-    # 1. Create Tables
+    # 1. Create Tables matching Room entities exactly
     cursor.executescript("""
-    CREATE TABLE active_salts (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        salt_name TEXT NOT NULL UNIQUE COLLATE NOCASE,
-        therapeutic_class TEXT NOT NULL,
-        max_daily_dose_mg REAL NOT NULL,
-        half_life_hours REAL NOT NULL DEFAULT 12.0,
-        active_window_hours REAL NOT NULL DEFAULT 8.0,
-        vernacular_salt_desc_hi TEXT NOT NULL,
-        vernacular_salt_desc_mr TEXT NOT NULL
+    CREATE TABLE IF NOT EXISTS `medicines` (
+        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+        `brand_name` TEXT NOT NULL,
+        `manufacturer` TEXT,
+        `dosage_form` TEXT NOT NULL,
+        `strength_mg` REAL NOT NULL,
+        `primary_salt_id` INTEGER NOT NULL,
+        `secondary_salt_id` INTEGER,
+        `timing_rule_id` INTEGER NOT NULL,
+        `is_high_risk` INTEGER NOT NULL,
+        `vernacular_usage_hi` TEXT NOT NULL,
+        `vernacular_usage_mr` TEXT NOT NULL
     );
 
-    CREATE TABLE food_temporal_rules (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        rule_code TEXT NOT NULL UNIQUE,
-        food_relation TEXT NOT NULL,
-        lead_time_minutes INTEGER NOT NULL DEFAULT 0,
-        dietary_restriction TEXT,
-        vernacular_instruction_hi TEXT NOT NULL,
-        vernacular_instruction_mr TEXT NOT NULL
+    CREATE TABLE IF NOT EXISTS `active_salts` (
+        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+        `salt_name` TEXT NOT NULL,
+        `therapeutic_class` TEXT NOT NULL,
+        `max_daily_dose_mg` REAL NOT NULL,
+        `half_life_hours` REAL NOT NULL,
+        `active_window_hours` REAL NOT NULL,
+        `vernacular_salt_desc_hi` TEXT NOT NULL,
+        `vernacular_salt_desc_mr` TEXT NOT NULL
     );
 
-    CREATE TABLE medicines (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        brand_name TEXT NOT NULL COLLATE NOCASE,
-        manufacturer TEXT,
-        dosage_form TEXT NOT NULL,
-        strength_mg REAL NOT NULL DEFAULT 0.0,
-        primary_salt_id INTEGER NOT NULL,
-        secondary_salt_id INTEGER DEFAULT NULL,
-        timing_rule_id INTEGER NOT NULL DEFAULT 1,
-        is_high_risk INTEGER NOT NULL DEFAULT 0,
-        vernacular_usage_hi TEXT NOT NULL,
-        vernacular_usage_mr TEXT NOT NULL,
-        FOREIGN KEY (primary_salt_id) REFERENCES active_salts(id),
-        FOREIGN KEY (timing_rule_id) REFERENCES food_temporal_rules(id)
+    CREATE TABLE IF NOT EXISTS `food_temporal_rules` (
+        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+        `rule_code` TEXT NOT NULL,
+        `food_relation` TEXT NOT NULL,
+        `lead_time_minutes` INTEGER NOT NULL,
+        `dietary_restriction` TEXT,
+        `vernacular_instruction_hi` TEXT NOT NULL,
+        `vernacular_instruction_mr` TEXT NOT NULL
     );
 
-    CREATE VIRTUAL TABLE medicines_fts USING fts5(
-        brand_name,
-        dosage_form,
-        content='medicines',
-        content_rowid='id',
-        tokenize='unicode61 remove_diacritics 2'
+    CREATE TABLE IF NOT EXISTS `salt_contraindications` (
+        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+        `salt_a_id` INTEGER NOT NULL,
+        `salt_b_id` INTEGER NOT NULL,
+        `severity_level` TEXT NOT NULL,
+        `clinical_risk_mechanism` TEXT NOT NULL,
+        `spoken_warning_hi` TEXT NOT NULL,
+        `spoken_warning_mr` TEXT NOT NULL
     );
 
-    CREATE TABLE salt_contraindications (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        salt_a_id INTEGER NOT NULL,
-        salt_b_id INTEGER NOT NULL,
-        severity_level TEXT NOT NULL,
-        clinical_risk_mechanism TEXT NOT NULL,
-        spoken_warning_hi TEXT NOT NULL,
-        spoken_warning_mr TEXT NOT NULL,
-        FOREIGN KEY (salt_a_id) REFERENCES active_salts(id),
-        FOREIGN KEY (salt_b_id) REFERENCES active_salts(id)
+    CREATE TABLE IF NOT EXISTS `medication_logs` (
+        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+        `medicine_id` INTEGER NOT NULL,
+        `scanned_brand_name` TEXT NOT NULL,
+        `resolved_salt_id` INTEGER NOT NULL,
+        `intake_timestamp` INTEGER NOT NULL,
+        `status` TEXT NOT NULL,
+        `voice_confirmed` INTEGER NOT NULL,
+        `sos_sms_dispatched` INTEGER NOT NULL
     );
 
-    CREATE TABLE medication_logs (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        medicine_id INTEGER NOT NULL,
-        scanned_brand_name TEXT NOT NULL,
-        resolved_salt_id INTEGER NOT NULL,
-        intake_timestamp INTEGER NOT NULL,
-        status TEXT NOT NULL,
-        voice_confirmed INTEGER NOT NULL DEFAULT 0,
-        sos_sms_dispatched INTEGER NOT NULL DEFAULT 0,
-        FOREIGN KEY (medicine_id) REFERENCES medicines(id),
-        FOREIGN KEY (resolved_salt_id) REFERENCES active_salts(id)
+    CREATE TABLE IF NOT EXISTS room_master_table (
+        id INTEGER PRIMARY KEY,
+        identity_hash TEXT
     );
+    INSERT OR REPLACE INTO room_master_table (id, identity_hash) VALUES (42, 'fe6c00bdbba005b32110967dc0572215');
     """)
     conn.commit()
     return conn
@@ -153,13 +145,7 @@ def populate_seed_data(conn):
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     """, medicines)
 
-    # 4. Populate FTS Index
-    cursor.execute("""
-    INSERT INTO medicines_fts(rowid, brand_name, dosage_form)
-    SELECT id, brand_name, dosage_form FROM medicines;
-    """)
-
-    # 5. Seed Severe Contraindications
+    # 4. Seed Severe Contraindications
     contraindications = [
         (8, 7, 'CRITICAL', 'Aspirin + Ibuprofen induces severe gastrointestinal ulceration and platelet dysfunction.', 
          'सावधान! एस्पिरिन और कॉम्बीफ्लेम साथ में लेने से पेट में ब्लीडिंग का खतरा है।', 
