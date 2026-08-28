@@ -215,4 +215,37 @@ class SafetyEngineTest {
         assertEquals("CRITICAL", conflictAlert.conflict.severity_level)
         assertTrue(conflictAlert.conflict.spoken_warning_en.contains("internal stomach bleeding"))
     }
+
+    @Test
+    fun testFuzzyMatchingResilience() {
+        val cleanTarget = "Glycomet-SR 500"
+        // Typical OCR distortions under poor lighting
+        val noisyOcr1 = "Glycomtt-SR"
+        val noisyOcr2 = "G1ycomet-SR 500"
+        val wrongBrand = "Paracetamol"
+
+        assertTrue("Noisy OCR 'Glycomtt-SR' should match 'Glycomet-SR 500'", 
+            com.medvoice.core.domain.engine.FuzzyMedicineMatcher.isFuzzyMatch(noisyOcr1, cleanTarget, 0.70))
+
+        assertTrue("Noisy OCR 'G1ycomet-SR 500' should match 'Glycomet-SR 500'", 
+            com.medvoice.core.domain.engine.FuzzyMedicineMatcher.isFuzzyMatch(noisyOcr2, cleanTarget, 0.75))
+
+        org.junit.Assert.assertFalse("Completely different medicine should not match", 
+            com.medvoice.core.domain.engine.FuzzyMedicineMatcher.isFuzzyMatch(wrongBrand, cleanTarget, 0.75))
+    }
+
+    @Test
+    fun testExpiryDateParsing() {
+        val sampleOcrValid = "B.NO 4492A EXP: 12/2028 MFG: 01/2024"
+        val sampleOcrExpired = "LOT 992 EXP: 01/2020"
+
+        val parsedValid = com.medvoice.core.domain.engine.ExpiryParser.parse(sampleOcrValid)
+        assertEquals("12/2028", parsedValid.expiryDateString)
+        assertEquals("4492A", parsedValid.batchNumber)
+        org.junit.Assert.assertFalse("Date 12/2028 should not be expired", parsedValid.isExpired)
+
+        val parsedExpired = com.medvoice.core.domain.engine.ExpiryParser.parse(sampleOcrExpired)
+        assertEquals("01/2020", parsedExpired.expiryDateString)
+        assertTrue("Date 01/2020 should be marked as expired", parsedExpired.isExpired)
+    }
 }
