@@ -81,3 +81,9 @@ schemas/
 # C/C++ build artifacts
 .cxx/
 .externalNativeBuild/
+
+# Temporary emulator screenshots and dumps
+emulator_*.png
+screen.png
+window_dump.xml
+

@@ -7,12 +7,12 @@ plugins {
 
 android {
     namespace = "com.medvoice"
-    compileSdk = 34
+    compileSdk = 37
 
     defaultConfig {
         applicationId = "com.medvoice"
         minSdk = 28
-        targetSdk = 34
+        targetSdk = 37
         versionCode = 1
         versionName = "1.0.0"
 
