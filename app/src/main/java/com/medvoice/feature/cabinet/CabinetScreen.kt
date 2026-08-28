@@ -17,6 +17,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Medication
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Card
@@ -218,22 +219,44 @@ fun CabinetScreen(viewModel: ScanViewModel) {
 
                                 Spacer(modifier = Modifier.width(8.dp))
 
-                                // Speaker Button: Read out dosage
-                                IconButton(
-                                    onClick = {
-                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                        viewModel.ttsManager.speak(spokenText, locale)
-                                    },
-                                    modifier = Modifier
-                                        .background(SafeGreen, RoundedCornerShape(8.dp))
-                                        .size(38.dp)
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.AutoMirrored.Filled.VolumeUp,
-                                        contentDescription = "Read Aloud",
-                                        tint = TextWhite,
-                                        modifier = Modifier.size(20.dp)
-                                    )
+                                Row {
+                                    // Delete Button
+                                    IconButton(
+                                        onClick = {
+                                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                            viewModel.deleteMedicineFromCabinet(item.id)
+                                        },
+                                        modifier = Modifier
+                                            .background(com.medvoice.ui.theme.AlertRed, RoundedCornerShape(8.dp))
+                                            .size(38.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Delete,
+                                            contentDescription = "Delete",
+                                            tint = TextWhite,
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                    }
+
+                                    Spacer(modifier = Modifier.width(8.dp))
+
+                                    // Speaker Button: Read out dosage
+                                    IconButton(
+                                        onClick = {
+                                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                            viewModel.ttsManager.speak(spokenText, locale)
+                                        },
+                                        modifier = Modifier
+                                            .background(SafeGreen, RoundedCornerShape(8.dp))
+                                            .size(38.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.AutoMirrored.Filled.VolumeUp,
+                                            contentDescription = "Read Aloud",
+                                            tint = TextWhite,
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                    }
                                 }
                             }
 
