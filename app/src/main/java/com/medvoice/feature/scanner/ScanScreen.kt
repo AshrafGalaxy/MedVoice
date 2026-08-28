@@ -7,6 +7,7 @@ import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -21,6 +22,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.CheckCircle
@@ -34,7 +36,6 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -49,6 +50,7 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -78,80 +80,95 @@ fun ScanScreen(viewModel: ScanViewModel) {
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
 
-            // Top Bar: Title & Language Toggle
+            // 1. Fully Responsive Header (Never Overflows on 6.43" or any screen)
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                    .padding(horizontal = 14.dp, vertical = 8.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        imageVector = Icons.Default.CameraAlt,
-                        contentDescription = "Scanner",
-                        tint = SafeGreen,
-                        modifier = Modifier.size(28.dp)
-                    )
+                Row(
+                    modifier = Modifier.weight(1f),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(36.dp)
+                            .background(SafeGreen.copy(alpha = 0.15f), RoundedCornerShape(8.dp)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.CameraAlt,
+                            contentDescription = "Scanner",
+                            tint = SafeGreen,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
                     Spacer(modifier = Modifier.width(10.dp))
-                    Column {
+                    Column(modifier = Modifier.weight(1f)) {
                         Text(
                             text = if (locale == "hi") "कैमरा स्कैनर" else "Live Camera Scanner",
-                            style = MaterialTheme.typography.titleLarge.copy(
+                            style = MaterialTheme.typography.titleMedium.copy(
                                 color = TextWhite,
                                 fontWeight = FontWeight.Bold,
-                                fontSize = 21.sp
-                            )
+                                fontSize = 17.sp
+                            ),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                         Text(
-                            text = if (locale == "hi") "दवा की पट्टी सीधे कैमरे के सामने रखें" else "Point camera at medicine blister pack",
-                            style = MaterialTheme.typography.bodyMedium.copy(
+                            text = if (locale == "hi") "दवा की पट्टी सामने रखें" else "Point at medicine blister pack",
+                            style = MaterialTheme.typography.bodySmall.copy(
                                 color = SafeGreen,
-                                fontWeight = FontWeight.SemiBold,
-                                fontSize = 12.sp
-                            )
+                                fontWeight = FontWeight.Medium,
+                                fontSize = 11.sp
+                            ),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
                 }
 
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    // English Button
-                    Button(
-                        onClick = { viewModel.setLocale("en") },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = if (locale == "en") SafeGreen else SurfaceCardElevated
-                        ),
-                        shape = RoundedCornerShape(8.dp),
-                        modifier = Modifier.height(38.dp)
+                // Responsive Language Switcher Pills
+                Row(
+                    modifier = Modifier
+                        .background(SurfaceCardElevated, RoundedCornerShape(10.dp))
+                        .padding(3.dp),
+                    horizontalArrangement = Arrangement.spacedBy(2.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .background(
+                                if (locale == "en") SafeGreen else BackgroundCharcoal.copy(alpha = 0f),
+                                RoundedCornerShape(8.dp)
+                            )
+                            .clickable { viewModel.setLocale("en") }
+                            .padding(horizontal = 10.dp, vertical = 6.dp)
                     ) {
                         Text("EN", color = TextWhite, fontWeight = FontWeight.Bold, fontSize = 12.sp)
                     }
-                    Spacer(modifier = Modifier.width(6.dp))
 
-                    // Hindi Button
-                    Button(
-                        onClick = { viewModel.setLocale("hi") },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = if (locale == "hi") SafeGreen else SurfaceCardElevated
-                        ),
-                        shape = RoundedCornerShape(8.dp),
-                        modifier = Modifier.height(38.dp)
+                    Box(
+                        modifier = Modifier
+                            .background(
+                                if (locale == "hi") SafeGreen else BackgroundCharcoal.copy(alpha = 0f),
+                                RoundedCornerShape(8.dp)
+                            )
+                            .clickable { viewModel.setLocale("hi") }
+                            .padding(horizontal = 10.dp, vertical = 6.dp)
                     ) {
                         Text("हिंदी", color = TextWhite, fontWeight = FontWeight.Bold, fontSize = 12.sp)
                     }
                 }
             }
 
-            // Quick Demo Pills Strip (Instant one-click scenario testing)
+            // 2. Quick Demo Scenarios Strip (Smooth Horizontal Scroll)
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 12.dp, vertical = 2.dp)
             ) {
-                Text(
-                    text = if (locale == "hi") "त्वरित परीक्षण (Quick Test):" else "Quick Test Scenarios:",
-                    style = MaterialTheme.typography.bodyMedium.copy(color = TextMuted, fontSize = 11.sp)
-                )
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -165,7 +182,7 @@ fun ScanScreen(viewModel: ScanViewModel) {
                         "Ecosprin 75" to "Aspirin (Take 1st)",
                         "Combiflam" to "Pain (Conflict)",
                         "Shelcal 500" to "Calcium",
-                        "Orofer XT" to "Iron (Conflict)"
+                        "Pan 40" to "Antacid (Rule)"
                     )
                     demoMedicines.forEach { (brand, desc) ->
                         FilterChip(
@@ -185,13 +202,13 @@ fun ScanScreen(viewModel: ScanViewModel) {
                 }
             }
 
-            // Camera Viewport & Dynamic Reticle
+            // 3. Camera Viewport & Dynamic Reticle
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f)
                     .padding(horizontal = 12.dp, vertical = 6.dp)
-                    .border(2.dp, AccentBorder, RoundedCornerShape(16.dp))
+                    .border(1.5.dp, AccentBorder, RoundedCornerShape(16.dp))
             ) {
                 AndroidView(
                     factory = { ctx ->
@@ -238,26 +255,26 @@ fun ScanScreen(viewModel: ScanViewModel) {
 
                 Box(
                     modifier = Modifier
-                        .size(280.dp, 160.dp)
+                        .size(260.dp, 150.dp)
                         .align(Alignment.Center)
                         .border(width = 3.dp, color = reticleColor, shape = RoundedCornerShape(14.dp))
                 )
             }
 
-            // Bottom Accessible Action Card (WCAG AAA Compliance)
+            // 4. Bottom Accessible Action Area (Scroll-Safe & Zero Clipping)
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 14.dp, vertical = 6.dp)
+                    .padding(horizontal = 12.dp, vertical = 6.dp)
             ) {
                 when (val state = uiState) {
                     is ScanUiState.Scanning -> {
                         Card(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(100.dp),
+                                .height(88.dp),
                             colors = CardDefaults.cardColors(containerColor = SurfaceCardDark),
-                            shape = RoundedCornerShape(16.dp)
+                            shape = RoundedCornerShape(14.dp)
                         ) {
                             Box(
                                 modifier = Modifier.fillMaxSize(),
@@ -267,7 +284,7 @@ fun ScanScreen(viewModel: ScanViewModel) {
                                     text = if (locale == "hi") "दवा की पट्टी कैमरे के सामने रखें..." else "Hold medicine blister pack in front of camera...",
                                     style = MaterialTheme.typography.titleMedium.copy(
                                         color = TextMuted,
-                                        fontSize = 18.sp,
+                                        fontSize = 15.sp,
                                         fontWeight = FontWeight.SemiBold
                                     ),
                                     textAlign = TextAlign.Center
@@ -280,8 +297,9 @@ fun ScanScreen(viewModel: ScanViewModel) {
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .background(SafeGreen, RoundedCornerShape(16.dp))
-                                .padding(14.dp),
+                                .background(SafeGreen, RoundedCornerShape(14.dp))
+                                .padding(12.dp)
+                                .verticalScroll(rememberScrollState()),
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
                             Text(
@@ -289,27 +307,27 @@ fun ScanScreen(viewModel: ScanViewModel) {
                                 style = MaterialTheme.typography.headlineMedium.copy(
                                     color = TextWhite,
                                     fontWeight = FontWeight.Bold,
-                                    fontSize = 24.sp
+                                    fontSize = 20.sp
                                 )
                             )
                             Text(
                                 text = if (locale == "hi") "घटक: ${state.saltName}" else "Active: ${state.saltName}",
-                                style = MaterialTheme.typography.bodyLarge.copy(
+                                style = MaterialTheme.typography.bodyMedium.copy(
                                     color = TextWhite.copy(alpha = 0.9f),
-                                    fontSize = 15.sp
+                                    fontSize = 13.sp
                                 )
                             )
-                            Spacer(modifier = Modifier.height(6.dp))
+                            Spacer(modifier = Modifier.height(4.dp))
                             Text(
                                 text = state.instructionText,
-                                style = MaterialTheme.typography.titleLarge.copy(
+                                style = MaterialTheme.typography.titleMedium.copy(
                                     color = TextWhite,
                                     fontWeight = FontWeight.Bold,
-                                    fontSize = 19.sp
+                                    fontSize = 16.sp
                                 ),
                                 textAlign = TextAlign.Center
                             )
-                            Spacer(modifier = Modifier.height(12.dp))
+                            Spacer(modifier = Modifier.height(10.dp))
                             Button(
                                 onClick = {
                                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
@@ -317,21 +335,21 @@ fun ScanScreen(viewModel: ScanViewModel) {
                                 },
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .height(68.dp),
+                                    .height(58.dp),
                                 colors = ButtonDefaults.buttonColors(containerColor = TextWhite),
-                                shape = RoundedCornerShape(14.dp)
+                                shape = RoundedCornerShape(12.dp)
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.CheckCircle,
                                     contentDescription = null,
                                     tint = SafeGreen,
-                                    modifier = Modifier.size(32.dp)
+                                    modifier = Modifier.size(26.dp)
                                 )
-                                Spacer(modifier = Modifier.width(10.dp))
+                                Spacer(modifier = Modifier.width(8.dp))
                                 Text(
                                     text = if (locale == "hi") "ले ली (Confirm Taken)" else "Confirm Taken",
                                     color = SafeGreen,
-                                    fontSize = 19.sp,
+                                    fontSize = 17.sp,
                                     fontWeight = FontWeight.Bold
                                 )
                             }
@@ -342,36 +360,37 @@ fun ScanScreen(viewModel: ScanViewModel) {
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .background(AlertRed, RoundedCornerShape(16.dp))
-                                .padding(14.dp),
+                                .background(AlertRed, RoundedCornerShape(14.dp))
+                                .padding(12.dp)
+                                .verticalScroll(rememberScrollState()),
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Warning,
                                 contentDescription = null,
                                 tint = TextWhite,
-                                modifier = Modifier.size(40.dp)
+                                modifier = Modifier.size(32.dp)
+                            )
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = if (locale == "hi") "सावधान! दोबारा न लें" else "Warning! Do Not Retake",
+                                style = MaterialTheme.typography.titleLarge.copy(
+                                    color = TextWhite,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 19.sp
+                                )
                             )
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
-                                text = if (locale == "hi") "सावधान! दोबारा न लें" else "Warning! Do Not Retake",
-                                style = MaterialTheme.typography.headlineSmall.copy(
-                                    color = TextWhite,
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 22.sp
-                                )
-                            )
-                            Spacer(modifier = Modifier.height(6.dp))
-                            Text(
                                 text = state.alertMessage,
-                                style = MaterialTheme.typography.bodyLarge.copy(
+                                style = MaterialTheme.typography.bodyMedium.copy(
                                     color = TextWhite,
-                                    fontSize = 17.sp,
+                                    fontSize = 14.sp,
                                     fontWeight = FontWeight.SemiBold
                                 ),
                                 textAlign = TextAlign.Center
                             )
-                            Spacer(modifier = Modifier.height(12.dp))
+                            Spacer(modifier = Modifier.height(10.dp))
                             Button(
                                 onClick = {
                                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
@@ -379,20 +398,21 @@ fun ScanScreen(viewModel: ScanViewModel) {
                                 },
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .height(60.dp),
+                                    .height(52.dp),
                                 colors = ButtonDefaults.buttonColors(containerColor = TextWhite),
-                                shape = RoundedCornerShape(14.dp)
+                                shape = RoundedCornerShape(12.dp)
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.Refresh,
                                     contentDescription = null,
-                                    tint = AlertRed
+                                    tint = AlertRed,
+                                    modifier = Modifier.size(20.dp)
                                 )
-                                Spacer(modifier = Modifier.width(8.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
                                 Text(
-                                    text = if (locale == "hi") "अगली दवा स्कैन करें (Scan Next)" else "Scan Next Medicine",
+                                    text = if (locale == "hi") "अगली दवा स्कैन करें" else "Scan Next Medicine",
                                     color = AlertRed,
-                                    fontSize = 17.sp,
+                                    fontSize = 15.sp,
                                     fontWeight = FontWeight.Bold
                                 )
                             }
@@ -403,36 +423,37 @@ fun ScanScreen(viewModel: ScanViewModel) {
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .background(AlertRed, RoundedCornerShape(16.dp))
-                                .padding(14.dp),
+                                .background(AlertRed, RoundedCornerShape(14.dp))
+                                .padding(12.dp)
+                                .verticalScroll(rememberScrollState()),
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Warning,
                                 contentDescription = null,
                                 tint = TextWhite,
-                                modifier = Modifier.size(40.dp)
+                                modifier = Modifier.size(32.dp)
+                            )
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = if (locale == "hi") "गंभीर दवा परस्परविरोध!" else "Critical Drug Interaction!",
+                                style = MaterialTheme.typography.titleLarge.copy(
+                                    color = TextWhite,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 19.sp
+                                )
                             )
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
-                                text = if (locale == "hi") "गंभीर दवा परस्परविरोध!" else "Critical Drug Interaction!",
-                                style = MaterialTheme.typography.headlineSmall.copy(
-                                    color = TextWhite,
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 22.sp
-                                )
-                            )
-                            Spacer(modifier = Modifier.height(6.dp))
-                            Text(
                                 text = state.alertMessage,
-                                style = MaterialTheme.typography.bodyLarge.copy(
+                                style = MaterialTheme.typography.bodyMedium.copy(
                                     color = TextWhite,
-                                    fontSize = 17.sp,
+                                    fontSize = 14.sp,
                                     fontWeight = FontWeight.SemiBold
                                 ),
                                 textAlign = TextAlign.Center
                             )
-                            Spacer(modifier = Modifier.height(12.dp))
+                            Spacer(modifier = Modifier.height(10.dp))
                             Button(
                                 onClick = {
                                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
@@ -440,14 +461,14 @@ fun ScanScreen(viewModel: ScanViewModel) {
                                 },
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .height(60.dp),
+                                    .height(52.dp),
                                 colors = ButtonDefaults.buttonColors(containerColor = TextWhite),
-                                shape = RoundedCornerShape(14.dp)
+                                shape = RoundedCornerShape(12.dp)
                             ) {
                                 Text(
                                     text = if (locale == "hi") "समझ गए (Dismiss)" else "Understood (Dismiss)",
                                     color = AlertRed,
-                                    fontSize = 17.sp,
+                                    fontSize = 15.sp,
                                     fontWeight = FontWeight.Bold
                                 )
                             }

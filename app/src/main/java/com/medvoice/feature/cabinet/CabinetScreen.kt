@@ -40,6 +40,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.medvoice.feature.scanner.ScanViewModel
@@ -53,144 +54,71 @@ import com.medvoice.ui.theme.SurfaceCardDark
 import com.medvoice.ui.theme.SurfaceCardElevated
 import com.medvoice.ui.theme.TextMuted
 import com.medvoice.ui.theme.TextWhite
-import com.medvoice.ui.theme.WarningAmber
-
-data class CabinetMedicineItem(
-    val brand: String,
-    val salt: String,
-    val therapeuticClass: String,
-    val timingRuleEn: String,
-    val timingRuleHi: String,
-    val usageEn: String,
-    val usageHi: String,
-    val daysRemaining: Int
-)
 
 @Composable
 fun CabinetScreen(viewModel: ScanViewModel) {
     val locale by viewModel.selectedLocale.collectAsState()
+    val allMedicines by viewModel.allMedicines.collectAsState()
     val haptic = LocalHapticFeedback.current
     var searchQuery by remember { mutableStateOf("") }
 
-    val masterCabinet = listOf(
-        CabinetMedicineItem(
-            brand = "Thyronorm 50mcg",
-            salt = "Levothyroxine Sodium",
-            therapeuticClass = "THYROID",
-            timingRuleEn = "Strictly 45 mins before morning tea/breakfast",
-            timingRuleHi = "सुबह खाली पेट, 45 मिनट तक चाय या नाश्ता न करें",
-            usageEn = "This is your thyroid tablet to be taken early morning on an empty stomach.",
-            usageHi = "यह सुबह खाली पेट लेने वाली थायराइड की गोली है।",
-            daysRemaining = 24
-        ),
-        CabinetMedicineItem(
-            brand = "Glycomet-SR 500",
-            salt = "Metformin Hydrochloride",
-            therapeuticClass = "ANTIDIABETIC",
-            timingRuleEn = "Take 1 tablet with water after your meal",
-            timingRuleHi = "खाना खाने के बाद 1 गोली पानी के साथ लें",
-            usageEn = "This is your diabetes blood sugar tablet. Take after breakfast.",
-            usageHi = "यह आपकी शुगर की गोली है। नाश्ते के बाद लें।",
-            daysRemaining = 12
-        ),
-        CabinetMedicineItem(
-            brand = "Telma 40",
-            salt = "Telmisartan",
-            therapeuticClass = "ANTIHYPERTENSIVE",
-            timingRuleEn = "Take once daily in the morning with water",
-            timingRuleHi = "रोजाना सुबह 1 गोली पानी के साथ लें",
-            usageEn = "This is your blood pressure and cardiac protection medication.",
-            usageHi = "यह ब्लड प्रेशर और हृदय सुरक्षा की दवा है।",
-            daysRemaining = 18
-        ),
-        CabinetMedicineItem(
-            brand = "Shelcal 500",
-            salt = "Calcium Carbonate",
-            therapeuticClass = "SUPPLEMENT",
-            timingRuleEn = "Take after lunch. Keep 2 hours gap from Iron",
-            timingRuleHi = "दोपहर खाने के बाद लें। आयरन की दवा से 2 घंटे का अंतर रखें",
-            usageEn = "This is your calcium bone supplement tablet.",
-            usageHi = "यह हड्डियों की मजबूती के लिए कैल्शियम की गोली है।",
-            daysRemaining = 7
-        ),
-        CabinetMedicineItem(
-            brand = "Atorva 10",
-            salt = "Atorvastatin",
-            therapeuticClass = "STATIN",
-            timingRuleEn = "Take 30 minutes before sleep at night",
-            timingRuleHi = "रात को सोने से 30 मिनट पहले लें",
-            usageEn = "This is your nighttime cholesterol lowering medication.",
-            usageHi = "यह कोलेस्ट्रॉल की रात की दवा है।",
-            daysRemaining = 20
-        ),
-        CabinetMedicineItem(
-            brand = "Pan 40",
-            salt = "Pantoprazole Sodium",
-            therapeuticClass = "ANTACID_PPI",
-            timingRuleEn = "Take 30 minutes before breakfast",
-            timingRuleHi = "सुबह नाश्ते से 30 मिनट पहले लें",
-            usageEn = "This is your antacid and gas relief tablet.",
-            usageHi = "यह गैस और एसिडिटी की गोली है।",
-            daysRemaining = 15
-        )
-    )
-
-    val filteredList = masterCabinet.filter {
-        it.brand.contains(searchQuery, ignoreCase = true) ||
-                it.salt.contains(searchQuery, ignoreCase = true) ||
-                it.therapeuticClass.contains(searchQuery, ignoreCase = true)
+    val filteredList = allMedicines.filter {
+        it.brand_name.contains(searchQuery, ignoreCase = true) ||
+                it.salt_name.contains(searchQuery, ignoreCase = true) ||
+                it.therapeutic_class.contains(searchQuery, ignoreCase = true)
     }
 
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(BackgroundCharcoal)
-            .padding(16.dp)
+            .padding(14.dp)
     ) {
-        // Header
+        // 1. Responsive Header
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    modifier = Modifier
-                        .size(40.dp)
-                        .background(SafeGreen.copy(alpha = 0.15f), RoundedCornerShape(10.dp)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Medication,
-                        contentDescription = null,
-                        tint = SafeGreen,
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
-                Spacer(modifier = Modifier.width(12.dp))
-                Column {
-                    Text(
-                        text = if (locale == "hi") "मेरी दवा पेटी" else "My Medicine Cabinet",
-                        style = MaterialTheme.typography.headlineMedium.copy(
-                            color = TextWhite,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 22.sp
-                        )
-                    )
-                    Text(
-                        text = if (locale == "hi") "सक्रिय दवाएं और खुराक निर्देश" else "Active Prescriptions & Dosage Rules",
-                        style = MaterialTheme.typography.bodyMedium.copy(
-                            color = TextMuted,
-                            fontSize = 13.sp
-                        )
-                    )
-                }
+            Box(
+                modifier = Modifier
+                    .size(36.dp)
+                    .background(SafeGreen.copy(alpha = 0.15f), RoundedCornerShape(8.dp)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Medication,
+                    contentDescription = null,
+                    tint = SafeGreen,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+            Spacer(modifier = Modifier.width(10.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = if (locale == "hi") "मेरी दवा पेटी" else "My Medicine Cabinet",
+                    style = MaterialTheme.typography.titleLarge.copy(
+                        color = TextWhite,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 20.sp
+                    ),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    text = if (locale == "hi") "सक्रिय दवाएं और खुराक निर्देश" else "Active Prescriptions & Dosage Rules",
+                    style = MaterialTheme.typography.bodySmall.copy(
+                        color = TextMuted,
+                        fontSize = 12.sp
+                    ),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
             }
         }
 
-        Spacer(modifier = Modifier.height(14.dp))
+        Spacer(modifier = Modifier.height(12.dp))
 
-        // Search Bar
+        // 2. Responsive Search Bar
         OutlinedTextField(
             value = searchQuery,
             onValueChange = { searchQuery = it },
@@ -198,14 +126,15 @@ fun CabinetScreen(viewModel: ScanViewModel) {
                 Text(
                     text = if (locale == "hi") "दवा या साल्ट खोजें..." else "Search medicine or active salt...",
                     color = TextMuted,
-                    fontSize = 14.sp
+                    fontSize = 13.sp
                 )
             },
             leadingIcon = {
                 Icon(
                     imageVector = Icons.Default.Search,
                     contentDescription = "Search",
-                    tint = TextMuted
+                    tint = TextMuted,
+                    modifier = Modifier.size(18.dp)
                 )
             },
             colors = OutlinedTextFieldDefaults.colors(
@@ -216,138 +145,153 @@ fun CabinetScreen(viewModel: ScanViewModel) {
                 focusedContainerColor = SurfaceCardDark,
                 unfocusedContainerColor = SurfaceCardDark
             ),
-            shape = RoundedCornerShape(12.dp),
-            modifier = Modifier.fillMaxWidth()
+            shape = RoundedCornerShape(10.dp),
+            modifier = Modifier.fillMaxWidth().height(50.dp)
         )
 
-        Spacer(modifier = Modifier.height(14.dp))
+        Spacer(modifier = Modifier.height(12.dp))
 
-        // Medicine Cards List
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            items(filteredList) { item ->
-                val timing = if (locale == "hi") item.timingRuleHi else item.timingRuleEn
-                val spokenText = if (locale == "hi") "${item.brand}। ${item.usageHi}। ${item.timingRuleHi}" else "${item.brand}. ${item.usageEn} ${item.timingRuleEn}"
+        // 3. Medicine Cards List Loaded Dynamically from Room
+        if (filteredList.isEmpty()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = if (locale == "hi") "कोई दवा नहीं मिली" else "No matching medicines found in pharmacopeia.",
+                    color = TextMuted,
+                    fontSize = 14.sp
+                )
+            }
+        } else {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                items(filteredList) { item ->
+                    val timing = if (locale == "hi") item.vernacular_instruction_hi else item.vernacular_instruction_en
+                    val usage = if (locale == "hi") item.vernacular_usage_hi else item.vernacular_usage_en
+                    val spokenText = "${item.brand_name}। $usage $timing"
 
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(containerColor = SurfaceCardDark),
-                    shape = RoundedCornerShape(16.dp)
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp)
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(containerColor = SurfaceCardDark),
+                        shape = RoundedCornerShape(14.dp)
                     ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = item.brand,
-                                    style = MaterialTheme.typography.titleLarge.copy(
-                                        color = TextWhite,
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 20.sp
-                                    )
-                                )
-                                Text(
-                                    text = "Active: ${item.salt}",
-                                    style = MaterialTheme.typography.bodyMedium.copy(
-                                        color = ReticleCyan,
-                                        fontSize = 13.sp,
-                                        fontWeight = FontWeight.SemiBold
-                                    )
-                                )
-                            }
-
-                            // Speaker Button: Read out dosage
-                            IconButton(
-                                onClick = {
-                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                    viewModel.ttsManager.speak(spokenText, locale)
-                                },
-                                modifier = Modifier
-                                    .background(SafeGreen, RoundedCornerShape(10.dp))
-                                    .size(44.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.AutoMirrored.Filled.VolumeUp,
-                                    contentDescription = "Read Aloud",
-                                    tint = TextWhite,
-                                    modifier = Modifier.size(24.dp)
-                                )
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.height(8.dp))
-
-                        // Timing Rule Banner
-                        Box(
+                        Column(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .background(SurfaceCardElevated, RoundedCornerShape(8.dp))
-                                .padding(horizontal = 10.dp, vertical = 6.dp)
+                                .padding(14.dp)
                         ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(
-                                    imageVector = Icons.Default.AccessTime,
-                                    contentDescription = null,
-                                    tint = TextMuted,
-                                    modifier = Modifier.size(14.dp)
-                                )
-                                Spacer(modifier = Modifier.width(6.dp))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = item.brand_name,
+                                        style = MaterialTheme.typography.titleMedium.copy(
+                                            color = TextWhite,
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 17.sp
+                                        ),
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                    Text(
+                                        text = "Active: ${item.salt_name}",
+                                        style = MaterialTheme.typography.bodySmall.copy(
+                                            color = ReticleCyan,
+                                            fontSize = 12.sp,
+                                            fontWeight = FontWeight.SemiBold
+                                        ),
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
+
+                                // Speaker Button: Read out dosage
+                                IconButton(
+                                    onClick = {
+                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                        viewModel.ttsManager.speak(spokenText, locale)
+                                    },
+                                    modifier = Modifier
+                                        .background(SafeGreen, RoundedCornerShape(8.dp))
+                                        .size(38.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.AutoMirrored.Filled.VolumeUp,
+                                        contentDescription = "Read Aloud",
+                                        tint = TextWhite,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(6.dp))
+
+                            // Timing Rule Banner
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .background(SurfaceCardElevated, RoundedCornerShape(6.dp))
+                                    .padding(horizontal = 8.dp, vertical = 5.dp)
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        imageVector = Icons.Default.AccessTime,
+                                        contentDescription = null,
+                                        tint = TextMuted,
+                                        modifier = Modifier.size(12.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(5.dp))
+                                    Text(
+                                        text = timing,
+                                        style = MaterialTheme.typography.bodySmall.copy(
+                                            color = TextWhite,
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.Medium
+                                        ),
+                                        maxLines = 2,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(6.dp))
+
+                            // Therapeutic Class Tag
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
                                 Text(
-                                    text = timing,
+                                    text = "Class: ${item.therapeutic_class}",
                                     style = MaterialTheme.typography.bodySmall.copy(
-                                        color = TextWhite,
-                                        fontSize = 12.sp,
-                                        fontWeight = FontWeight.Medium
+                                        color = TextMuted,
+                                        fontSize = 11.sp
                                     )
                                 )
-                            }
-                        }
 
-                        Spacer(modifier = Modifier.height(8.dp))
-
-                        // Refill badge
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = "Class: ${item.therapeuticClass}",
-                                style = MaterialTheme.typography.bodySmall.copy(
-                                    color = TextMuted,
-                                    fontSize = 11.sp
-                                )
-                            )
-
-                            if (item.daysRemaining <= 7) {
-                                StatusBadge(
-                                    text = "Refill in ${item.daysRemaining} days",
-                                    statusType = StatusType.WARNING
-                                )
-                            } else {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     Icon(
                                         imageVector = Icons.Default.Inventory2,
                                         contentDescription = null,
                                         tint = SafeGreen,
-                                        modifier = Modifier.size(14.dp)
+                                        modifier = Modifier.size(12.dp)
                                     )
-                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Spacer(modifier = Modifier.width(3.dp))
                                     Text(
-                                        text = "${item.daysRemaining} days left",
+                                        text = "Active Strip",
                                         style = MaterialTheme.typography.bodySmall.copy(
                                             color = SafeGreen,
                                             fontWeight = FontWeight.Bold,
-                                            fontSize = 12.sp
+                                            fontSize = 11.sp
                                         )
                                     )
                                 }

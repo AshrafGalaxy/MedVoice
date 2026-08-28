@@ -24,6 +24,7 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.RecordVoiceOver
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.Security
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -33,6 +34,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -43,10 +46,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.medvoice.core.ai.AiEngineTier
 import com.medvoice.core.audio.VoiceEngineMode
 import com.medvoice.core.audio.VoiceGender
 import com.medvoice.feature.scanner.ScanViewModel
@@ -67,59 +72,63 @@ fun SettingsScreen(viewModel: ScanViewModel) {
     val engineMode by viewModel.engineMode.collectAsState()
     val caregiverPhone by viewModel.caregiverPhone.collectAsState()
     val patientName by viewModel.patientName.collectAsState()
+    val context = LocalContext.current
     val haptic = LocalHapticFeedback.current
 
     var phoneInput by remember { mutableStateOf(caregiverPhone) }
     var nameInput by remember { mutableStateOf(patientName) }
-    var apiKeyInput by remember { mutableStateOf(viewModel.ttsManager.sarvamApiKey) }
+    var sarvamKeyInput by remember { mutableStateOf(viewModel.ttsManager.sarvamApiKey) }
+    var elevenLabsKeyInput by remember { mutableStateOf(viewModel.ttsManager.elevenLabsApiKey) }
+    var medGemmaKeyInput by remember { mutableStateOf(viewModel.aiEngine.cloudMedGemmaApiKey) }
+    var allowCloudPrivacy by remember { mutableStateOf(viewModel.aiEngine.allowCloudPrivacyEgress) }
 
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(BackgroundCharcoal)
             .verticalScroll(rememberScrollState())
-            .padding(16.dp)
+            .padding(14.dp)
     ) {
-        // Header
+        // Top Header
         Text(
             text = if (locale == "hi") "सेटिंग्स और वॉयस स्टूडियो" else "Settings & Voice Studio",
-            style = MaterialTheme.typography.headlineMedium.copy(
+            style = MaterialTheme.typography.titleLarge.copy(
                 color = TextWhite,
                 fontWeight = FontWeight.Bold,
-                fontSize = 24.sp
+                fontSize = 22.sp
             )
         )
         Text(
-            text = if (locale == "hi") "आवाज, आपातकालीन संपर्क और एआई रीजनिंग कॉन्फ़िगर करें" else "Configure vernacular voice, caregiver SOS & AI reasoning",
-            style = MaterialTheme.typography.bodyMedium.copy(
+            text = if (locale == "hi") "आवाज, आपातकालीन संपर्क और मेडगेम्मा AI कॉन्फ़िगर करें" else "Configure vernacular voice, caregiver SOS & MedGemma AI",
+            style = MaterialTheme.typography.bodySmall.copy(
                 color = TextMuted,
-                fontSize = 13.sp
+                fontSize = 12.sp
             )
         )
 
-        Spacer(modifier = Modifier.height(18.dp))
+        Spacer(modifier = Modifier.height(14.dp))
 
         // 1. Language Selection Card
         Card(
             modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(containerColor = SurfaceCardDark),
-            shape = RoundedCornerShape(16.dp)
+            shape = RoundedCornerShape(14.dp)
         ) {
-            Column(modifier = Modifier.padding(16.dp)) {
+            Column(modifier = Modifier.padding(14.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(imageVector = Icons.Default.Language, contentDescription = null, tint = SafeGreen, modifier = Modifier.size(20.dp))
+                    Icon(imageVector = Icons.Default.Language, contentDescription = null, tint = SafeGreen, modifier = Modifier.size(18.dp))
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
                         text = if (locale == "hi") "भाषा चुनें (App Language)" else "App Language (भाषा)",
                         color = TextWhite,
                         fontWeight = FontWeight.Bold,
-                        fontSize = 16.sp
+                        fontSize = 15.sp
                     )
                 }
-                Spacer(modifier = Modifier.height(10.dp))
+                Spacer(modifier = Modifier.height(8.dp))
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Button(
                         onClick = {
@@ -129,10 +138,10 @@ fun SettingsScreen(viewModel: ScanViewModel) {
                         colors = ButtonDefaults.buttonColors(
                             containerColor = if (locale == "en") SafeGreen else SurfaceCardElevated
                         ),
-                        shape = RoundedCornerShape(10.dp),
-                        modifier = Modifier.weight(1f).height(46.dp)
+                        shape = RoundedCornerShape(8.dp),
+                        modifier = Modifier.weight(1f).height(42.dp)
                     ) {
-                        Text("English", color = TextWhite, fontWeight = FontWeight.Bold)
+                        Text("English", color = TextWhite, fontWeight = FontWeight.Bold, fontSize = 13.sp)
                     }
 
                     Button(
@@ -143,40 +152,40 @@ fun SettingsScreen(viewModel: ScanViewModel) {
                         colors = ButtonDefaults.buttonColors(
                             containerColor = if (locale == "hi") SafeGreen else SurfaceCardElevated
                         ),
-                        shape = RoundedCornerShape(10.dp),
-                        modifier = Modifier.weight(1f).height(46.dp)
+                        shape = RoundedCornerShape(8.dp),
+                        modifier = Modifier.weight(1f).height(42.dp)
                     ) {
-                        Text("हिंदी (Hindi)", color = TextWhite, fontWeight = FontWeight.Bold)
+                        Text("हिंदी (Hindi)", color = TextWhite, fontWeight = FontWeight.Bold, fontSize = 13.sp)
                     }
                 }
             }
         }
 
-        Spacer(modifier = Modifier.height(14.dp))
+        Spacer(modifier = Modifier.height(12.dp))
 
         // 2. Voice Customization Studio Card
         Card(
             modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(containerColor = SurfaceCardDark),
-            shape = RoundedCornerShape(16.dp)
+            shape = RoundedCornerShape(14.dp)
         ) {
-            Column(modifier = Modifier.padding(16.dp)) {
+            Column(modifier = Modifier.padding(14.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(imageVector = Icons.Default.GraphicEq, contentDescription = null, tint = ReticleCyan, modifier = Modifier.size(20.dp))
+                    Icon(imageVector = Icons.Default.GraphicEq, contentDescription = null, tint = ReticleCyan, modifier = Modifier.size(18.dp))
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = if (locale == "hi") "आवाज चयन और पिच" else "Voice Style & Pitch",
+                        text = if (locale == "hi") "आवाज चयन और भारतीय उच्चारण" else "Voice Style & Indian Accents",
                         color = TextWhite,
                         fontWeight = FontWeight.Bold,
-                        fontSize = 16.sp
+                        fontSize = 15.sp
                     )
                 }
-                Spacer(modifier = Modifier.height(10.dp))
+                Spacer(modifier = Modifier.height(8.dp))
 
-                // Male / Female Toggle
+                // Voice Gender
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Button(
                         onClick = {
@@ -186,12 +195,12 @@ fun SettingsScreen(viewModel: ScanViewModel) {
                         colors = ButtonDefaults.buttonColors(
                             containerColor = if (selectedGender == VoiceGender.FEMALE) SafeGreen else SurfaceCardElevated
                         ),
-                        shape = RoundedCornerShape(10.dp),
-                        modifier = Modifier.weight(1f).height(46.dp)
+                        shape = RoundedCornerShape(8.dp),
+                        modifier = Modifier.weight(1f).height(42.dp)
                     ) {
-                        Icon(imageVector = Icons.Default.RecordVoiceOver, contentDescription = null, tint = TextWhite, modifier = Modifier.size(18.dp))
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text("Female (Warm)", fontSize = 12.sp, color = TextWhite, fontWeight = FontWeight.Bold)
+                        Icon(imageVector = Icons.Default.RecordVoiceOver, contentDescription = null, tint = TextWhite, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Female (Warm)", fontSize = 11.sp, color = TextWhite, fontWeight = FontWeight.Bold)
                     }
 
                     Button(
@@ -202,31 +211,31 @@ fun SettingsScreen(viewModel: ScanViewModel) {
                         colors = ButtonDefaults.buttonColors(
                             containerColor = if (selectedGender == VoiceGender.MALE) SafeGreen else SurfaceCardElevated
                         ),
-                        shape = RoundedCornerShape(10.dp),
-                        modifier = Modifier.weight(1f).height(46.dp)
+                        shape = RoundedCornerShape(8.dp),
+                        modifier = Modifier.weight(1f).height(42.dp)
                     ) {
-                        Icon(imageVector = Icons.Default.RecordVoiceOver, contentDescription = null, tint = TextWhite, modifier = Modifier.size(18.dp))
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text("Male (Clear)", fontSize = 12.sp, color = TextWhite, fontWeight = FontWeight.Bold)
+                        Icon(imageVector = Icons.Default.RecordVoiceOver, contentDescription = null, tint = TextWhite, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Male (Clear)", fontSize = 11.sp, color = TextWhite, fontWeight = FontWeight.Bold)
                     }
                 }
 
-                Spacer(modifier = Modifier.height(14.dp))
+                Spacer(modifier = Modifier.height(10.dp))
 
                 // Speech Speed Selector
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(imageVector = Icons.Default.Speed, contentDescription = null, tint = TextMuted, modifier = Modifier.size(16.dp))
-                    Spacer(modifier = Modifier.width(6.dp))
+                    Icon(imageVector = Icons.Default.Speed, contentDescription = null, tint = TextMuted, modifier = Modifier.size(14.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
                     Text(
                         text = if (locale == "hi") "बोलने की गति (Speech Rate):" else "Speech Rate (Senior Clarity):",
                         color = TextMuted,
-                        fontSize = 13.sp
+                        fontSize = 12.sp
                     )
                 }
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(6.dp))
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     listOf(0.75f to "0.75x Slow", 0.88f to "0.88x Senior", 1.0f to "1.0x Normal").forEach { (rate, label) ->
                         Button(
@@ -237,64 +246,109 @@ fun SettingsScreen(viewModel: ScanViewModel) {
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = if (speechRate == rate) SafeGreen else SurfaceCardElevated
                             ),
-                            shape = RoundedCornerShape(8.dp),
-                            modifier = Modifier.weight(1f).height(42.dp)
+                            shape = RoundedCornerShape(6.dp),
+                            modifier = Modifier.weight(1f).height(38.dp)
                         ) {
-                            Text(label, fontSize = 11.sp, color = TextWhite, fontWeight = FontWeight.SemiBold)
+                            Text(label, fontSize = 10.sp, color = TextWhite, fontWeight = FontWeight.SemiBold)
                         }
                     }
                 }
 
-                Spacer(modifier = Modifier.height(14.dp))
+                Spacer(modifier = Modifier.height(12.dp))
 
-                // Voice Preview Button
-                Button(
-                    onClick = {
-                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                        viewModel.testVoicePreview()
-                    },
-                    colors = ButtonDefaults.buttonColors(containerColor = ReticleCyan),
-                    shape = RoundedCornerShape(10.dp),
-                    modifier = Modifier.fillMaxWidth().height(48.dp)
-                ) {
-                    Icon(imageVector = Icons.Default.PlayArrow, contentDescription = null, tint = BackgroundCharcoal)
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(
-                        text = if (locale == "hi") "आवाज का नमूना सुनें (Preview Voice)" else "Test Voice Preview (Audio)",
-                        color = BackgroundCharcoal,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(14.dp))
-
-        // 3. AI Reasoning & Engine Mode (Edge + Cloud Fallback)
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = SurfaceCardDark),
-            shape = RoundedCornerShape(16.dp)
-        ) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(imageVector = Icons.Default.Security, contentDescription = null, tint = SafeGreen, modifier = Modifier.size(20.dp))
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = if (locale == "hi") "एआई रीजनिंग मोड (AI Engine)" else "AI Reasoning Engine",
-                        color = TextWhite,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 16.sp
-                    )
-                }
-                Spacer(modifier = Modifier.height(4.dp))
+                // Voice Engine Selection (Sarvam AI / ElevenLabs / On-Device)
                 Text(
-                    text = if (locale == "hi") "स्थानीय एज सुरक्षा या क्लाउड हाइब्रिड मॉडल चुनें" else "Select local edge deterministic engine or cloud hybrid fallback",
+                    text = "TTS Engine Provider:",
                     color = TextMuted,
                     fontSize = 12.sp
                 )
+                Spacer(modifier = Modifier.height(4.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Button(
+                        onClick = {
+                            viewModel.setEngineMode(VoiceEngineMode.OFFLINE_DEVICE)
+                        },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (engineMode == VoiceEngineMode.OFFLINE_DEVICE) SafeGreen else SurfaceCardElevated
+                        ),
+                        shape = RoundedCornerShape(6.dp),
+                        modifier = Modifier.weight(1f).height(38.dp)
+                    ) {
+                        Text("On-Device", fontSize = 10.sp, color = TextWhite, fontWeight = FontWeight.Bold)
+                    }
+
+                    Button(
+                        onClick = {
+                            viewModel.setEngineMode(VoiceEngineMode.HYBRID_SARVAM_AI, sarvamKeyInput)
+                        },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (engineMode == VoiceEngineMode.HYBRID_SARVAM_AI) SafeGreen else SurfaceCardElevated
+                        ),
+                        shape = RoundedCornerShape(6.dp),
+                        modifier = Modifier.weight(1f).height(38.dp)
+                    ) {
+                        Text("Sarvam AI", fontSize = 10.sp, color = TextWhite, fontWeight = FontWeight.Bold)
+                    }
+
+                    Button(
+                        onClick = {
+                            viewModel.setEngineMode(VoiceEngineMode.HYBRID_ELEVENLABS)
+                            viewModel.ttsManager.elevenLabsApiKey = elevenLabsKeyInput
+                        },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (engineMode == VoiceEngineMode.HYBRID_ELEVENLABS) SafeGreen else SurfaceCardElevated
+                        ),
+                        shape = RoundedCornerShape(6.dp),
+                        modifier = Modifier.weight(1f).height(38.dp)
+                    ) {
+                        Text("ElevenLabs", fontSize = 10.sp, color = TextWhite, fontWeight = FontWeight.Bold)
+                    }
+                }
+
+                if (engineMode == VoiceEngineMode.HYBRID_SARVAM_AI) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = sarvamKeyInput,
+                        onValueChange = {
+                            sarvamKeyInput = it
+                            viewModel.setEngineMode(VoiceEngineMode.HYBRID_SARVAM_AI, it)
+                        },
+                        label = { Text("Sarvam AI API Key", fontSize = 11.sp) },
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedTextColor = TextWhite,
+                            unfocusedTextColor = TextWhite,
+                            focusedBorderColor = SafeGreen,
+                            unfocusedBorderColor = AccentBorder
+                        ),
+                        modifier = Modifier.fillMaxWidth().height(50.dp)
+                    )
+                }
+
+                if (engineMode == VoiceEngineMode.HYBRID_ELEVENLABS) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = elevenLabsKeyInput,
+                        onValueChange = {
+                            elevenLabsKeyInput = it
+                            viewModel.ttsManager.elevenLabsApiKey = it
+                        },
+                        label = { Text("ElevenLabs API Key", fontSize = 11.sp) },
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedTextColor = TextWhite,
+                            unfocusedTextColor = TextWhite,
+                            focusedBorderColor = SafeGreen,
+                            unfocusedBorderColor = AccentBorder
+                        ),
+                        modifier = Modifier.fillMaxWidth().height(50.dp)
+                    )
+                }
+
                 Spacer(modifier = Modifier.height(10.dp))
 
+                // Test Voice Button & System Settings Button
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -302,103 +356,200 @@ fun SettingsScreen(viewModel: ScanViewModel) {
                     Button(
                         onClick = {
                             haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                            viewModel.setEngineMode(VoiceEngineMode.OFFLINE_DEVICE)
+                            viewModel.testVoicePreview()
                         },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = if (engineMode == VoiceEngineMode.OFFLINE_DEVICE) SafeGreen else SurfaceCardElevated
-                        ),
+                        colors = ButtonDefaults.buttonColors(containerColor = ReticleCyan),
                         shape = RoundedCornerShape(8.dp),
-                        modifier = Modifier.weight(1f).height(46.dp)
+                        modifier = Modifier.weight(1f).height(42.dp)
                     ) {
-                        Icon(imageVector = Icons.Default.FlashOn, contentDescription = null, tint = TextWhite, modifier = Modifier.size(16.dp))
+                        Icon(imageVector = Icons.Default.PlayArrow, contentDescription = null, tint = BackgroundCharcoal, modifier = Modifier.size(16.dp))
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text("100% Offline", fontSize = 11.sp, color = TextWhite, fontWeight = FontWeight.Bold)
+                        Text(
+                            text = if (locale == "hi") "आवाज सुनें" else "Test Voice",
+                            color = BackgroundCharcoal,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 12.sp
+                        )
                     }
 
                     Button(
                         onClick = {
-                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                            viewModel.setEngineMode(VoiceEngineMode.HYBRID_SARVAM_AI, apiKeyInput)
+                            viewModel.ttsManager.openTtsSystemSettings(context)
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = SurfaceCardElevated),
+                        shape = RoundedCornerShape(8.dp),
+                        modifier = Modifier.weight(1f).height(42.dp)
+                    ) {
+                        Icon(imageVector = Icons.Default.Settings, contentDescription = null, tint = TextWhite, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = "TTS Settings",
+                            color = TextWhite,
+                            fontSize = 11.sp
+                        )
+                    }
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        // 3. MedGemma AI Medical Reasoning Engine
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = SurfaceCardDark),
+            shape = RoundedCornerShape(14.dp)
+        ) {
+            Column(modifier = Modifier.padding(14.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(imageVector = Icons.Default.Security, contentDescription = null, tint = SafeGreen, modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "MedGemma Medical AI Model",
+                        color = TextWhite,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 15.sp
+                    )
+                }
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "Dedicated medical SLM for pharmaceutical chemical extraction",
+                    color = TextMuted,
+                    fontSize = 12.sp
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Button(
+                        onClick = {
+                            viewModel.aiEngine.activeTier = AiEngineTier.ON_DEVICE_MEDGEMMA_INT4
                         },
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = if (engineMode == VoiceEngineMode.HYBRID_SARVAM_AI) SafeGreen else SurfaceCardElevated
+                            containerColor = if (viewModel.aiEngine.activeTier == AiEngineTier.ON_DEVICE_MEDGEMMA_INT4) SafeGreen else SurfaceCardElevated
                         ),
                         shape = RoundedCornerShape(8.dp),
-                        modifier = Modifier.weight(1f).height(46.dp)
+                        modifier = Modifier.weight(1f).height(42.dp)
                     ) {
-                        Icon(imageVector = Icons.Default.Cloud, contentDescription = null, tint = TextWhite, modifier = Modifier.size(16.dp))
+                        Icon(imageVector = Icons.Default.FlashOn, contentDescription = null, tint = TextWhite, modifier = Modifier.size(14.dp))
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text("Cloud Hybrid", fontSize = 11.sp, color = TextWhite, fontWeight = FontWeight.Bold)
+                        Text("On-Device INT4", fontSize = 11.sp, color = TextWhite, fontWeight = FontWeight.Bold)
+                    }
+
+                    Button(
+                        onClick = {
+                            viewModel.aiEngine.activeTier = AiEngineTier.CLOUD_MEDGEMMA_HOSTED
+                        },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (viewModel.aiEngine.activeTier == AiEngineTier.CLOUD_MEDGEMMA_HOSTED) SafeGreen else SurfaceCardElevated
+                        ),
+                        shape = RoundedCornerShape(8.dp),
+                        modifier = Modifier.weight(1f).height(42.dp)
+                    ) {
+                        Icon(imageVector = Icons.Default.Cloud, contentDescription = null, tint = TextWhite, modifier = Modifier.size(14.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Cloud MedGemma", fontSize = 11.sp, color = TextWhite, fontWeight = FontWeight.Bold)
                     }
                 }
 
-                if (engineMode == VoiceEngineMode.HYBRID_SARVAM_AI) {
-                    Spacer(modifier = Modifier.height(12.dp))
-                    OutlinedTextField(
-                        value = apiKeyInput,
-                        onValueChange = {
-                            apiKeyInput = it
-                            viewModel.setEngineMode(VoiceEngineMode.HYBRID_SARVAM_AI, it)
+                Spacer(modifier = Modifier.height(10.dp))
+
+                // Privacy Guardrail Switch
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("Privacy Guardrail (Data Egress)", color = TextWhite, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                        Text(
+                            text = if (allowCloudPrivacy) "Cloud processing allowed" else "100% On-Device Only (No cloud egress)",
+                            color = if (allowCloudPrivacy) ReticleCyan else SafeGreen,
+                            fontSize = 11.sp
+                        )
+                    }
+                    Switch(
+                        checked = allowCloudPrivacy,
+                        onCheckedChange = {
+                            allowCloudPrivacy = it
+                            viewModel.aiEngine.allowCloudPrivacyEgress = it
                         },
-                        label = { Text("Cloud API Key (Sarvam AI / Gemini)", fontSize = 12.sp) },
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = TextWhite,
+                            checkedTrackColor = SafeGreen
+                        )
+                    )
+                }
+
+                if (viewModel.aiEngine.activeTier == AiEngineTier.CLOUD_MEDGEMMA_HOSTED && allowCloudPrivacy) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = medGemmaKeyInput,
+                        onValueChange = {
+                            medGemmaKeyInput = it
+                            viewModel.aiEngine.cloudMedGemmaApiKey = it
+                        },
+                        label = { Text("Cloud MedGemma / Vertex API Key", fontSize = 11.sp) },
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedTextColor = TextWhite,
                             unfocusedTextColor = TextWhite,
                             focusedBorderColor = SafeGreen,
                             unfocusedBorderColor = AccentBorder
                         ),
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth().height(50.dp)
                     )
                 }
             }
         }
 
-        Spacer(modifier = Modifier.height(14.dp))
+        Spacer(modifier = Modifier.height(12.dp))
 
         // 4. Caregiver SOS Emergency Contact Setup
         Card(
             modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(containerColor = SurfaceCardDark),
-            shape = RoundedCornerShape(16.dp)
+            shape = RoundedCornerShape(14.dp)
         ) {
-            Column(modifier = Modifier.padding(16.dp)) {
+            Column(modifier = Modifier.padding(14.dp)) {
                 Text(
                     text = if (locale == "hi") "केयरगिवर आपातकालीन विवरण" else "Caregiver Emergency SOS Details",
                     color = TextWhite,
                     fontWeight = FontWeight.Bold,
-                    fontSize = 16.sp
+                    fontSize = 15.sp
                 )
-                Spacer(modifier = Modifier.height(10.dp))
+                Spacer(modifier = Modifier.height(8.dp))
 
                 OutlinedTextField(
                     value = nameInput,
                     onValueChange = { nameInput = it },
-                    label = { Text("Patient Name (रोगी का नाम)", fontSize = 12.sp) },
+                    label = { Text("Patient Name (रोगी का नाम)", fontSize = 11.sp) },
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedTextColor = TextWhite,
                         unfocusedTextColor = TextWhite,
                         focusedBorderColor = SafeGreen,
                         unfocusedBorderColor = AccentBorder
                     ),
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth().height(50.dp)
                 )
 
-                Spacer(modifier = Modifier.height(10.dp))
+                Spacer(modifier = Modifier.height(8.dp))
 
                 OutlinedTextField(
                     value = phoneInput,
                     onValueChange = { phoneInput = it },
-                    label = { Text("Caregiver Mobile Number (फोन नंबर)", fontSize = 12.sp) },
+                    label = { Text("Caregiver Mobile Number (फोन नंबर)", fontSize = 11.sp) },
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedTextColor = TextWhite,
                         unfocusedTextColor = TextWhite,
                         focusedBorderColor = SafeGreen,
                         unfocusedBorderColor = AccentBorder
                     ),
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth().height(50.dp)
                 )
 
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(10.dp))
 
                 Button(
                     onClick = {
@@ -406,42 +557,43 @@ fun SettingsScreen(viewModel: ScanViewModel) {
                         viewModel.updateCaregiverInfo(nameInput, phoneInput)
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = SafeGreen),
-                    shape = RoundedCornerShape(10.dp),
-                    modifier = Modifier.fillMaxWidth().height(46.dp)
+                    shape = RoundedCornerShape(8.dp),
+                    modifier = Modifier.fillMaxWidth().height(44.dp)
                 ) {
-                    Icon(imageVector = Icons.Default.Save, contentDescription = null, tint = TextWhite)
+                    Icon(imageVector = Icons.Default.Save, contentDescription = null, tint = TextWhite, modifier = Modifier.size(16.dp))
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
-                        text = if (locale == "hi") "विवरण सहेजें (Save Details)" else "Save Caregiver Details",
+                        text = if (locale == "hi") "सहेजें (Save Details)" else "Save Caregiver Details",
                         color = TextWhite,
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 13.sp
                     )
                 }
             }
         }
 
-        Spacer(modifier = Modifier.height(14.dp))
+        Spacer(modifier = Modifier.height(12.dp))
 
         // 5. Senior Setup & Tour Replay
         Card(
             modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(containerColor = SurfaceCardDark),
-            shape = RoundedCornerShape(16.dp)
+            shape = RoundedCornerShape(14.dp)
         ) {
-            Column(modifier = Modifier.padding(16.dp)) {
+            Column(modifier = Modifier.padding(14.dp)) {
                 Text(
                     text = if (locale == "hi") "प्रारंभिक सेटअप और विज़ार्ड" else "Senior Setup & Onboarding Tour",
                     color = TextWhite,
                     fontWeight = FontWeight.Bold,
-                    fontSize = 16.sp
+                    fontSize = 15.sp
                 )
-                Spacer(modifier = Modifier.height(6.dp))
+                Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     text = if (locale == "hi") "भाषा, आवाज और स्वास्थ्य प्रोफ़ाइल विज़ार्ड दोबारा शुरू करें" else "Restart the accessible onboarding wizard for language & voice baseline",
                     color = TextMuted,
-                    fontSize = 12.sp
+                    fontSize = 11.sp
                 )
-                Spacer(modifier = Modifier.height(10.dp))
+                Spacer(modifier = Modifier.height(8.dp))
 
                 Button(
                     onClick = {
@@ -449,13 +601,14 @@ fun SettingsScreen(viewModel: ScanViewModel) {
                         viewModel.restartOnboarding()
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = SurfaceCardElevated),
-                    shape = RoundedCornerShape(10.dp),
-                    modifier = Modifier.fillMaxWidth().height(46.dp)
+                    shape = RoundedCornerShape(8.dp),
+                    modifier = Modifier.fillMaxWidth().height(42.dp)
                 ) {
                     Text(
                         text = if (locale == "hi") "ऑनबोर्डिंग विज़ार्ड पुनः प्रारंभ करें" else "Restart Onboarding Wizard",
                         color = TextWhite,
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 12.sp
                     )
                 }
             }
