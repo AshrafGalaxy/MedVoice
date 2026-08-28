@@ -1,6 +1,7 @@
 package com.medvoice.feature.settings
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -45,6 +46,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -517,6 +519,99 @@ fun SettingsScreen(viewModel: ScanViewModel) {
                         shape = RoundedCornerShape(10.dp),
                         modifier = Modifier.fillMaxWidth()
                     )
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // Interactive AI Testing Sandbox
+                var testOcrInput by remember { mutableStateOf("CADILA GLYCOMET SR 500 METFORMIN HCL 500MG IP") }
+                var aiTestResult by remember { mutableStateOf<com.medvoice.core.ai.ExtractedMedicineComposition?>(null) }
+                val coroutineScope = androidx.compose.runtime.rememberCoroutineScope()
+
+                Text(
+                    text = "🧪 Live MedGemma AI Testing Sandbox:",
+                    color = ReticleCyan,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 13.sp
+                )
+                Spacer(modifier = Modifier.height(6.dp))
+
+                // Quick presets
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    listOf("Glycomet 500", "Brufen 400", "Thyronorm 50", "Combiflam").forEach { preset ->
+                        Button(
+                            onClick = {
+                                testOcrInput = when (preset) {
+                                    "Glycomet 500" -> "CADILA GLYCOMET SR 500 METFORMIN HCL 500MG IP EXP 12/28"
+                                    "Brufen 400" -> "ABBOTT BRUFEN 400MG IBUPROFEN IP TABLETS"
+                                    "Thyronorm 50" -> "CIPLA THYRONORM 50 MCG LEVOTHYROXINE SODIUM"
+                                    else -> "COMBIFLAM SANOFI IBUPROFEN 400MG + PARACETAMOL 325MG"
+                                }
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = SurfaceCardElevated),
+                            shape = RoundedCornerShape(6.dp),
+                            contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp),
+                            modifier = Modifier.weight(1f).heightIn(min = 32.dp)
+                        ) {
+                            Text(preset, fontSize = 9.sp, color = TextWhite, maxLines = 1)
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                OutlinedTextField(
+                    value = testOcrInput,
+                    onValueChange = { testOcrInput = it },
+                    label = { Text("Raw OCR Text Input") },
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = TextWhite,
+                        unfocusedTextColor = TextWhite,
+                        focusedBorderColor = ReticleCyan,
+                        unfocusedBorderColor = AccentBorder
+                    ),
+                    shape = RoundedCornerShape(8.dp),
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Button(
+                    onClick = {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        coroutineScope.launch {
+                            aiTestResult = viewModel.aiEngine.parsePrescriptionText(testOcrInput)
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = ReticleCyan),
+                    shape = RoundedCornerShape(8.dp),
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 40.dp)
+                ) {
+                    Icon(imageVector = Icons.Default.FlashOn, contentDescription = null, tint = BackgroundCharcoal, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("⚡ Run MedGemma AI Extraction", color = BackgroundCharcoal, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                }
+
+                aiTestResult?.let { res ->
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(BackgroundCharcoal, RoundedCornerShape(8.dp))
+                            .border(1.dp, SafeGreen, RoundedCornerShape(8.dp))
+                            .padding(10.dp)
+                    ) {
+                        Column {
+                            Text("✓ AI Extracted Brand: ${res.brandName}", color = SafeGreen, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                            Text("✓ Active Salts: ${res.activeSalts.joinToString(", ")}", color = TextWhite, fontSize = 12.sp)
+                            Text("✓ Strength: ${res.strengthMg} mg | Form: ${res.dosageForm}", color = ReticleCyan, fontSize = 12.sp)
+                            Text("✓ Class: ${res.therapeuticCategory} (Confidence: ${(res.confidenceScore * 100).toInt()}%)", color = TextMuted, fontSize = 11.sp)
+                        }
+                    }
                 }
             }
         }
