@@ -5,10 +5,13 @@ import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.medvoice.core.audio.VernacularTtsManager
+import com.medvoice.core.audio.VoiceEngineMode
+import com.medvoice.core.audio.VoiceGender
 import com.medvoice.core.data.local.AppDatabase
 import com.medvoice.core.data.local.entity.MedicationLogEntity
 import com.medvoice.core.domain.engine.SafetyEvaluationEngine
 import com.medvoice.core.domain.engine.SafetyEvaluationResult
+import com.medvoice.feature.navigation.MedVoiceTab
 import com.medvoice.ui.util.SmsDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -47,13 +50,31 @@ class ScanViewModel(application: Application) : AndroidViewModel(application) {
 
     private val db = AppDatabase.getInstance(application)
     private val safetyEngine = SafetyEvaluationEngine(db.medicineDao())
-    private val ttsManager = VernacularTtsManager(application)
+    val ttsManager = VernacularTtsManager(application)
+
+    private val _currentTab = MutableStateFlow(MedVoiceTab.HOME)
+    val currentTab: StateFlow<MedVoiceTab> = _currentTab.asStateFlow()
 
     private val _uiState = MutableStateFlow<ScanUiState>(ScanUiState.Scanning)
     val uiState: StateFlow<ScanUiState> = _uiState.asStateFlow()
 
-    private val _selectedLocale = MutableStateFlow("mr-IN") // Default: Marathi
+    private val _selectedLocale = MutableStateFlow("en") // "en" or "hi"
     val selectedLocale: StateFlow<String> = _selectedLocale.asStateFlow()
+
+    private val _selectedGender = MutableStateFlow(VoiceGender.FEMALE)
+    val selectedGender: StateFlow<VoiceGender> = _selectedGender.asStateFlow()
+
+    private val _speechRate = MutableStateFlow(0.88f)
+    val speechRate: StateFlow<Float> = _speechRate.asStateFlow()
+
+    private val _engineMode = MutableStateFlow(VoiceEngineMode.OFFLINE_DEVICE)
+    val engineMode: StateFlow<VoiceEngineMode> = _engineMode.asStateFlow()
+
+    private val _caregiverPhone = MutableStateFlow("+919876543210")
+    val caregiverPhone: StateFlow<String> = _caregiverPhone.asStateFlow()
+
+    private val _patientName = MutableStateFlow("Dadi (आजी)")
+    val patientName: StateFlow<String> = _patientName.asStateFlow()
 
     private val _medicationLogs = MutableStateFlow<List<MedicationLogEntity>>(emptyList())
     val medicationLogs: StateFlow<List<MedicationLogEntity>> = _medicationLogs.asStateFlow()
@@ -61,14 +82,69 @@ class ScanViewModel(application: Application) : AndroidViewModel(application) {
     private val _isTorchOn = MutableStateFlow(false)
     val isTorchOn: StateFlow<Boolean> = _isTorchOn.asStateFlow()
 
+    private val _showSettingsDialog = MutableStateFlow(false)
+    val showSettingsDialog: StateFlow<Boolean> = _showSettingsDialog.asStateFlow()
+
     private var isProcessingEvaluation = false
 
     init {
         refreshLogs()
     }
 
+    fun navigateToTab(tab: MedVoiceTab) {
+        _currentTab.value = tab
+    }
+
     fun setLocale(locale: String) {
         _selectedLocale.value = locale
+    }
+
+    fun setVoiceGender(gender: VoiceGender) {
+        _selectedGender.value = gender
+        ttsManager.selectedGender = gender
+    }
+
+    fun setSpeechRate(rate: Float) {
+        _speechRate.value = rate
+        ttsManager.speechRate = rate
+    }
+
+    fun setEngineMode(mode: VoiceEngineMode, sarvamKey: String = "") {
+        _engineMode.value = mode
+        ttsManager.engineMode = mode
+        ttsManager.sarvamApiKey = sarvamKey
+    }
+
+    fun updateCaregiverInfo(name: String, phone: String) {
+        _patientName.value = name
+        _caregiverPhone.value = phone
+        val confirmation = if (_selectedLocale.value == "hi") "केयरगिवर का विवरण सहेज लिया गया है।" else "Caregiver details saved successfully."
+        ttsManager.speak(confirmation, _selectedLocale.value)
+    }
+
+    fun testEmergencySms() {
+        SmsDispatcher.sendEmergencyAlert(
+            context = getApplication(),
+            recipientPhone = _caregiverPhone.value,
+            patientName = _patientName.value,
+            scannedDrug = "TEST_ALARM",
+            conflictDetails = "This is a MedVoice test emergency SOS notification."
+        )
+        val alert = if (_selectedLocale.value == "hi") "परीक्षण आपातकालीन एसएमएस भेज दिया गया है।" else "Test emergency SOS SMS dispatched."
+        ttsManager.speak(alert, _selectedLocale.value)
+    }
+
+    fun toggleSettingsDialog(show: Boolean) {
+        _showSettingsDialog.value = show
+    }
+
+    fun testVoicePreview() {
+        val sampleText = if (_selectedLocale.value == "hi") {
+            "नमस्ते! यह मेडवॉयस की भारतीय आवाज का नमूना है।"
+        } else {
+            "Hello! This is a preview of the MedVoice Indian voice assistant."
+        }
+        ttsManager.speak(sampleText, _selectedLocale.value)
     }
 
     fun toggleTorch() {
@@ -102,10 +178,10 @@ class ScanViewModel(application: Application) : AndroidViewModel(application) {
     private suspend fun handleEvaluationResult(result: SafetyEvaluationResult) {
         when (result) {
             is SafetyEvaluationResult.SafeToTake -> {
-                val instruction = if (_selectedLocale.value == "mr-IN") {
-                    result.vernacularInstructionMr
-                } else {
-                    result.vernacularInstructionHi
+                val instruction = when (_selectedLocale.value) {
+                    "hi" -> result.vernacularInstructionHi
+                    "mr" -> result.vernacularInstructionMr
+                    else -> result.vernacularInstructionEn
                 }
 
                 _uiState.value = ScanUiState.SafeDetected(
@@ -121,10 +197,10 @@ class ScanViewModel(application: Application) : AndroidViewModel(application) {
             }
 
             is SafetyEvaluationResult.DuplicateDoseBlocked -> {
-                val alert = if (_selectedLocale.value == "mr-IN") {
-                    result.spokenAlertMr
-                } else {
-                    result.spokenAlertHi
+                val alert = when (_selectedLocale.value) {
+                    "hi" -> result.spokenAlertHi
+                    "mr" -> result.spokenAlertMr
+                    else -> result.spokenAlertEn
                 }
 
                 _uiState.value = ScanUiState.DuplicateAlert(
@@ -152,18 +228,18 @@ class ScanViewModel(application: Application) : AndroidViewModel(application) {
                 // Dispatch Offline SOS SMS to Caregiver
                 SmsDispatcher.sendEmergencyAlert(
                     context = getApplication(),
-                    recipientPhone = "+919876543210",
-                    patientName = "Aaji",
+                    recipientPhone = _caregiverPhone.value,
+                    patientName = _patientName.value,
                     scannedDrug = result.medicine.brand_name,
                     conflictDetails = "DUPLICATE DOSE: Already took ${result.recentLog.scannedBrandName} (${result.medicine.salt_name})"
                 )
             }
 
             is SafetyEvaluationResult.CriticalInteractionBlocked -> {
-                val alert = if (_selectedLocale.value == "mr-IN") {
-                    result.conflict.spoken_warning_mr
-                } else {
-                    result.conflict.spoken_warning_hi
+                val alert = when (_selectedLocale.value) {
+                    "hi" -> result.conflict.spoken_warning_hi
+                    "mr" -> result.conflict.spoken_warning_mr
+                    else -> result.conflict.spoken_warning_en
                 }
 
                 _uiState.value = ScanUiState.ConflictAlert(
@@ -191,8 +267,8 @@ class ScanViewModel(application: Application) : AndroidViewModel(application) {
                 // Dispatch Offline SOS SMS to Caregiver
                 SmsDispatcher.sendEmergencyAlert(
                     context = getApplication(),
-                    recipientPhone = "+919876543210",
-                    patientName = "Aaji",
+                    recipientPhone = _caregiverPhone.value,
+                    patientName = _patientName.value,
                     scannedDrug = result.medicine.brand_name,
                     conflictDetails = "CRITICAL DRUG CONFLICT: ${result.conflict.clinical_risk_mechanism}"
                 )
@@ -217,7 +293,7 @@ class ScanViewModel(application: Application) : AndroidViewModel(application) {
             )
             refreshLogs()
 
-            val successMsg = if (_selectedLocale.value == "mr-IN") "नोंद झाली आहे." else "दवा दर्ज कर ली गई है।"
+            val successMsg = if (_selectedLocale.value == "hi") "दवा सफलतापूर्वक दर्ज कर ली गई है।" else "Medication logged successfully."
             ttsManager.speak(successMsg, _selectedLocale.value)
             resetScanner()
         }

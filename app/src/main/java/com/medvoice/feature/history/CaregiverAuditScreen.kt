@@ -16,7 +16,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Warning
@@ -33,7 +33,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -75,7 +74,7 @@ fun CaregiverAuditScreen(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = onBackToScanner) {
                     Icon(
-                        imageVector = Icons.Default.ArrowBack,
+                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                         contentDescription = "Back",
                         tint = TextWhite,
                         modifier = Modifier.size(32.dp)
@@ -84,7 +83,7 @@ fun CaregiverAuditScreen(
                 Spacer(modifier = Modifier.width(8.dp))
                 Column {
                     Text(
-                        text = if (locale == "mr-IN") "दैनंदिन औषध नोंदवही" else "दैनिक दवा ऑडिट लॉग",
+                        text = if (locale == "hi") "दैनिक दवा ऑडिट लॉग" else "Daily Medication Audit Log",
                         style = MaterialTheme.typography.titleLarge.copy(
                             color = TextWhite,
                             fontWeight = FontWeight.Bold,
@@ -92,10 +91,10 @@ fun CaregiverAuditScreen(
                         )
                     )
                     Text(
-                        text = "रुग्ण: आजी (वय: ७० वर्षे) • केअरगिव्हर डॅशबोर्ड",
+                        text = if (locale == "hi") "रोगी: परिवार सदस्य (उम्र: 70 वर्ष) • केयरगिवर डैशबोर्ड" else "Patient: Family Member (Age: 70) • Caregiver Dashboard",
                         style = MaterialTheme.typography.bodyMedium.copy(
                             color = TextMuted,
-                            fontSize = 14.sp
+                            fontSize = 13.sp
                         )
                     )
                 }
@@ -137,10 +136,10 @@ fun CaregiverAuditScreen(
                         )
                     )
                     Text(
-                        text = "Emergency SOS alerts route via Cellular SMS (+91 98765-43210)",
+                        text = "Emergency SOS alerts route via Direct Cellular SMS (+91 98765-43210)",
                         style = MaterialTheme.typography.bodyMedium.copy(
                             color = TextMuted,
-                            fontSize = 13.sp
+                            fontSize = 12.sp
                         )
                     )
                 }
@@ -158,7 +157,7 @@ fun CaregiverAuditScreen(
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = if (locale == "mr-IN") "आज अद्याप कोणतीही नोंद नाही.\nस्कॅनरवर जाऊन औषध स्कॅन करा." else "आज का कोई रिकॉर्ड नहीं है।\nस्कैनर पर जाकर दवा स्कैन करें।",
+                    text = if (locale == "hi") "आज का कोई रिकॉर्ड नहीं है।\nस्कैनर पर जाकर दवा स्कैन करें।" else "No logs recorded today.\nScan medicines on the camera scanner to log.",
                     style = MaterialTheme.typography.bodyLarge.copy(
                         color = TextMuted,
                         fontSize = 18.sp
@@ -175,7 +174,6 @@ fun CaregiverAuditScreen(
             ) {
                 items(logs) { log ->
                     val isTaken = log.status == "TAKEN"
-                    val isBlocked = log.status == "BLOCKED_DUPLICATE" || log.status == "CONFLICT_WARNED"
 
                     Card(
                         modifier = Modifier.fillMaxWidth(),
@@ -211,9 +209,9 @@ fun CaregiverAuditScreen(
                                     )
                                     Text(
                                         text = when (log.status) {
-                                            "TAKEN" -> if (locale == "mr-IN") "घेतले (Confimed)" else "ले ली (Confirmed)"
-                                            "BLOCKED_DUPLICATE" -> if (locale == "mr-IN") "🚨 दुहेरी डोस अडवला (SOS Dispatched)" else "🚨 डबल डोज ब्लॉक (SOS Dispatched)"
-                                            "CONFLICT_WARNED" -> if (locale == "mr-IN") "⚠️ परस्परविरोध इशारा" else "⚠️ ड्रग कॉन्फ्लिक्ट चेतावनी"
+                                            "TAKEN" -> if (locale == "hi") "ले ली (Confirmed)" else "Taken (Confirmed)"
+                                            "BLOCKED_DUPLICATE" -> if (locale == "hi") "🚨 डबल डोज ब्लॉक (SOS Dispatched)" else "🚨 Duplicate Blocked (SOS Dispatched)"
+                                            "CONFLICT_WARNED" -> if (locale == "hi") "⚠️ ड्रग कॉन्फ्लिक्ट चेतावनी" else "⚠️ Conflict Alert (SOS Dispatched)"
                                             else -> log.status
                                         },
                                         style = MaterialTheme.typography.bodyMedium.copy(
@@ -240,7 +238,7 @@ fun CaregiverAuditScreen(
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        // Return to Camera Scanner Button (80dp Accessible)
+        // Return to Camera Scanner Button
         Button(
             onClick = onBackToScanner,
             modifier = Modifier
@@ -250,7 +248,7 @@ fun CaregiverAuditScreen(
             shape = RoundedCornerShape(16.dp)
         ) {
             Text(
-                text = if (locale == "mr-IN") "कॅमेरा स्कॅनरवर परत जा" else "कैमरा स्कैनर पर वापस जाएं",
+                text = if (locale == "hi") "कैमरा स्कैनर पर वापस जाएं" else "Return to Camera Scanner",
                 color = TextWhite,
                 fontSize = 20.sp,
                 fontWeight = FontWeight.Bold

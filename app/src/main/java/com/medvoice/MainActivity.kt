@@ -8,7 +8,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.core.content.ContextCompat
-import com.medvoice.feature.scanner.ScanScreen
+import com.medvoice.feature.navigation.MedVoiceNavHost
 import com.medvoice.feature.scanner.ScanViewModel
 import com.medvoice.ui.theme.MedVoiceTheme
 
@@ -31,7 +31,7 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             MedVoiceTheme {
-                ScanScreen(viewModel = scanViewModel)
+                MedVoiceNavHost(viewModel = scanViewModel)
             }
         }
     }

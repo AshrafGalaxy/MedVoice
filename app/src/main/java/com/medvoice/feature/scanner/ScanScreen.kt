@@ -24,7 +24,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.FlashOn
-import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
@@ -41,14 +40,10 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
@@ -58,7 +53,6 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import com.medvoice.core.vision.TextAnalyzer
-import com.medvoice.feature.history.CaregiverAuditScreen
 import com.medvoice.ui.theme.AccentBorder
 import com.medvoice.ui.theme.AlertRed
 import com.medvoice.ui.theme.BackgroundCharcoal
@@ -68,27 +62,14 @@ import com.medvoice.ui.theme.SurfaceCardDark
 import com.medvoice.ui.theme.SurfaceCardElevated
 import com.medvoice.ui.theme.TextMuted
 import com.medvoice.ui.theme.TextWhite
-import com.medvoice.ui.theme.WarningAmber
-import java.util.concurrent.Executors
 
 @Composable
 fun ScanScreen(viewModel: ScanViewModel) {
     val uiState by viewModel.uiState.collectAsState()
     val locale by viewModel.selectedLocale.collectAsState()
-    var showAuditScreen by remember { mutableStateOf(false) }
-
-    if (showAuditScreen) {
-        CaregiverAuditScreen(
-            viewModel = viewModel,
-            onBackToScanner = { showAuditScreen = false }
-        )
-        return
-    }
-
-    val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     val haptic = LocalHapticFeedback.current
-    val cameraExecutor = remember { Executors.newSingleThreadExecutor() }
+    val cameraExecutor = remember { java.util.concurrent.Executors.newSingleThreadExecutor() }
 
     Surface(
         modifier = Modifier.fillMaxSize(),
@@ -96,25 +77,25 @@ fun ScanScreen(viewModel: ScanViewModel) {
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
 
-            // Top Bar: App Title, Language Toggle, and Logs Shortcut
+            // Top Bar: Title & Language Toggle
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 10.dp),
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Column {
                     Text(
-                        text = "MedVoice 💊",
+                        text = if (locale == "hi") "कैमरा स्कैनर 📷" else "Live Camera Scanner 📷",
                         style = MaterialTheme.typography.titleLarge.copy(
                             color = TextWhite,
                             fontWeight = FontWeight.Bold,
-                            fontSize = 24.sp
+                            fontSize = 22.sp
                         )
                     )
                     Text(
-                        text = "100% Offline Edge Safety",
+                        text = if (locale == "hi") "दवा की पट्टी सीधे कैमरे के सामने रखें" else "Point camera at medicine blister pack",
                         style = MaterialTheme.typography.bodyMedium.copy(
                             color = SafeGreen,
                             fontWeight = FontWeight.SemiBold,
@@ -124,40 +105,29 @@ fun ScanScreen(viewModel: ScanViewModel) {
                 }
 
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    // Language Switcher Chips
+                    // English Button
                     Button(
-                        onClick = { viewModel.setLocale("mr-IN") },
+                        onClick = { viewModel.setLocale("en") },
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = if (locale == "mr-IN") SafeGreen else SurfaceCardElevated
+                            containerColor = if (locale == "en") SafeGreen else SurfaceCardElevated
                         ),
                         shape = RoundedCornerShape(8.dp),
-                        modifier = Modifier.height(42.dp)
+                        modifier = Modifier.height(38.dp)
                     ) {
-                        Text("मराठी", color = TextWhite, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                        Text("EN", color = TextWhite, fontWeight = FontWeight.Bold, fontSize = 12.sp)
                     }
                     Spacer(modifier = Modifier.width(6.dp))
+
+                    // Hindi Button
                     Button(
-                        onClick = { viewModel.setLocale("hi-IN") },
+                        onClick = { viewModel.setLocale("hi") },
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = if (locale == "hi-IN") SafeGreen else SurfaceCardElevated
+                            containerColor = if (locale == "hi") SafeGreen else SurfaceCardElevated
                         ),
                         shape = RoundedCornerShape(8.dp),
-                        modifier = Modifier.height(42.dp)
+                        modifier = Modifier.height(38.dp)
                     ) {
-                        Text("हिंदी", color = TextWhite, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                    }
-                    Spacer(modifier = Modifier.width(6.dp))
-                    IconButton(
-                        onClick = { showAuditScreen = true },
-                        modifier = Modifier
-                            .background(SurfaceCardElevated, RoundedCornerShape(8.dp))
-                            .size(42.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.List,
-                            contentDescription = "Medication Logs",
-                            tint = TextWhite
-                        )
+                        Text("हिंदी", color = TextWhite, fontWeight = FontWeight.Bold, fontSize = 12.sp)
                     }
                 }
             }
@@ -166,11 +136,11 @@ fun ScanScreen(viewModel: ScanViewModel) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 12.dp, vertical = 4.dp)
+                    .padding(horizontal = 12.dp, vertical = 2.dp)
             ) {
                 Text(
-                    text = if (locale == "mr-IN") "डेमो औषध निवडा (Quick Test):" else "डेमो दवा चुनें (Quick Test):",
-                    style = MaterialTheme.typography.bodyMedium.copy(color = TextMuted, fontSize = 12.sp)
+                    text = if (locale == "hi") "त्वरित परीक्षण (Quick Test):" else "Quick Test Scenarios:",
+                    style = MaterialTheme.typography.bodyMedium.copy(color = TextMuted, fontSize = 11.sp)
                 )
                 Row(
                     modifier = Modifier
@@ -194,7 +164,7 @@ fun ScanScreen(viewModel: ScanViewModel) {
                                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                 viewModel.simulateScan(brand)
                             },
-                            label = { Text("$brand ($desc)", fontSize = 12.sp, color = TextWhite) },
+                            label = { Text("$brand ($desc)", fontSize = 11.sp, color = TextWhite) },
                             colors = FilterChipDefaults.filterChipColors(
                                 containerColor = SurfaceCardDark,
                                 labelColor = TextWhite
@@ -210,7 +180,7 @@ fun ScanScreen(viewModel: ScanViewModel) {
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f)
-                    .padding(12.dp)
+                    .padding(horizontal = 12.dp, vertical = 6.dp)
                     .border(2.dp, AccentBorder, RoundedCornerShape(16.dp))
             ) {
                 AndroidView(
@@ -268,14 +238,14 @@ fun ScanScreen(viewModel: ScanViewModel) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 14.dp, vertical = 8.dp)
+                    .padding(horizontal = 14.dp, vertical = 6.dp)
             ) {
                 when (val state = uiState) {
                     is ScanUiState.Scanning -> {
                         Card(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(120.dp),
+                                .height(100.dp),
                             colors = CardDefaults.cardColors(containerColor = SurfaceCardDark),
                             shape = RoundedCornerShape(16.dp)
                         ) {
@@ -284,10 +254,10 @@ fun ScanScreen(viewModel: ScanViewModel) {
                                 contentAlignment = Alignment.Center
                             ) {
                                 Text(
-                                    text = if (locale == "mr-IN") "औषधाची पट्टी कॅमेऱ्यासमोर धरा..." else "दवा की पट्टी कैमरे के सामने रखें...",
+                                    text = if (locale == "hi") "दवा की पट्टी कैमरे के सामने रखें..." else "Hold medicine blister pack in front of camera...",
                                     style = MaterialTheme.typography.titleMedium.copy(
                                         color = TextMuted,
-                                        fontSize = 20.sp,
+                                        fontSize = 18.sp,
                                         fontWeight = FontWeight.SemiBold
                                     ),
                                     textAlign = TextAlign.Center
@@ -301,7 +271,7 @@ fun ScanScreen(viewModel: ScanViewModel) {
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .background(SafeGreen, RoundedCornerShape(16.dp))
-                                .padding(16.dp),
+                                .padding(14.dp),
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
                             Text(
@@ -309,27 +279,27 @@ fun ScanScreen(viewModel: ScanViewModel) {
                                 style = MaterialTheme.typography.headlineMedium.copy(
                                     color = TextWhite,
                                     fontWeight = FontWeight.Bold,
-                                    fontSize = 26.sp
+                                    fontSize = 24.sp
                                 )
                             )
                             Text(
-                                text = "घटक: ${state.saltName}",
+                                text = if (locale == "hi") "घटक: ${state.saltName}" else "Active: ${state.saltName}",
                                 style = MaterialTheme.typography.bodyLarge.copy(
                                     color = TextWhite.copy(alpha = 0.9f),
-                                    fontSize = 16.sp
+                                    fontSize = 15.sp
                                 )
                             )
-                            Spacer(modifier = Modifier.height(8.dp))
+                            Spacer(modifier = Modifier.height(6.dp))
                             Text(
                                 text = state.instructionText,
                                 style = MaterialTheme.typography.titleLarge.copy(
                                     color = TextWhite,
                                     fontWeight = FontWeight.Bold,
-                                    fontSize = 21.sp
+                                    fontSize = 19.sp
                                 ),
                                 textAlign = TextAlign.Center
                             )
-                            Spacer(modifier = Modifier.height(14.dp))
+                            Spacer(modifier = Modifier.height(12.dp))
                             Button(
                                 onClick = {
                                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
@@ -337,7 +307,7 @@ fun ScanScreen(viewModel: ScanViewModel) {
                                 },
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .height(72.dp),
+                                    .height(68.dp),
                                 colors = ButtonDefaults.buttonColors(containerColor = TextWhite),
                                 shape = RoundedCornerShape(14.dp)
                             ) {
@@ -345,13 +315,13 @@ fun ScanScreen(viewModel: ScanViewModel) {
                                     imageVector = Icons.Default.CheckCircle,
                                     contentDescription = null,
                                     tint = SafeGreen,
-                                    modifier = Modifier.size(34.dp)
+                                    modifier = Modifier.size(32.dp)
                                 )
-                                Spacer(modifier = Modifier.width(12.dp))
+                                Spacer(modifier = Modifier.width(10.dp))
                                 Text(
-                                    text = if (locale == "mr-IN") "घेतली (Confirm Taken)" else "ले ली (Confirm Taken)",
+                                    text = if (locale == "hi") "ले ली (Confirm Taken)" else "Confirm Taken (घेतली)",
                                     color = SafeGreen,
-                                    fontSize = 20.sp,
+                                    fontSize = 19.sp,
                                     fontWeight = FontWeight.Bold
                                 )
                             }
@@ -363,22 +333,22 @@ fun ScanScreen(viewModel: ScanViewModel) {
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .background(AlertRed, RoundedCornerShape(16.dp))
-                                .padding(16.dp),
+                                .padding(14.dp),
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Warning,
                                 contentDescription = null,
                                 tint = TextWhite,
-                                modifier = Modifier.size(44.dp)
+                                modifier = Modifier.size(40.dp)
                             )
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
-                                text = if (locale == "mr-IN") "सावधान! पुन्हा घेऊ नका" else "सावधान! दोबारा न लें",
+                                text = if (locale == "hi") "सावधान! दोबारा न लें" else "Warning! Do Not Retake",
                                 style = MaterialTheme.typography.headlineSmall.copy(
                                     color = TextWhite,
                                     fontWeight = FontWeight.Bold,
-                                    fontSize = 24.sp
+                                    fontSize = 22.sp
                                 )
                             )
                             Spacer(modifier = Modifier.height(6.dp))
@@ -386,12 +356,12 @@ fun ScanScreen(viewModel: ScanViewModel) {
                                 text = state.alertMessage,
                                 style = MaterialTheme.typography.bodyLarge.copy(
                                     color = TextWhite,
-                                    fontSize = 18.sp,
+                                    fontSize = 17.sp,
                                     fontWeight = FontWeight.SemiBold
                                 ),
                                 textAlign = TextAlign.Center
                             )
-                            Spacer(modifier = Modifier.height(14.dp))
+                            Spacer(modifier = Modifier.height(12.dp))
                             Button(
                                 onClick = {
                                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
@@ -399,7 +369,7 @@ fun ScanScreen(viewModel: ScanViewModel) {
                                 },
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .height(64.dp),
+                                    .height(60.dp),
                                 colors = ButtonDefaults.buttonColors(containerColor = TextWhite),
                                 shape = RoundedCornerShape(14.dp)
                             ) {
@@ -410,9 +380,9 @@ fun ScanScreen(viewModel: ScanViewModel) {
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text(
-                                    text = if (locale == "mr-IN") "पुढील औषध स्कॅन करा (Scan Next)" else "अगली दवा स्कैन करें (Scan Next)",
+                                    text = if (locale == "hi") "अगली दवा स्कैन करें (Scan Next)" else "Scan Next Medicine",
                                     color = AlertRed,
-                                    fontSize = 18.sp,
+                                    fontSize = 17.sp,
                                     fontWeight = FontWeight.Bold
                                 )
                             }
@@ -424,22 +394,22 @@ fun ScanScreen(viewModel: ScanViewModel) {
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .background(AlertRed, RoundedCornerShape(16.dp))
-                                .padding(16.dp),
+                                .padding(14.dp),
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Warning,
                                 contentDescription = null,
                                 tint = TextWhite,
-                                modifier = Modifier.size(44.dp)
+                                modifier = Modifier.size(40.dp)
                             )
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
-                                text = if (locale == "mr-IN") "गंभीर औषध परस्परविरोध!" else "गंभीर दवा परस्परविरोध!",
+                                text = if (locale == "hi") "गंभीर दवा परस्परविरोध!" else "Critical Drug Interaction!",
                                 style = MaterialTheme.typography.headlineSmall.copy(
                                     color = TextWhite,
                                     fontWeight = FontWeight.Bold,
-                                    fontSize = 24.sp
+                                    fontSize = 22.sp
                                 )
                             )
                             Spacer(modifier = Modifier.height(6.dp))
@@ -447,12 +417,12 @@ fun ScanScreen(viewModel: ScanViewModel) {
                                 text = state.alertMessage,
                                 style = MaterialTheme.typography.bodyLarge.copy(
                                     color = TextWhite,
-                                    fontSize = 18.sp,
+                                    fontSize = 17.sp,
                                     fontWeight = FontWeight.SemiBold
                                 ),
                                 textAlign = TextAlign.Center
                             )
-                            Spacer(modifier = Modifier.height(14.dp))
+                            Spacer(modifier = Modifier.height(12.dp))
                             Button(
                                 onClick = {
                                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
@@ -460,14 +430,14 @@ fun ScanScreen(viewModel: ScanViewModel) {
                                 },
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .height(64.dp),
+                                    .height(60.dp),
                                 colors = ButtonDefaults.buttonColors(containerColor = TextWhite),
                                 shape = RoundedCornerShape(14.dp)
                             ) {
                                 Text(
-                                    text = if (locale == "mr-IN") "समजले (Dismiss)" else "समझ गए (Dismiss)",
+                                    text = if (locale == "hi") "समझ गए (Dismiss)" else "Understood (Dismiss)",
                                     color = AlertRed,
-                                    fontSize = 18.sp,
+                                    fontSize = 17.sp,
                                     fontWeight = FontWeight.Bold
                                 )
                             }
