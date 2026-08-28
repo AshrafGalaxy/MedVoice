@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Clean, Bold MV Branding Mark -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M20,74V34h12l18,18l18,-18h12v40h-10V48L50,68L30,48v26H20z M72,34h12l10,32l10,-32h12L100,74H88l-12,-40h-2L72,34z" />
+</vector>
