@@ -25,8 +25,7 @@ data class ExtractedMedicineComposition(
     val confidenceScore: Float,
     val sourceTier: AiEngineTier,
     val vernacularInstructionEn: String = "",
-    val vernacularInstructionHi: String = "",
-    val vernacularInstructionMr: String = ""
+    val vernacularInstructionHi: String = ""
 )
 
 class AiPharmacologyEngine(private val context: Context? = null) {
@@ -208,8 +207,7 @@ class AiPharmacologyEngine(private val context: Context? = null) {
                     confidenceScore = 0.98f,
                     sourceTier = AiEngineTier.CLOUD_MEDGEMMA_HOSTED,
                     vernacularInstructionEn = instructions.first,
-                    vernacularInstructionHi = instructions.second,
-                    vernacularInstructionMr = instructions.third
+                    vernacularInstructionHi = instructions.second
                 )
             } else {
                 null
@@ -291,55 +289,46 @@ class AiPharmacologyEngine(private val context: Context? = null) {
             confidenceScore = if (detectedSalts.isNotEmpty()) 0.95f else 0.85f,
             sourceTier = AiEngineTier.OFFLINE_REGEX_DETERMINISTIC,
             vernacularInstructionEn = instructions.first,
-            vernacularInstructionHi = instructions.second,
-            vernacularInstructionMr = instructions.third
+            vernacularInstructionHi = instructions.second
         )
     }
 
     /**
-     * Generates dosage-form-specific vernacular instructions for elderly users in English, Hindi, and Marathi.
+     * Generates dosage-form-specific vernacular instructions for elderly users in English and Hindi.
      */
-    fun generateVernacularGuidance(brand: String, dosageForm: String): Triple<String, String, String> {
+    fun generateVernacularGuidance(brand: String, dosageForm: String): Pair<String, String> {
         return when (dosageForm) {
-            "EYE_DROPS", "DROPS" -> Triple(
+            "EYE_DROPS", "DROPS" -> Pair(
                 "This is an ophthalmic eye drop ($brand). Instill 1 to 2 drops into the eye as prescribed.",
-                "यह आँखों की दवाई (आई ड्रॉप्स: $brand) है। डॉक्टर के निर्देशानुसार आँखों में 1 से 2 बूँद डालें।",
-                "हे डोळ्यांचे औषध (आय ड्रॉप्स: $brand) आहे. डोळ्यात १ ते २ थेंब टाका."
+                "यह आँखों की दवाई (आई ड्रॉप्स: $brand) है। डॉक्टर के निर्देशानुसार आँखों में 1 से 2 बूँद डालें।"
             )
-            "EAR_DROPS" -> Triple(
+            "EAR_DROPS" -> Pair(
                 "This is an ear drop ($brand). Instill 2 to 3 drops into the ear canal.",
-                "यह कान की दवाई ($brand) है। कान में 2 से 3 बूँद डालें।",
-                "हे कानाचे औषध ($brand) आहे. कानात २ ते ३ थेंब टाका."
+                "यह कान की दवाई ($brand) है। कान में 2 से 3 बूँद डालें।"
             )
-            "NASAL_SPRAY" -> Triple(
+            "NASAL_SPRAY" -> Pair(
                 "This is a nasal spray ($brand). Spray 1 to 2 puffs into each nostril as needed.",
-                "यह नेजल स्प्रे ($brand) है। प्रत्येक नथुने में 1 से 2 स्प्रे करें।",
-                "हे नाकाचे स्प्रे ($brand) आहे. प्रत्येक नाकपुडीत १ ते २ स्प्रे करा."
+                "यह नेजल स्प्रे ($brand) है। प्रत्येक नथुने में 1 से 2 स्प्रे करें।"
             )
-            "SYRUP", "TONIC" -> Triple(
+            "SYRUP", "TONIC" -> Pair(
                 "This is an oral syrup or health tonic ($brand). Shake well and take measured 5ml to 10ml after food.",
-                "यह पीने का सिरप/टॉनिक ($brand) है। बोतल हिलाकर नाप के 5ml से 10ml भोजन के बाद लें।",
-                "हे पिण्याचे सिरप/टॉनिक ($brand) आहे. बाटली हलवून ५ ते १० मिली जेवणानंतर घ्या."
+                "यह पीने का सिरप/टॉनिक ($brand) है। बोतल हिलाकर नाप के 5ml से 10ml भोजन के बाद लें।"
             )
-            "OINTMENT", "GEL" -> Triple(
+            "OINTMENT", "GEL" -> Pair(
                 "This is a topical pain relief gel/ointment ($brand). Apply a thin layer to the affected area.",
-                "यह लगाने की मलहम/जेल ($brand) है। प्रभावित स्थान पर हल्के हाथों से लगाएँ।",
-                "हे लावण्याचे मलम/जेल ($brand) आहे. दुखणाऱ्या भागावर हलक्या हाताने लावा."
+                "यह लगाने की मलहम/जेल ($brand) है। प्रभावित स्थान पर हल्के हाथों से लगाएँ।"
             )
-            "INHALER" -> Triple(
+            "INHALER" -> Pair(
                 "This is a respiratory inhaler ($brand). Inhale deeply for 1 to 2 puffs as directed.",
-                "यह इनहेलर ($brand) है। गहरी साँस लेते हुए 1 से 2 पफ लें।",
-                "हे इनहेलर ($brand) आहे. खोल श्वास घेत १ ते २ पफ घ्या."
+                "यह इनहेलर ($brand) है। गहरी साँस लेते हुए 1 से 2 पफ लें।"
             )
-            "CAPSULE" -> Triple(
+            "CAPSULE" -> Pair(
                 "This is an oral capsule ($brand). Swallow whole with water after meals.",
-                "यह कैप्सूल ($brand) है। खाना खाने के बाद पानी के साथ पूरा निगल लें।",
-                "हे कॅप्सूल ($brand) आहे. जेवणानंतर पाण्यासोबत गिळा."
+                "यह कैप्सूल ($brand) है। खाना खाने के बाद पानी के साथ पूरा निगल लें।"
             )
-            else -> Triple(
+            else -> Pair(
                 "This is your prescribed medicine ($brand). Take with water after your meal.",
-                "यह आपकी दवा ($brand) है। खाना खाने के बाद पानी के साथ लें।",
-                "हे तुमचे औषध ($brand) आहे. जेवणानंतर पाण्यासोबत घ्या."
+                "यह आपकी दवा ($brand) है। खाना खाने के बाद पानी के साथ लें।"
             )
         }
     }

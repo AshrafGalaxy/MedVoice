@@ -88,16 +88,12 @@ class VernacularTtsManager(
     }
 
     /**
-     * Sarvam AI Bulbul v3 Indian Vernacular Integration (Hindi / Marathi / English)
+     * Sarvam AI Bulbul v3 Indian Vernacular Integration (Hindi / English)
      */
     private fun speakViaSarvamAi(text: String, languageCode: String, onDone: () -> Unit, fallback: () -> Unit) {
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                val targetLang = when (languageCode.lowercase()) {
-                    "mr", "mr-in" -> "mr-IN"
-                    "hi", "hi-in" -> "hi-IN"
-                    else -> "en-IN"
-                }
+                val targetLang = if (languageCode.lowercase().startsWith("hi")) "hi-IN" else "en-IN"
                 val speaker = if (selectedGender == VoiceGender.FEMALE) "meera" else "shubh"
 
                 val url = URL("https://api.sarvam.ai/text-to-speech")
@@ -223,10 +219,10 @@ class VernacularTtsManager(
             return
         }
 
-        val targetLocale = when (languageCode.lowercase()) {
-            "hi", "hi-in" -> Locale.Builder().setLanguage("hi").setRegion("IN").build()
-            "mr", "mr-in" -> Locale.Builder().setLanguage("mr").setRegion("IN").build()
-            else -> Locale.Builder().setLanguage("en").setRegion("IN").build()
+        val targetLocale = if (languageCode.lowercase().startsWith("hi")) {
+            Locale.Builder().setLanguage("hi").setRegion("IN").build()
+        } else {
+            Locale.Builder().setLanguage("en").setRegion("IN").build()
         }
 
         val langResult = tts?.setLanguage(targetLocale)
