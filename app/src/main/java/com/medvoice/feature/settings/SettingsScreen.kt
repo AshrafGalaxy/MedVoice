@@ -4,11 +4,13 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -87,7 +89,7 @@ fun SettingsScreen(viewModel: ScanViewModel) {
             .fillMaxSize()
             .background(BackgroundCharcoal)
             .verticalScroll(rememberScrollState())
-            .padding(14.dp)
+            .padding(16.dp)
     ) {
         // Top Header
         Text(
@@ -106,7 +108,7 @@ fun SettingsScreen(viewModel: ScanViewModel) {
             )
         )
 
-        Spacer(modifier = Modifier.height(14.dp))
+        Spacer(modifier = Modifier.height(16.dp))
 
         // 1. Language Selection Card
         Card(
@@ -114,7 +116,7 @@ fun SettingsScreen(viewModel: ScanViewModel) {
             colors = CardDefaults.cardColors(containerColor = SurfaceCardDark),
             shape = RoundedCornerShape(14.dp)
         ) {
-            Column(modifier = Modifier.padding(14.dp)) {
+            Column(modifier = Modifier.padding(16.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(imageVector = Icons.Default.Language, contentDescription = null, tint = SafeGreen, modifier = Modifier.size(18.dp))
                     Spacer(modifier = Modifier.width(8.dp))
@@ -125,7 +127,7 @@ fun SettingsScreen(viewModel: ScanViewModel) {
                         fontSize = 15.sp
                     )
                 }
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(10.dp))
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -139,7 +141,8 @@ fun SettingsScreen(viewModel: ScanViewModel) {
                             containerColor = if (locale == "en") SafeGreen else SurfaceCardElevated
                         ),
                         shape = RoundedCornerShape(8.dp),
-                        modifier = Modifier.weight(1f).height(42.dp)
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
+                        modifier = Modifier.weight(1f).heightIn(min = 44.dp)
                     ) {
                         Text("English", color = TextWhite, fontWeight = FontWeight.Bold, fontSize = 13.sp)
                     }
@@ -153,7 +156,8 @@ fun SettingsScreen(viewModel: ScanViewModel) {
                             containerColor = if (locale == "hi") SafeGreen else SurfaceCardElevated
                         ),
                         shape = RoundedCornerShape(8.dp),
-                        modifier = Modifier.weight(1f).height(42.dp)
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
+                        modifier = Modifier.weight(1f).heightIn(min = 44.dp)
                     ) {
                         Text("हिंदी (Hindi)", color = TextWhite, fontWeight = FontWeight.Bold, fontSize = 13.sp)
                     }
@@ -161,7 +165,7 @@ fun SettingsScreen(viewModel: ScanViewModel) {
             }
         }
 
-        Spacer(modifier = Modifier.height(12.dp))
+        Spacer(modifier = Modifier.height(14.dp))
 
         // 2. Voice Customization Studio Card
         Card(
@@ -169,7 +173,7 @@ fun SettingsScreen(viewModel: ScanViewModel) {
             colors = CardDefaults.cardColors(containerColor = SurfaceCardDark),
             shape = RoundedCornerShape(14.dp)
         ) {
-            Column(modifier = Modifier.padding(14.dp)) {
+            Column(modifier = Modifier.padding(16.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(imageVector = Icons.Default.GraphicEq, contentDescription = null, tint = ReticleCyan, modifier = Modifier.size(18.dp))
                     Spacer(modifier = Modifier.width(8.dp))
@@ -180,7 +184,7 @@ fun SettingsScreen(viewModel: ScanViewModel) {
                         fontSize = 15.sp
                     )
                 }
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(10.dp))
 
                 // Voice Gender
                 Row(
@@ -196,11 +200,12 @@ fun SettingsScreen(viewModel: ScanViewModel) {
                             containerColor = if (selectedGender == VoiceGender.FEMALE) SafeGreen else SurfaceCardElevated
                         ),
                         shape = RoundedCornerShape(8.dp),
-                        modifier = Modifier.weight(1f).height(42.dp)
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp),
+                        modifier = Modifier.weight(1f).heightIn(min = 44.dp)
                     ) {
                         Icon(imageVector = Icons.Default.RecordVoiceOver, contentDescription = null, tint = TextWhite, modifier = Modifier.size(16.dp))
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("Female (Warm)", fontSize = 11.sp, color = TextWhite, fontWeight = FontWeight.Bold)
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Female (Warm)", fontSize = 12.sp, color = TextWhite, fontWeight = FontWeight.Bold)
                     }
 
                     Button(
@@ -212,27 +217,28 @@ fun SettingsScreen(viewModel: ScanViewModel) {
                             containerColor = if (selectedGender == VoiceGender.MALE) SafeGreen else SurfaceCardElevated
                         ),
                         shape = RoundedCornerShape(8.dp),
-                        modifier = Modifier.weight(1f).height(42.dp)
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp),
+                        modifier = Modifier.weight(1f).heightIn(min = 44.dp)
                     ) {
                         Icon(imageVector = Icons.Default.RecordVoiceOver, contentDescription = null, tint = TextWhite, modifier = Modifier.size(16.dp))
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("Male (Clear)", fontSize = 11.sp, color = TextWhite, fontWeight = FontWeight.Bold)
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Male (Clear)", fontSize = 12.sp, color = TextWhite, fontWeight = FontWeight.Bold)
                     }
                 }
 
-                Spacer(modifier = Modifier.height(10.dp))
+                Spacer(modifier = Modifier.height(12.dp))
 
                 // Speech Speed Selector
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(imageVector = Icons.Default.Speed, contentDescription = null, tint = TextMuted, modifier = Modifier.size(14.dp))
-                    Spacer(modifier = Modifier.width(4.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
                     Text(
                         text = if (locale == "hi") "बोलने की गति (Speech Rate):" else "Speech Rate (Senior Clarity):",
                         color = TextMuted,
                         fontSize = 12.sp
                     )
                 }
-                Spacer(modifier = Modifier.height(6.dp))
+                Spacer(modifier = Modifier.height(8.dp))
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
@@ -247,14 +253,15 @@ fun SettingsScreen(viewModel: ScanViewModel) {
                                 containerColor = if (speechRate == rate) SafeGreen else SurfaceCardElevated
                             ),
                             shape = RoundedCornerShape(6.dp),
-                            modifier = Modifier.weight(1f).height(38.dp)
+                            contentPadding = PaddingValues(horizontal = 4.dp, vertical = 4.dp),
+                            modifier = Modifier.weight(1f).heightIn(min = 40.dp)
                         ) {
-                            Text(label, fontSize = 10.sp, color = TextWhite, fontWeight = FontWeight.SemiBold)
+                            Text(label, fontSize = 11.sp, color = TextWhite, fontWeight = FontWeight.SemiBold)
                         }
                     }
                 }
 
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(14.dp))
 
                 // Voice Engine Selection (Sarvam AI / ElevenLabs / On-Device)
                 Text(
@@ -262,7 +269,7 @@ fun SettingsScreen(viewModel: ScanViewModel) {
                     color = TextMuted,
                     fontSize = 12.sp
                 )
-                Spacer(modifier = Modifier.height(4.dp))
+                Spacer(modifier = Modifier.height(6.dp))
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
@@ -275,9 +282,10 @@ fun SettingsScreen(viewModel: ScanViewModel) {
                             containerColor = if (engineMode == VoiceEngineMode.OFFLINE_DEVICE) SafeGreen else SurfaceCardElevated
                         ),
                         shape = RoundedCornerShape(6.dp),
-                        modifier = Modifier.weight(1f).height(38.dp)
+                        contentPadding = PaddingValues(horizontal = 4.dp, vertical = 4.dp),
+                        modifier = Modifier.weight(1f).heightIn(min = 40.dp)
                     ) {
-                        Text("On-Device", fontSize = 10.sp, color = TextWhite, fontWeight = FontWeight.Bold)
+                        Text("On-Device", fontSize = 11.sp, color = TextWhite, fontWeight = FontWeight.Bold)
                     }
 
                     Button(
@@ -288,9 +296,10 @@ fun SettingsScreen(viewModel: ScanViewModel) {
                             containerColor = if (engineMode == VoiceEngineMode.HYBRID_SARVAM_AI) SafeGreen else SurfaceCardElevated
                         ),
                         shape = RoundedCornerShape(6.dp),
-                        modifier = Modifier.weight(1f).height(38.dp)
+                        contentPadding = PaddingValues(horizontal = 4.dp, vertical = 4.dp),
+                        modifier = Modifier.weight(1f).heightIn(min = 40.dp)
                     ) {
-                        Text("Sarvam AI", fontSize = 10.sp, color = TextWhite, fontWeight = FontWeight.Bold)
+                        Text("Sarvam AI", fontSize = 11.sp, color = TextWhite, fontWeight = FontWeight.Bold)
                     }
 
                     Button(
@@ -302,51 +311,54 @@ fun SettingsScreen(viewModel: ScanViewModel) {
                             containerColor = if (engineMode == VoiceEngineMode.HYBRID_ELEVENLABS) SafeGreen else SurfaceCardElevated
                         ),
                         shape = RoundedCornerShape(6.dp),
-                        modifier = Modifier.weight(1f).height(38.dp)
+                        contentPadding = PaddingValues(horizontal = 4.dp, vertical = 4.dp),
+                        modifier = Modifier.weight(1f).heightIn(min = 40.dp)
                     ) {
-                        Text("ElevenLabs", fontSize = 10.sp, color = TextWhite, fontWeight = FontWeight.Bold)
+                        Text("ElevenLabs", fontSize = 11.sp, color = TextWhite, fontWeight = FontWeight.Bold)
                     }
                 }
 
                 if (engineMode == VoiceEngineMode.HYBRID_SARVAM_AI) {
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(10.dp))
                     OutlinedTextField(
                         value = sarvamKeyInput,
                         onValueChange = {
                             sarvamKeyInput = it
                             viewModel.setEngineMode(VoiceEngineMode.HYBRID_SARVAM_AI, it)
                         },
-                        label = { Text("Sarvam AI API Key", fontSize = 11.sp) },
+                        label = { Text("Sarvam AI API Key") },
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedTextColor = TextWhite,
                             unfocusedTextColor = TextWhite,
                             focusedBorderColor = SafeGreen,
                             unfocusedBorderColor = AccentBorder
                         ),
-                        modifier = Modifier.fillMaxWidth().height(50.dp)
+                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier.fillMaxWidth()
                     )
                 }
 
                 if (engineMode == VoiceEngineMode.HYBRID_ELEVENLABS) {
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(10.dp))
                     OutlinedTextField(
                         value = elevenLabsKeyInput,
                         onValueChange = {
                             elevenLabsKeyInput = it
                             viewModel.ttsManager.elevenLabsApiKey = it
                         },
-                        label = { Text("ElevenLabs API Key", fontSize = 11.sp) },
+                        label = { Text("ElevenLabs API Key") },
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedTextColor = TextWhite,
                             unfocusedTextColor = TextWhite,
                             focusedBorderColor = SafeGreen,
                             unfocusedBorderColor = AccentBorder
                         ),
-                        modifier = Modifier.fillMaxWidth().height(50.dp)
+                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier.fillMaxWidth()
                     )
                 }
 
-                Spacer(modifier = Modifier.height(10.dp))
+                Spacer(modifier = Modifier.height(12.dp))
 
                 // Test Voice Button & System Settings Button
                 Row(
@@ -360,10 +372,11 @@ fun SettingsScreen(viewModel: ScanViewModel) {
                         },
                         colors = ButtonDefaults.buttonColors(containerColor = ReticleCyan),
                         shape = RoundedCornerShape(8.dp),
-                        modifier = Modifier.weight(1f).height(42.dp)
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp),
+                        modifier = Modifier.weight(1f).heightIn(min = 44.dp)
                     ) {
                         Icon(imageVector = Icons.Default.PlayArrow, contentDescription = null, tint = BackgroundCharcoal, modifier = Modifier.size(16.dp))
-                        Spacer(modifier = Modifier.width(4.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
                         Text(
                             text = if (locale == "hi") "आवाज सुनें" else "Test Voice",
                             color = BackgroundCharcoal,
@@ -378,21 +391,22 @@ fun SettingsScreen(viewModel: ScanViewModel) {
                         },
                         colors = ButtonDefaults.buttonColors(containerColor = SurfaceCardElevated),
                         shape = RoundedCornerShape(8.dp),
-                        modifier = Modifier.weight(1f).height(42.dp)
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp),
+                        modifier = Modifier.weight(1f).heightIn(min = 44.dp)
                     ) {
                         Icon(imageVector = Icons.Default.Settings, contentDescription = null, tint = TextWhite, modifier = Modifier.size(16.dp))
-                        Spacer(modifier = Modifier.width(4.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
                         Text(
                             text = "TTS Settings",
                             color = TextWhite,
-                            fontSize = 11.sp
+                            fontSize = 12.sp
                         )
                     }
                 }
             }
         }
 
-        Spacer(modifier = Modifier.height(12.dp))
+        Spacer(modifier = Modifier.height(14.dp))
 
         // 3. MedGemma AI Medical Reasoning Engine
         Card(
@@ -400,7 +414,7 @@ fun SettingsScreen(viewModel: ScanViewModel) {
             colors = CardDefaults.cardColors(containerColor = SurfaceCardDark),
             shape = RoundedCornerShape(14.dp)
         ) {
-            Column(modifier = Modifier.padding(14.dp)) {
+            Column(modifier = Modifier.padding(16.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(imageVector = Icons.Default.Security, contentDescription = null, tint = SafeGreen, modifier = Modifier.size(18.dp))
                     Spacer(modifier = Modifier.width(8.dp))
@@ -417,7 +431,7 @@ fun SettingsScreen(viewModel: ScanViewModel) {
                     color = TextMuted,
                     fontSize = 12.sp
                 )
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(10.dp))
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -431,7 +445,8 @@ fun SettingsScreen(viewModel: ScanViewModel) {
                             containerColor = if (viewModel.aiEngine.activeTier == AiEngineTier.ON_DEVICE_MEDGEMMA_INT4) SafeGreen else SurfaceCardElevated
                         ),
                         shape = RoundedCornerShape(8.dp),
-                        modifier = Modifier.weight(1f).height(42.dp)
+                        contentPadding = PaddingValues(horizontal = 6.dp, vertical = 6.dp),
+                        modifier = Modifier.weight(1f).heightIn(min = 44.dp)
                     ) {
                         Icon(imageVector = Icons.Default.FlashOn, contentDescription = null, tint = TextWhite, modifier = Modifier.size(14.dp))
                         Spacer(modifier = Modifier.width(4.dp))
@@ -446,7 +461,8 @@ fun SettingsScreen(viewModel: ScanViewModel) {
                             containerColor = if (viewModel.aiEngine.activeTier == AiEngineTier.CLOUD_MEDGEMMA_HOSTED) SafeGreen else SurfaceCardElevated
                         ),
                         shape = RoundedCornerShape(8.dp),
-                        modifier = Modifier.weight(1f).height(42.dp)
+                        contentPadding = PaddingValues(horizontal = 6.dp, vertical = 6.dp),
+                        modifier = Modifier.weight(1f).heightIn(min = 44.dp)
                     ) {
                         Icon(imageVector = Icons.Default.Cloud, contentDescription = null, tint = TextWhite, modifier = Modifier.size(14.dp))
                         Spacer(modifier = Modifier.width(4.dp))
@@ -454,7 +470,7 @@ fun SettingsScreen(viewModel: ScanViewModel) {
                     }
                 }
 
-                Spacer(modifier = Modifier.height(10.dp))
+                Spacer(modifier = Modifier.height(12.dp))
 
                 // Privacy Guardrail Switch
                 Row(
@@ -484,72 +500,81 @@ fun SettingsScreen(viewModel: ScanViewModel) {
                 }
 
                 if (viewModel.aiEngine.activeTier == AiEngineTier.CLOUD_MEDGEMMA_HOSTED && allowCloudPrivacy) {
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(10.dp))
                     OutlinedTextField(
                         value = medGemmaKeyInput,
                         onValueChange = {
                             medGemmaKeyInput = it
                             viewModel.aiEngine.cloudMedGemmaApiKey = it
                         },
-                        label = { Text("Cloud MedGemma / Vertex API Key", fontSize = 11.sp) },
+                        label = { Text("Cloud MedGemma / Vertex API Key") },
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedTextColor = TextWhite,
                             unfocusedTextColor = TextWhite,
                             focusedBorderColor = SafeGreen,
                             unfocusedBorderColor = AccentBorder
                         ),
-                        modifier = Modifier.fillMaxWidth().height(50.dp)
+                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier.fillMaxWidth()
                     )
                 }
             }
         }
 
-        Spacer(modifier = Modifier.height(12.dp))
+        Spacer(modifier = Modifier.height(14.dp))
 
-        // 4. Caregiver SOS Emergency Contact Setup
+        // 4. Caregiver SOS Emergency Contact Setup (FIXED: Zero Clipping / Natural Height)
         Card(
             modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(containerColor = SurfaceCardDark),
             shape = RoundedCornerShape(14.dp)
         ) {
-            Column(modifier = Modifier.padding(14.dp)) {
+            Column(modifier = Modifier.padding(16.dp)) {
                 Text(
                     text = if (locale == "hi") "केयरगिवर आपातकालीन विवरण" else "Caregiver Emergency SOS Details",
                     color = TextWhite,
                     fontWeight = FontWeight.Bold,
-                    fontSize = 15.sp
+                    fontSize = 16.sp
                 )
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(12.dp))
 
+                // Patient Name (No hardcoded height, crisp Material 3 wrapping)
                 OutlinedTextField(
                     value = nameInput,
                     onValueChange = { nameInput = it },
-                    label = { Text("Patient Name (रोगी का नाम)", fontSize = 11.sp) },
+                    label = { Text("Patient Name (रोगी का नाम)") },
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedTextColor = TextWhite,
                         unfocusedTextColor = TextWhite,
                         focusedBorderColor = SafeGreen,
-                        unfocusedBorderColor = AccentBorder
+                        unfocusedBorderColor = AccentBorder,
+                        focusedLabelColor = SafeGreen,
+                        unfocusedLabelColor = TextMuted
                     ),
-                    modifier = Modifier.fillMaxWidth().height(50.dp)
+                    shape = RoundedCornerShape(10.dp),
+                    modifier = Modifier.fillMaxWidth()
                 )
 
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(12.dp))
 
+                // Caregiver Mobile (No hardcoded height, crisp Material 3 wrapping)
                 OutlinedTextField(
                     value = phoneInput,
                     onValueChange = { phoneInput = it },
-                    label = { Text("Caregiver Mobile Number (फोन नंबर)", fontSize = 11.sp) },
+                    label = { Text("Caregiver Mobile Number (फोन नंबर)") },
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedTextColor = TextWhite,
                         unfocusedTextColor = TextWhite,
                         focusedBorderColor = SafeGreen,
-                        unfocusedBorderColor = AccentBorder
+                        unfocusedBorderColor = AccentBorder,
+                        focusedLabelColor = SafeGreen,
+                        unfocusedLabelColor = TextMuted
                     ),
-                    modifier = Modifier.fillMaxWidth().height(50.dp)
+                    shape = RoundedCornerShape(10.dp),
+                    modifier = Modifier.fillMaxWidth()
                 )
 
-                Spacer(modifier = Modifier.height(10.dp))
+                Spacer(modifier = Modifier.height(14.dp))
 
                 Button(
                     onClick = {
@@ -557,22 +582,23 @@ fun SettingsScreen(viewModel: ScanViewModel) {
                         viewModel.updateCaregiverInfo(nameInput, phoneInput)
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = SafeGreen),
-                    shape = RoundedCornerShape(8.dp),
-                    modifier = Modifier.fillMaxWidth().height(44.dp)
+                    shape = RoundedCornerShape(10.dp),
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 10.dp),
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
                 ) {
-                    Icon(imageVector = Icons.Default.Save, contentDescription = null, tint = TextWhite, modifier = Modifier.size(16.dp))
-                    Spacer(modifier = Modifier.width(6.dp))
+                    Icon(imageVector = Icons.Default.Save, contentDescription = null, tint = TextWhite, modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
                     Text(
                         text = if (locale == "hi") "सहेजें (Save Details)" else "Save Caregiver Details",
                         color = TextWhite,
                         fontWeight = FontWeight.Bold,
-                        fontSize = 13.sp
+                        fontSize = 14.sp
                     )
                 }
             }
         }
 
-        Spacer(modifier = Modifier.height(12.dp))
+        Spacer(modifier = Modifier.height(14.dp))
 
         // 5. Senior Setup & Tour Replay
         Card(
@@ -580,7 +606,7 @@ fun SettingsScreen(viewModel: ScanViewModel) {
             colors = CardDefaults.cardColors(containerColor = SurfaceCardDark),
             shape = RoundedCornerShape(14.dp)
         ) {
-            Column(modifier = Modifier.padding(14.dp)) {
+            Column(modifier = Modifier.padding(16.dp)) {
                 Text(
                     text = if (locale == "hi") "प्रारंभिक सेटअप और विज़ार्ड" else "Senior Setup & Onboarding Tour",
                     color = TextWhite,
@@ -591,9 +617,9 @@ fun SettingsScreen(viewModel: ScanViewModel) {
                 Text(
                     text = if (locale == "hi") "भाषा, आवाज और स्वास्थ्य प्रोफ़ाइल विज़ार्ड दोबारा शुरू करें" else "Restart the accessible onboarding wizard for language & voice baseline",
                     color = TextMuted,
-                    fontSize = 11.sp
+                    fontSize = 12.sp
                 )
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(10.dp))
 
                 Button(
                     onClick = {
@@ -601,19 +627,20 @@ fun SettingsScreen(viewModel: ScanViewModel) {
                         viewModel.restartOnboarding()
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = SurfaceCardElevated),
-                    shape = RoundedCornerShape(8.dp),
-                    modifier = Modifier.fillMaxWidth().height(42.dp)
+                    shape = RoundedCornerShape(10.dp),
+                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp),
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp)
                 ) {
                     Text(
                         text = if (locale == "hi") "ऑनबोर्डिंग विज़ार्ड पुनः प्रारंभ करें" else "Restart Onboarding Wizard",
                         color = TextWhite,
                         fontWeight = FontWeight.Bold,
-                        fontSize = 12.sp
+                        fontSize = 13.sp
                     )
                 }
             }
         }
 
-        Spacer(modifier = Modifier.height(20.dp))
+        Spacer(modifier = Modifier.height(24.dp))
     }
 }

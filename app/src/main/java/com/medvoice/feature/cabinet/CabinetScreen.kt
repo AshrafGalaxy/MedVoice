@@ -146,7 +146,7 @@ fun CabinetScreen(viewModel: ScanViewModel) {
                 unfocusedContainerColor = SurfaceCardDark
             ),
             shape = RoundedCornerShape(10.dp),
-            modifier = Modifier.fillMaxWidth().height(50.dp)
+            modifier = Modifier.fillMaxWidth()
         )
 
         Spacer(modifier = Modifier.height(12.dp))
