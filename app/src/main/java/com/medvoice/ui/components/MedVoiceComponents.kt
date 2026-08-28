@@ -45,7 +45,7 @@ import com.medvoice.ui.theme.TextWhite
 import com.medvoice.ui.theme.WarningAmber
 
 /**
- * Premium MedVoice Medical Logo Vector Branding
+ * Premium MedVoice Medical Logo Vector Branding ("MV" Style)
  */
 @Composable
 fun MedVoiceLogo(
@@ -59,16 +59,27 @@ fun MedVoiceLogo(
                 brush = Brush.linearGradient(
                     colors = listOf(SafeGreen, ReticleCyan)
                 ),
-                shape = RoundedCornerShape(12.dp)
+                shape = RoundedCornerShape((size * 0.28).dp)
+            )
+            .border(
+                width = 1.dp,
+                color = Color.White.copy(alpha = 0.25f),
+                shape = RoundedCornerShape((size * 0.28).dp)
             ),
         contentAlignment = Alignment.Center
     ) {
-        Icon(
-            imageVector = Icons.Default.LocalHospital,
-            contentDescription = "MedVoice Logo",
-            tint = TextWhite,
-            modifier = Modifier.size((size * 0.65).dp)
-        )
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center
+        ) {
+            Text(
+                text = "MV",
+                color = TextWhite,
+                fontWeight = FontWeight.Black,
+                fontSize = (size * 0.44).sp,
+                letterSpacing = (-0.5).sp
+            )
+        }
     }
 }
 
