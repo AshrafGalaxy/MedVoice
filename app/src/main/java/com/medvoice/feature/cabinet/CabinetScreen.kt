@@ -17,10 +17,10 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
-import androidx.compose.material.icons.filled.MedicalServices
+import androidx.compose.material.icons.filled.AccessTime
+import androidx.compose.material.icons.filled.Inventory2
+import androidx.compose.material.icons.filled.Medication
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -43,6 +43,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.medvoice.feature.scanner.ScanViewModel
+import com.medvoice.ui.components.StatusBadge
+import com.medvoice.ui.components.StatusType
 import com.medvoice.ui.theme.AccentBorder
 import com.medvoice.ui.theme.BackgroundCharcoal
 import com.medvoice.ui.theme.ReticleCyan
@@ -51,6 +53,7 @@ import com.medvoice.ui.theme.SurfaceCardDark
 import com.medvoice.ui.theme.SurfaceCardElevated
 import com.medvoice.ui.theme.TextMuted
 import com.medvoice.ui.theme.TextWhite
+import com.medvoice.ui.theme.WarningAmber
 
 data class CabinetMedicineItem(
     val brand: String,
@@ -150,22 +153,38 @@ fun CabinetScreen(viewModel: ScanViewModel) {
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Column {
-                Text(
-                    text = if (locale == "hi") "मेरी दवा पेटी 💊" else "My Medicine Cabinet 💊",
-                    style = MaterialTheme.typography.headlineMedium.copy(
-                        color = TextWhite,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 24.sp
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .background(SafeGreen.copy(alpha = 0.15f), RoundedCornerShape(10.dp)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Medication,
+                        contentDescription = null,
+                        tint = SafeGreen,
+                        modifier = Modifier.size(24.dp)
                     )
-                )
-                Text(
-                    text = if (locale == "hi") "सक्रिय दवाएं और खुराक नियम" else "Active Prescriptions & Dosage Rules",
-                    style = MaterialTheme.typography.bodyMedium.copy(
-                        color = TextMuted,
-                        fontSize = 13.sp
+                }
+                Spacer(modifier = Modifier.width(12.dp))
+                Column {
+                    Text(
+                        text = if (locale == "hi") "मेरी दवा पेटी" else "My Medicine Cabinet",
+                        style = MaterialTheme.typography.headlineMedium.copy(
+                            color = TextWhite,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 22.sp
+                        )
                     )
-                )
+                    Text(
+                        text = if (locale == "hi") "सक्रिय दवाएं और खुराक निर्देश" else "Active Prescriptions & Dosage Rules",
+                        style = MaterialTheme.typography.bodyMedium.copy(
+                            color = TextMuted,
+                            fontSize = 13.sp
+                        )
+                    )
+                }
             }
         }
 
@@ -274,14 +293,23 @@ fun CabinetScreen(viewModel: ScanViewModel) {
                                 .background(SurfaceCardElevated, RoundedCornerShape(8.dp))
                                 .padding(horizontal = 10.dp, vertical = 6.dp)
                         ) {
-                            Text(
-                                text = "⏰ $timing",
-                                style = MaterialTheme.typography.bodySmall.copy(
-                                    color = TextWhite,
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.Medium
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    imageVector = Icons.Default.AccessTime,
+                                    contentDescription = null,
+                                    tint = TextMuted,
+                                    modifier = Modifier.size(14.dp)
                                 )
-                            )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = timing,
+                                    style = MaterialTheme.typography.bodySmall.copy(
+                                        color = TextWhite,
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                )
+                            }
                         }
 
                         Spacer(modifier = Modifier.height(8.dp))
@@ -299,14 +327,31 @@ fun CabinetScreen(viewModel: ScanViewModel) {
                                     fontSize = 11.sp
                                 )
                             )
-                            Text(
-                                text = if (item.daysRemaining <= 7) "⚠️ Refill in ${item.daysRemaining} days" else "📦 ${item.daysRemaining} days left",
-                                style = MaterialTheme.typography.bodySmall.copy(
-                                    color = if (item.daysRemaining <= 7) com.medvoice.ui.theme.WarningAmber else SafeGreen,
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 12.sp
+
+                            if (item.daysRemaining <= 7) {
+                                StatusBadge(
+                                    text = "Refill in ${item.daysRemaining} days",
+                                    statusType = StatusType.WARNING
                                 )
-                            )
+                            } else {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        imageVector = Icons.Default.Inventory2,
+                                        contentDescription = null,
+                                        tint = SafeGreen,
+                                        modifier = Modifier.size(14.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text(
+                                        text = "${item.daysRemaining} days left",
+                                        style = MaterialTheme.typography.bodySmall.copy(
+                                            color = SafeGreen,
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 12.sp
+                                        )
+                                    )
+                                }
+                            }
                         }
                     }
                 }

@@ -51,6 +51,10 @@ class ScanViewModel(application: Application) : AndroidViewModel(application) {
     private val db = AppDatabase.getInstance(application)
     private val safetyEngine = SafetyEvaluationEngine(db.medicineDao())
     val ttsManager = VernacularTtsManager(application)
+    private val prefs = application.getSharedPreferences("medvoice_prefs", android.content.Context.MODE_PRIVATE)
+
+    private val _isOnboardingCompleted = MutableStateFlow(prefs.getBoolean("onboarding_done", true))
+    val isOnboardingCompleted: StateFlow<Boolean> = _isOnboardingCompleted.asStateFlow()
 
     private val _currentTab = MutableStateFlow(MedVoiceTab.HOME)
     val currentTab: StateFlow<MedVoiceTab> = _currentTab.asStateFlow()
@@ -89,6 +93,16 @@ class ScanViewModel(application: Application) : AndroidViewModel(application) {
 
     init {
         refreshLogs()
+    }
+
+    fun completeOnboarding() {
+        prefs.edit().putBoolean("onboarding_done", true).apply()
+        _isOnboardingCompleted.value = true
+    }
+
+    fun restartOnboarding() {
+        prefs.edit().putBoolean("onboarding_done", false).apply()
+        _isOnboardingCompleted.value = false
     }
 
     fun navigateToTab(tab: MedVoiceTab) {

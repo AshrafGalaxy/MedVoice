@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.FlashOn
 import androidx.compose.material.icons.filled.Refresh
@@ -85,23 +86,32 @@ fun ScanScreen(viewModel: ScanViewModel) {
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Column {
-                    Text(
-                        text = if (locale == "hi") "कैमरा स्कैनर 📷" else "Live Camera Scanner 📷",
-                        style = MaterialTheme.typography.titleLarge.copy(
-                            color = TextWhite,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 22.sp
-                        )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.CameraAlt,
+                        contentDescription = "Scanner",
+                        tint = SafeGreen,
+                        modifier = Modifier.size(28.dp)
                     )
-                    Text(
-                        text = if (locale == "hi") "दवा की पट्टी सीधे कैमरे के सामने रखें" else "Point camera at medicine blister pack",
-                        style = MaterialTheme.typography.bodyMedium.copy(
-                            color = SafeGreen,
-                            fontWeight = FontWeight.SemiBold,
-                            fontSize = 12.sp
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Column {
+                        Text(
+                            text = if (locale == "hi") "कैमरा स्कैनर" else "Live Camera Scanner",
+                            style = MaterialTheme.typography.titleLarge.copy(
+                                color = TextWhite,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 21.sp
+                            )
                         )
-                    )
+                        Text(
+                            text = if (locale == "hi") "दवा की पट्टी सीधे कैमरे के सामने रखें" else "Point camera at medicine blister pack",
+                            style = MaterialTheme.typography.bodyMedium.copy(
+                                color = SafeGreen,
+                                fontWeight = FontWeight.SemiBold,
+                                fontSize = 12.sp
+                            )
+                        )
+                    }
                 }
 
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -319,7 +329,7 @@ fun ScanScreen(viewModel: ScanViewModel) {
                                 )
                                 Spacer(modifier = Modifier.width(10.dp))
                                 Text(
-                                    text = if (locale == "hi") "ले ली (Confirm Taken)" else "Confirm Taken (घेतली)",
+                                    text = if (locale == "hi") "ले ली (Confirm Taken)" else "Confirm Taken",
                                     color = SafeGreen,
                                     fontSize = 19.sp,
                                     fontWeight = FontWeight.Bold

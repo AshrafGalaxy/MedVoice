@@ -16,9 +16,15 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Cloud
+import androidx.compose.material.icons.filled.FlashOn
+import androidx.compose.material.icons.filled.GraphicEq
+import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.RecordVoiceOver
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.Security
+import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -76,7 +82,7 @@ fun SettingsScreen(viewModel: ScanViewModel) {
     ) {
         // Header
         Text(
-            text = if (locale == "hi") "सेटिंग्स और वॉयस स्टूडियो ⚙️" else "Settings & Voice Studio ⚙️",
+            text = if (locale == "hi") "सेटिंग्स और वॉयस स्टूडियो" else "Settings & Voice Studio",
             style = MaterialTheme.typography.headlineMedium.copy(
                 color = TextWhite,
                 fontWeight = FontWeight.Bold,
@@ -84,7 +90,7 @@ fun SettingsScreen(viewModel: ScanViewModel) {
             )
         )
         Text(
-            text = if (locale == "hi") "आवाज, आपातकालीन संपर्क और एआई इंजन अनुकूलित करें" else "Customize voice, caregiver emergency SOS & AI reasoning",
+            text = if (locale == "hi") "आवाज, आपातकालीन संपर्क और एआई रीजनिंग कॉन्फ़िगर करें" else "Configure vernacular voice, caregiver SOS & AI reasoning",
             style = MaterialTheme.typography.bodyMedium.copy(
                 color = TextMuted,
                 fontSize = 13.sp
@@ -100,12 +106,16 @@ fun SettingsScreen(viewModel: ScanViewModel) {
             shape = RoundedCornerShape(16.dp)
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
-                Text(
-                    text = if (locale == "hi") "भाषा चुनें (App Language)" else "App Language (भाषा)",
-                    color = TextWhite,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 16.sp
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(imageVector = Icons.Default.Language, contentDescription = null, tint = SafeGreen, modifier = Modifier.size(20.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = if (locale == "hi") "भाषा चुनें (App Language)" else "App Language (भाषा)",
+                        color = TextWhite,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 16.sp
+                    )
+                }
                 Spacer(modifier = Modifier.height(10.dp))
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -151,12 +161,16 @@ fun SettingsScreen(viewModel: ScanViewModel) {
             shape = RoundedCornerShape(16.dp)
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
-                Text(
-                    text = "🎙️ " + if (locale == "hi") "आवाज चयन (Voice Style)" else "Voice Style & Pitch",
-                    color = TextWhite,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 16.sp
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(imageVector = Icons.Default.GraphicEq, contentDescription = null, tint = ReticleCyan, modifier = Modifier.size(20.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = if (locale == "hi") "आवाज चयन और पिच" else "Voice Style & Pitch",
+                        color = TextWhite,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 16.sp
+                    )
+                }
                 Spacer(modifier = Modifier.height(10.dp))
 
                 // Male / Female Toggle
@@ -175,7 +189,9 @@ fun SettingsScreen(viewModel: ScanViewModel) {
                         shape = RoundedCornerShape(10.dp),
                         modifier = Modifier.weight(1f).height(46.dp)
                     ) {
-                        Text("👩 Female (Warm)", fontSize = 13.sp, color = TextWhite, fontWeight = FontWeight.Bold)
+                        Icon(imageVector = Icons.Default.RecordVoiceOver, contentDescription = null, tint = TextWhite, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Female (Warm)", fontSize = 12.sp, color = TextWhite, fontWeight = FontWeight.Bold)
                     }
 
                     Button(
@@ -189,18 +205,24 @@ fun SettingsScreen(viewModel: ScanViewModel) {
                         shape = RoundedCornerShape(10.dp),
                         modifier = Modifier.weight(1f).height(46.dp)
                     ) {
-                        Text("👨 Male (Clear)", fontSize = 13.sp, color = TextWhite, fontWeight = FontWeight.Bold)
+                        Icon(imageVector = Icons.Default.RecordVoiceOver, contentDescription = null, tint = TextWhite, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Male (Clear)", fontSize = 12.sp, color = TextWhite, fontWeight = FontWeight.Bold)
                     }
                 }
 
                 Spacer(modifier = Modifier.height(14.dp))
 
                 // Speech Speed Selector
-                Text(
-                    text = if (locale == "hi") "बोलने की गति (Senior Friendly Speed)" else "Speech Rate (Senior Clarity)",
-                    color = TextMuted,
-                    fontSize = 13.sp
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(imageVector = Icons.Default.Speed, contentDescription = null, tint = TextMuted, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = if (locale == "hi") "बोलने की गति (Speech Rate):" else "Speech Rate (Senior Clarity):",
+                        color = TextMuted,
+                        fontSize = 13.sp
+                    )
+                }
                 Spacer(modifier = Modifier.height(8.dp))
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -255,12 +277,16 @@ fun SettingsScreen(viewModel: ScanViewModel) {
             shape = RoundedCornerShape(16.dp)
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
-                Text(
-                    text = "🧠 " + if (locale == "hi") "एआई रीजनिंग मोड (AI Engine)" else "AI Reasoning Engine",
-                    color = TextWhite,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 16.sp
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(imageVector = Icons.Default.Security, contentDescription = null, tint = SafeGreen, modifier = Modifier.size(20.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = if (locale == "hi") "एआई रीजनिंग मोड (AI Engine)" else "AI Reasoning Engine",
+                        color = TextWhite,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 16.sp
+                    )
+                }
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     text = if (locale == "hi") "स्थानीय एज सुरक्षा या क्लाउड हाइब्रिड मॉडल चुनें" else "Select local edge deterministic engine or cloud hybrid fallback",
@@ -284,7 +310,9 @@ fun SettingsScreen(viewModel: ScanViewModel) {
                         shape = RoundedCornerShape(8.dp),
                         modifier = Modifier.weight(1f).height(46.dp)
                     ) {
-                        Text("⚡ 100% Offline Edge", fontSize = 11.sp, color = TextWhite, fontWeight = FontWeight.Bold)
+                        Icon(imageVector = Icons.Default.FlashOn, contentDescription = null, tint = TextWhite, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("100% Offline", fontSize = 11.sp, color = TextWhite, fontWeight = FontWeight.Bold)
                     }
 
                     Button(
@@ -298,7 +326,9 @@ fun SettingsScreen(viewModel: ScanViewModel) {
                         shape = RoundedCornerShape(8.dp),
                         modifier = Modifier.weight(1f).height(46.dp)
                     ) {
-                        Text("🌐 Cloud Hybrid LLM", fontSize = 11.sp, color = TextWhite, fontWeight = FontWeight.Bold)
+                        Icon(imageVector = Icons.Default.Cloud, contentDescription = null, tint = TextWhite, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Cloud Hybrid", fontSize = 11.sp, color = TextWhite, fontWeight = FontWeight.Bold)
                     }
                 }
 
@@ -333,7 +363,7 @@ fun SettingsScreen(viewModel: ScanViewModel) {
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
                 Text(
-                    text = "🚨 " + if (locale == "hi") "केयरगिवर आपातकालीन विवरण" else "Caregiver Emergency SOS Details",
+                    text = if (locale == "hi") "केयरगिवर आपातकालीन विवरण" else "Caregiver Emergency SOS Details",
                     color = TextWhite,
                     fontWeight = FontWeight.Bold,
                     fontSize = 16.sp
@@ -383,6 +413,47 @@ fun SettingsScreen(viewModel: ScanViewModel) {
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
                         text = if (locale == "hi") "विवरण सहेजें (Save Details)" else "Save Caregiver Details",
+                        color = TextWhite,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(14.dp))
+
+        // 5. Senior Setup & Tour Replay
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = SurfaceCardDark),
+            shape = RoundedCornerShape(16.dp)
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text(
+                    text = if (locale == "hi") "प्रारंभिक सेटअप और विज़ार्ड" else "Senior Setup & Onboarding Tour",
+                    color = TextWhite,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 16.sp
+                )
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(
+                    text = if (locale == "hi") "भाषा, आवाज और स्वास्थ्य प्रोफ़ाइल विज़ार्ड दोबारा शुरू करें" else "Restart the accessible onboarding wizard for language & voice baseline",
+                    color = TextMuted,
+                    fontSize = 12.sp
+                )
+                Spacer(modifier = Modifier.height(10.dp))
+
+                Button(
+                    onClick = {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        viewModel.restartOnboarding()
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = SurfaceCardElevated),
+                    shape = RoundedCornerShape(10.dp),
+                    modifier = Modifier.fillMaxWidth().height(46.dp)
+                ) {
+                    Text(
+                        text = if (locale == "hi") "ऑनबोर्डिंग विज़ार्ड पुनः प्रारंभ करें" else "Restart Onboarding Wizard",
                         color = TextWhite,
                         fontWeight = FontWeight.Bold
                     )

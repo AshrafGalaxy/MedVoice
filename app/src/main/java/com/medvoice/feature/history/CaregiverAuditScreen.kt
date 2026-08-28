@@ -19,6 +19,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -37,6 +38,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.medvoice.feature.scanner.ScanViewModel
+import com.medvoice.ui.components.StatusBadge
+import com.medvoice.ui.components.StatusType
 import com.medvoice.ui.theme.AlertRed
 import com.medvoice.ui.theme.BackgroundCharcoal
 import com.medvoice.ui.theme.SafeGreen
@@ -55,6 +58,8 @@ fun CaregiverAuditScreen(
 ) {
     val logs by viewModel.medicationLogs.collectAsState()
     val locale by viewModel.selectedLocale.collectAsState()
+    val caregiverPhone by viewModel.caregiverPhone.collectAsState()
+    val patientName by viewModel.patientName.collectAsState()
     val timeFormatter = SimpleDateFormat("hh:mm a", Locale.getDefault())
 
     Column(
@@ -77,7 +82,7 @@ fun CaregiverAuditScreen(
                         imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                         contentDescription = "Back",
                         tint = TextWhite,
-                        modifier = Modifier.size(32.dp)
+                        modifier = Modifier.size(30.dp)
                     )
                 }
                 Spacer(modifier = Modifier.width(8.dp))
@@ -87,11 +92,11 @@ fun CaregiverAuditScreen(
                         style = MaterialTheme.typography.titleLarge.copy(
                             color = TextWhite,
                             fontWeight = FontWeight.Bold,
-                            fontSize = 22.sp
+                            fontSize = 20.sp
                         )
                     )
                     Text(
-                        text = if (locale == "hi") "रोगी: परिवार सदस्य (उम्र: 70 वर्ष) • केयरगिवर डैशबोर्ड" else "Patient: Family Member (Age: 70) • Caregiver Dashboard",
+                        text = "$patientName • " + if (locale == "hi") "केयरगिवर डैशबोर्ड" else "Caregiver Dashboard",
                         style = MaterialTheme.typography.bodyMedium.copy(
                             color = TextMuted,
                             fontSize = 13.sp
@@ -105,12 +110,12 @@ fun CaregiverAuditScreen(
                     imageVector = Icons.Default.Delete,
                     contentDescription = "Clear Logs",
                     tint = TextMuted,
-                    modifier = Modifier.size(26.dp)
+                    modifier = Modifier.size(24.dp)
                 )
             }
         }
 
-        Spacer(modifier = Modifier.height(12.dp))
+        Spacer(modifier = Modifier.height(10.dp))
 
         // SOS Safety Guardrail Banner
         Card(
@@ -124,19 +129,24 @@ fun CaregiverAuditScreen(
                     .padding(12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(text = "🛡️", fontSize = 24.sp)
+                Icon(
+                    imageVector = Icons.Default.Shield,
+                    contentDescription = "Safety Guardrail",
+                    tint = SafeGreen,
+                    modifier = Modifier.size(26.dp)
+                )
                 Spacer(modifier = Modifier.width(12.dp))
                 Column {
                     Text(
-                        text = "100% Offline Edge Safety Active",
+                        text = if (locale == "hi") "100% ऑन-डिवाइस एज सुरक्षा सक्रिय" else "100% On-Device Edge Safety Active",
                         style = MaterialTheme.typography.titleMedium.copy(
                             color = SafeGreen,
                             fontWeight = FontWeight.Bold,
-                            fontSize = 15.sp
+                            fontSize = 14.sp
                         )
                     )
                     Text(
-                        text = "Emergency SOS alerts route via Direct Cellular SMS (+91 98765-43210)",
+                        text = if (locale == "hi") "आपातकालीन अलर्ट सीधे सेलुलर एसएमएस द्वारा भेजे जाते हैं ($caregiverPhone)" else "Emergency SOS alerts route via Cellular SMS ($caregiverPhone)",
                         style = MaterialTheme.typography.bodyMedium.copy(
                             color = TextMuted,
                             fontSize = 12.sp
@@ -146,7 +156,7 @@ fun CaregiverAuditScreen(
             }
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(14.dp))
 
         // Log List
         if (logs.isEmpty()) {
@@ -160,7 +170,7 @@ fun CaregiverAuditScreen(
                     text = if (locale == "hi") "आज का कोई रिकॉर्ड नहीं है।\nस्कैनर पर जाकर दवा स्कैन करें।" else "No logs recorded today.\nScan medicines on the camera scanner to log.",
                     style = MaterialTheme.typography.bodyLarge.copy(
                         color = TextMuted,
-                        fontSize = 18.sp
+                        fontSize = 17.sp
                     ),
                     textAlign = androidx.compose.ui.text.style.TextAlign.Center
                 )
@@ -195,7 +205,7 @@ fun CaregiverAuditScreen(
                                     imageVector = if (isTaken) Icons.Default.CheckCircle else Icons.Default.Warning,
                                     contentDescription = null,
                                     tint = if (isTaken) SafeGreen else AlertRed,
-                                    modifier = Modifier.size(36.dp)
+                                    modifier = Modifier.size(34.dp)
                                 )
                                 Spacer(modifier = Modifier.width(12.dp))
                                 Column {
@@ -204,22 +214,25 @@ fun CaregiverAuditScreen(
                                         style = MaterialTheme.typography.titleMedium.copy(
                                             color = TextWhite,
                                             fontWeight = FontWeight.Bold,
-                                            fontSize = 18.sp
+                                            fontSize = 17.sp
                                         )
                                     )
-                                    Text(
-                                        text = when (log.status) {
-                                            "TAKEN" -> if (locale == "hi") "ले ली (Confirmed)" else "Taken (Confirmed)"
-                                            "BLOCKED_DUPLICATE" -> if (locale == "hi") "🚨 डबल डोज ब्लॉक (SOS Dispatched)" else "🚨 Duplicate Blocked (SOS Dispatched)"
-                                            "CONFLICT_WARNED" -> if (locale == "hi") "⚠️ ड्रग कॉन्फ्लिक्ट चेतावनी" else "⚠️ Conflict Alert (SOS Dispatched)"
-                                            else -> log.status
-                                        },
-                                        style = MaterialTheme.typography.bodyMedium.copy(
-                                            color = if (isTaken) SafeGreen else AlertRed,
-                                            fontWeight = FontWeight.SemiBold,
-                                            fontSize = 14.sp
+                                    Spacer(modifier = Modifier.height(2.dp))
+                                    when (log.status) {
+                                        "TAKEN" -> StatusBadge(
+                                            text = if (locale == "hi") "ले ली (Confirmed)" else "Taken (Confirmed)",
+                                            statusType = StatusType.SAFE
                                         )
-                                    )
+                                        "BLOCKED_DUPLICATE" -> StatusBadge(
+                                            text = if (locale == "hi") "डबल डोज ब्लॉक (SOS Sent)" else "Duplicate Blocked (SOS Sent)",
+                                            statusType = StatusType.DANGER
+                                        )
+                                        "CONFLICT_WARNED" -> StatusBadge(
+                                            text = if (locale == "hi") "ड्रग कॉन्फ्लिक्ट चेतावनी" else "Conflict Warned",
+                                            statusType = StatusType.WARNING
+                                        )
+                                        else -> Text(text = log.status, color = TextMuted, fontSize = 12.sp)
+                                    }
                                 }
                             }
 
@@ -227,7 +240,7 @@ fun CaregiverAuditScreen(
                                 text = timeFormatter.format(Date(log.intakeTimestamp)),
                                 style = MaterialTheme.typography.bodyMedium.copy(
                                     color = TextMuted,
-                                    fontSize = 14.sp
+                                    fontSize = 13.sp
                                 )
                             )
                         }
@@ -243,14 +256,14 @@ fun CaregiverAuditScreen(
             onClick = onBackToScanner,
             modifier = Modifier
                 .fillMaxWidth()
-                .height(72.dp),
+                .height(68.dp),
             colors = ButtonDefaults.buttonColors(containerColor = SafeGreen),
             shape = RoundedCornerShape(16.dp)
         ) {
             Text(
                 text = if (locale == "hi") "कैमरा स्कैनर पर वापस जाएं" else "Return to Camera Scanner",
                 color = TextWhite,
-                fontSize = 20.sp,
+                fontSize = 19.sp,
                 fontWeight = FontWeight.Bold
             )
         }

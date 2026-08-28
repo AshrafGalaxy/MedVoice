@@ -20,9 +20,9 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -42,6 +42,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.medvoice.feature.navigation.MedVoiceTab
 import com.medvoice.feature.scanner.ScanViewModel
+import com.medvoice.ui.components.MedVoiceLogo
+import com.medvoice.ui.components.StatusBadge
+import com.medvoice.ui.components.StatusType
+import com.medvoice.ui.components.TimeOfDayIcon
 import com.medvoice.ui.theme.AccentBorder
 import com.medvoice.ui.theme.BackgroundCharcoal
 import com.medvoice.ui.theme.ReticleCyan
@@ -71,10 +75,10 @@ fun HomeScreen(viewModel: ScanViewModel) {
     val haptic = LocalHapticFeedback.current
 
     val currentHour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
-    val greeting = when {
-        currentHour < 12 -> if (locale == "hi") "शुभ प्रभात 🌅" else "Good Morning 🌅"
-        currentHour < 17 -> if (locale == "hi") "शुभ दोपहर ☀️" else "Good Afternoon ☀️"
-        else -> if (locale == "hi") "शुभ संध्या 🌙" else "Good Evening 🌙"
+    val greetingText = when {
+        currentHour < 12 -> if (locale == "hi") "शुभ प्रभात" else "Good Morning"
+        currentHour < 17 -> if (locale == "hi") "शुभ दोपहर" else "Good Afternoon"
+        else -> if (locale == "hi") "शुभ संध्या" else "Good Evening"
     }
 
     val dailySchedule = listOf(
@@ -123,29 +127,37 @@ fun HomeScreen(viewModel: ScanViewModel) {
             .verticalScroll(rememberScrollState())
             .padding(16.dp)
     ) {
-        // Top Bar: Greeting & Language Switch
+        // Top Header: Branding, Greeting & Language Switch
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Column {
-                Text(
-                    text = greeting,
-                    style = MaterialTheme.typography.titleMedium.copy(
-                        color = ReticleCyan,
-                        fontWeight = FontWeight.SemiBold,
-                        fontSize = 15.sp
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                MedVoiceLogo(size = 44)
+                Spacer(modifier = Modifier.width(12.dp))
+                Column {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        TimeOfDayIcon(hour = currentHour)
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = greetingText,
+                            style = MaterialTheme.typography.titleSmall.copy(
+                                color = ReticleCyan,
+                                fontWeight = FontWeight.SemiBold,
+                                fontSize = 14.sp
+                            )
+                        )
+                    }
+                    Text(
+                        text = patientName,
+                        style = MaterialTheme.typography.headlineSmall.copy(
+                            color = TextWhite,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 22.sp
+                        )
                     )
-                )
-                Text(
-                    text = patientName,
-                    style = MaterialTheme.typography.headlineMedium.copy(
-                        color = TextWhite,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 26.sp
-                    )
-                )
+                }
             }
 
             // Language Switcher Chips
@@ -156,7 +168,7 @@ fun HomeScreen(viewModel: ScanViewModel) {
                         containerColor = if (locale == "en") SafeGreen else SurfaceCardElevated
                     ),
                     shape = RoundedCornerShape(8.dp),
-                    modifier = Modifier.height(38.dp)
+                    modifier = Modifier.height(36.dp)
                 ) {
                     Text("EN", color = TextWhite, fontWeight = FontWeight.Bold, fontSize = 12.sp)
                 }
@@ -167,7 +179,7 @@ fun HomeScreen(viewModel: ScanViewModel) {
                         containerColor = if (locale == "hi") SafeGreen else SurfaceCardElevated
                     ),
                     shape = RoundedCornerShape(8.dp),
-                    modifier = Modifier.height(38.dp)
+                    modifier = Modifier.height(36.dp)
                 ) {
                     Text("हिंदी", color = TextWhite, fontWeight = FontWeight.Bold, fontSize = 12.sp)
                 }
@@ -198,7 +210,7 @@ fun HomeScreen(viewModel: ScanViewModel) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Box(
                         modifier = Modifier
-                            .size(60.dp)
+                            .size(56.dp)
                             .background(SafeGreen, RoundedCornerShape(14.dp)),
                         contentAlignment = Alignment.Center
                     ) {
@@ -206,21 +218,21 @@ fun HomeScreen(viewModel: ScanViewModel) {
                             imageVector = Icons.Default.CameraAlt,
                             contentDescription = "Scan",
                             tint = TextWhite,
-                            modifier = Modifier.size(34.dp)
+                            modifier = Modifier.size(32.dp)
                         )
                     }
                     Spacer(modifier = Modifier.width(16.dp))
                     Column {
                         Text(
-                            text = if (locale == "hi") "दवा स्कैन करें" else "Point & Scan Strip",
+                            text = if (locale == "hi") "दवा पट्टी स्कैन करें" else "Point & Scan Strip",
                             style = MaterialTheme.typography.titleLarge.copy(
                                 color = TextWhite,
                                 fontWeight = FontWeight.Bold,
-                                fontSize = 22.sp
+                                fontSize = 21.sp
                             )
                         )
                         Text(
-                            text = if (locale == "hi") "तुरंत आवाज में निर्देश सुनें" else "Instant vernacular audio guidance",
+                            text = if (locale == "hi") "तुरंत भारतीय आवाज में निर्देश सुनें" else "Instant vernacular audio guidance",
                             style = MaterialTheme.typography.bodyMedium.copy(
                                 color = TextMuted,
                                 fontSize = 13.sp
@@ -245,19 +257,32 @@ fun HomeScreen(viewModel: ScanViewModel) {
                     .padding(14.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(text = "🛡️", fontSize = 26.sp)
+                Icon(
+                    imageVector = Icons.Default.Shield,
+                    contentDescription = "Security Guardrail",
+                    tint = SafeGreen,
+                    modifier = Modifier.size(28.dp)
+                )
                 Spacer(modifier = Modifier.width(12.dp))
                 Column {
-                    Text(
-                        text = if (locale == "hi") "सुरक्षा स्थिति: सुरक्षित (0 परस्परविरोध)" else "Safety Status: All Clear (0 Conflicts)",
-                        style = MaterialTheme.typography.titleMedium.copy(
-                            color = SafeGreen,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 15.sp
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = if (locale == "hi") "सुरक्षा स्थिति: सुरक्षित" else "Safety Status: All Clear",
+                            style = MaterialTheme.typography.titleMedium.copy(
+                                color = SafeGreen,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 15.sp
+                            )
                         )
-                    )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        StatusBadge(
+                            text = if (locale == "hi") "0 परस्परविरोध" else "0 Conflicts",
+                            statusType = StatusType.SAFE
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(2.dp))
                     Text(
-                        text = if (locale == "hi") "100% ऑफलाइन एज सुरक्षा सक्रिय • डुप्लिकेट साल्ट ब्लॉक समर्थित" else "100% Offline Edge Engine Active • Duplicate Salt Traps Active",
+                        text = if (locale == "hi") "100% ऑन-डिवाइस एज सुरक्षा • डुप्लिकेट साल्ट ट्रैप सक्रिय" else "100% On-Device Edge Safety • Duplicate Salt Traps Active",
                         style = MaterialTheme.typography.bodySmall.copy(
                             color = TextMuted,
                             fontSize = 12.sp
@@ -280,14 +305,14 @@ fun HomeScreen(viewModel: ScanViewModel) {
                 style = MaterialTheme.typography.titleLarge.copy(
                     color = TextWhite,
                     fontWeight = FontWeight.Bold,
-                    fontSize = 19.sp
+                    fontSize = 18.sp
                 )
             )
             Icon(
                 imageVector = Icons.Default.Schedule,
                 contentDescription = null,
                 tint = ReticleCyan,
-                modifier = Modifier.size(22.dp)
+                modifier = Modifier.size(20.dp)
             )
         }
 
@@ -344,27 +369,10 @@ fun HomeScreen(viewModel: ScanViewModel) {
                     }
 
                     if (item.isTaken) {
-                        Box(
-                            modifier = Modifier
-                                .background(SafeGreen.copy(alpha = 0.2f), RoundedCornerShape(8.dp))
-                                .padding(horizontal = 10.dp, vertical = 6.dp)
-                        ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(
-                                    imageVector = Icons.Default.CheckCircle,
-                                    contentDescription = "Taken",
-                                    tint = SafeGreen,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text(
-                                    text = if (locale == "hi") "ले ली" else "Taken",
-                                    color = SafeGreen,
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 12.sp
-                                )
-                            }
-                        }
+                        StatusBadge(
+                            text = if (locale == "hi") "ले ली" else "Taken",
+                            statusType = StatusType.SAFE
+                        )
                     } else {
                         Button(
                             onClick = {

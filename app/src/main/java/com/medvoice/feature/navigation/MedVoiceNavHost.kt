@@ -57,6 +57,15 @@ enum class MedVoiceTab(
 fun MedVoiceNavHost(viewModel: ScanViewModel) {
     val currentTab by viewModel.currentTab.collectAsState()
     val locale by viewModel.selectedLocale.collectAsState()
+    val isOnboardingCompleted by viewModel.isOnboardingCompleted.collectAsState()
+
+    if (!isOnboardingCompleted) {
+        com.medvoice.feature.onboarding.OnboardingScreen(
+            viewModel = viewModel,
+            onOnboardingComplete = { viewModel.completeOnboarding() }
+        )
+        return
+    }
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
