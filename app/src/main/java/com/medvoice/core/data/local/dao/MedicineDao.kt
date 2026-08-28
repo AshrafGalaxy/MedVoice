@@ -12,16 +12,13 @@ interface MedicineDao {
 
     @Query("""
         SELECT * FROM medicines 
-        WHERE brand_name LIKE :query || '%' 
-           OR raw_composition LIKE '%' || :query || '%' 
+        WHERE brand_name LIKE :query
         LIMIT 1
     """)
     suspend fun searchCatalog(query: String): MedicineEntity?
 
-    @Query("SELECT * FROM medicines WHERE brand_name LIKE :query || '%' LIMIT 1")
-    suspend fun findMedicineByPrefix(query: String): MedicineEntity?
 
-    @Query("SELECT * FROM medicines WHERE brand_name LIKE '%' || :query || '%' OR raw_composition LIKE '%' || :query || '%' LIMIT 1")
+    @Query("SELECT * FROM medicines WHERE brand_name LIKE :query LIMIT 1")
     suspend fun findMedicineByFts(query: String): MedicineEntity?
 
     @Query("SELECT * FROM medicines WHERE id = :id LIMIT 1")
@@ -41,7 +38,7 @@ interface MedicineDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun logIntake(log: MedicationLogEntity): Long
 
-    @Query("SELECT * FROM medication_logs ORDER BY intake_timestamp DESC LIMIT 50")
+    @Query("SELECT * FROM medication_logs ORDER BY intake_timestamp DESC LIMIT 100")
     suspend fun getAllLogs(): List<MedicationLogEntity>
 
     @Query("SELECT * FROM medication_logs WHERE intake_timestamp >= :thresholdTime ORDER BY intake_timestamp DESC")
@@ -49,4 +46,7 @@ interface MedicineDao {
 
     @Query("DELETE FROM medication_logs")
     suspend fun clearAllLogs()
+
+    @Query("DELETE FROM medication_logs WHERE medicine_id = :medicineId")
+    suspend fun deleteLogsForMedicine(medicineId: Long)
 }

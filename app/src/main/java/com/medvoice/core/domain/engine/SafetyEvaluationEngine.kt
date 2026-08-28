@@ -76,7 +76,7 @@ class SafetyEvaluationEngine(
 
         var matchedMedicine: MedicineEntity? = null
 
-        // Step 2: Two-Tier Lookup - Try Fast SQLite FTS5 Catalog Search (<5ms)
+        // Step 2: Two-Tier Lookup - Try Fast SQLite Catalog Search (<5ms)
         val strengthRegex = Regex("^\\d+\\s*(?:mg|mcg|gm|g|ml|l|%|tab|cap|tabs|caps)?$", RegexOption.IGNORE_CASE)
         val commonCounterIons = setOf(
             "SODIUM", "HYDROCHLORIDE", "HCL", "POTASSIUM", "CALCIUM", "SUCCINATE",
@@ -87,31 +87,48 @@ class SafetyEvaluationEngine(
             "LIMITED", "LTD", "PVT", "PHARMA", "LABORATORIES", "INDIA"
         )
 
+        // 1. Try full line exact FTS matches first to avoid false positives
         for (rawToken in tokens) {
-            val words = rawToken.split(Regex("[\\s,/\\-]+")).filter { it.length >= 3 }
             val cleanLine = rawToken.replace(Regex("[^a-zA-Z0-9 ]"), "").trim()
-            if (cleanLine.length >= 3 && !cleanLine.matches(strengthRegex) && !cleanLine.all { it.isDigit() }) {
+            if (cleanLine.length >= 5) {
                 matchedMedicine = medicineDao.searchCatalog(cleanLine)
-                    ?: medicineDao.findMedicineByPrefix(cleanLine)
                     ?: medicineDao.findMedicineByFts(cleanLine)
                 if (matchedMedicine != null) break
             }
+        }
 
-            for (word in words) {
-                val cleanWord = word.replace(Regex("[^a-zA-Z0-9]"), "").trim()
-                val upperWord = cleanWord.uppercase(Locale.ROOT)
-                if (cleanWord.length >= 3 &&
-                    !cleanWord.matches(strengthRegex) &&
-                    !cleanWord.all { it.isDigit() } &&
-                    !commonCounterIons.contains(upperWord)
-                ) {
-                    matchedMedicine = medicineDao.searchCatalog(cleanWord)
-                        ?: medicineDao.findMedicineByPrefix(cleanWord)
-                        ?: medicineDao.findMedicineByFts(cleanWord)
-                    if (matchedMedicine != null) break
+        // 2. Strict phrase and token matching if full line fails
+        if (matchedMedicine == null) {
+            for (rawToken in tokens) {
+                val words = rawToken.split(Regex("[\\s,/\\-]+")).map { 
+                    it.replace(Regex("[^a-zA-Z0-9]"), "").trim() 
+                }.filter { 
+                    it.length >= 5 && // Strict minimum 5 characters to avoid wild 3-letter guesses
+                    !it.matches(strengthRegex) && 
+                    !it.all { char -> char.isDigit() } &&
+                    !commonCounterIons.contains(it.uppercase(Locale.ROOT))
                 }
+
+                // Try two-word phrases first (e.g., "Pan 40" but digits are filtered, so "Cadila Glycomet")
+                for (i in 0 until words.size - 1) {
+                    val phrase = "${words[i]} ${words[i+1]}"
+                    if (phrase.length >= 6) {
+                        matchedMedicine = medicineDao.findMedicineByFts(phrase)
+                        if (matchedMedicine != null) break
+                    }
+                }
+                if (matchedMedicine != null) break
+
+                // Try individual long tokens
+                for (word in words) {
+                    if (word.length >= 5) {
+                        matchedMedicine = medicineDao.searchCatalog(word)
+                            ?: medicineDao.findMedicineByFts(word)
+                        if (matchedMedicine != null) break
+                    }
+                }
+                if (matchedMedicine != null) break
             }
-            if (matchedMedicine != null) break
         }
 
         // Determine Scanned Chemical Formulation Text

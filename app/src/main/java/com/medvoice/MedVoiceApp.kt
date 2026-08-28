@@ -17,7 +17,7 @@ class MedVoiceApp : Application() {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val db = AppDatabase.getInstance(this@MedVoiceApp)
-                val testQuery = db.medicineDao().findMedicineByPrefix("Glycomet")
+                val testQuery = db.medicineDao().findMedicineByFts("Glycomet")
                 Log.d("MedVoice_App", "Master Database Pre-warmed. Sample match: ${testQuery?.brandName}")
             } catch (e: Exception) {
                 Log.e("MedVoice_App", "Database Warm-up error", e)

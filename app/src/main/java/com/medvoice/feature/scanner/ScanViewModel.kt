@@ -108,7 +108,7 @@ class ScanViewModel(application: Application) : AndroidViewModel(application) {
     val caregiverPhone: StateFlow<String> = _caregiverPhone.asStateFlow()
 
     private val _patientName = MutableStateFlow(
-        prefs.getString("patient_name", "")?.takeIf { it.isNotBlank() } ?: "Senior Patient"
+        prefs.getString("patient_name", "")?.takeIf { it.isNotBlank() } ?: "User"
     )
     val patientName: StateFlow<String> = _patientName.asStateFlow()
 
@@ -163,6 +163,18 @@ class ScanViewModel(application: Application) : AndroidViewModel(application) {
                 _cabinetMedicines.value = db.medicineDao().getCabinetMedicines()
             } catch (e: Exception) {
                 Log.e("MedVoice_ScanVM", "Error loading master medicines", e)
+            }
+        }
+    }
+
+    fun deleteMedicineFromCabinet(medicineId: Long) {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                db.medicineDao().deleteLogsForMedicine(medicineId)
+                refreshLogs()
+                loadCabinetMedicines()
+            } catch (e: Exception) {
+                Log.e("MedVoice_ScanVM", "Error deleting medicine logs", e)
             }
         }
     }
@@ -441,7 +453,7 @@ class ScanViewModel(application: Application) : AndroidViewModel(application) {
 
         viewModelScope.launch(Dispatchers.IO) {
             // Auto-persist unlisted medicine into SQLite Room DB if not present
-            val existing = db.medicineDao().findMedicineByPrefix(brandName)
+            val existing = db.medicineDao().findMedicineByFts(brandName)
             if (existing == null && _uiState.value is ScanUiState.SafeDetected) {
                 val state = _uiState.value as ScanUiState.SafeDetected
                 try {

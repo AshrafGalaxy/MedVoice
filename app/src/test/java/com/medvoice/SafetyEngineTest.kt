@@ -92,11 +92,6 @@ class FakeMedicineDao : MedicineDao {
         }
     }
 
-    override suspend fun findMedicineByPrefix(query: String): MedicineEntity? {
-        val q = query.trim().lowercase()
-        if (q.length < 3) return null
-        return sampleMedicines.firstOrNull { it.brandName.lowercase().startsWith(q) }
-    }
 
     override suspend fun findMedicineByFts(query: String): MedicineEntity? {
         return searchCatalog(query)
@@ -126,6 +121,10 @@ class FakeMedicineDao : MedicineDao {
 
     override suspend fun clearAllLogs() {
         logs.clear()
+    }
+
+    override suspend fun deleteLogsForMedicine(medicineId: Long) {
+        logs.removeAll { it.medicineId == medicineId }
     }
 }
 
