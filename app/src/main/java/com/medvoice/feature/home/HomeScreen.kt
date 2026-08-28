@@ -243,63 +243,97 @@ fun HomeScreen(viewModel: ScanViewModel) {
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        // 3. Dynamic Safety Status Guardrail Card
-        val safetyStatusColor = if (conflictCount == 0) SafeGreen else AlertRed
-        val safetyStatusText = if (conflictCount == 0) {
-            if (locale == "hi") "सुरक्षा स्थिति: पूर्ण सुरक्षित" else "Safety Status: Active Guard"
-        } else {
-            if (locale == "hi") "सुरक्षा अलर्ट: $conflictCount परस्परविरोध अवरुद्ध" else "Safety Alert: $conflictCount Conflicts Blocked"
-        }
-        val badgeText = if (conflictCount == 0) {
-            if (locale == "hi") "0 परस्परविरोध" else "0 Conflicts"
-        } else {
-            if (locale == "hi") "$conflictCount अवरुद्ध" else "$conflictCount Blocked"
-        }
-        val badgeType = if (conflictCount == 0) StatusType.SAFE else StatusType.DANGER
-
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = SurfaceCardElevated),
-            shape = RoundedCornerShape(12.dp)
-        ) {
-            Row(
+        // 3. Dynamic Safety Status Guardrail (Clean, Compact, Uncluttered)
+        if (conflictCount == 0) {
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(12.dp),
-                verticalAlignment = Alignment.CenterVertically
+                    .background(SafeGreen.copy(alpha = 0.10f), RoundedCornerShape(10.dp))
+                    .border(1.dp, SafeGreen.copy(alpha = 0.30f), RoundedCornerShape(10.dp))
+                    .padding(horizontal = 12.dp, vertical = 9.dp)
             ) {
-                Icon(
-                    imageVector = if (conflictCount == 0) Icons.Default.Shield else Icons.Default.Warning,
-                    contentDescription = "Security",
-                    tint = safetyStatusColor,
-                    modifier = Modifier.size(24.dp)
-                )
-                Spacer(modifier = Modifier.width(10.dp))
-                Column(modifier = Modifier.weight(1f)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.weight(1f, fill = false)
                     ) {
-                        Text(
-                            text = safetyStatusText,
-                            style = MaterialTheme.typography.titleSmall.copy(
-                                color = safetyStatusColor,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 14.sp
-                            )
+                        Icon(
+                            imageVector = Icons.Default.Shield,
+                            contentDescription = "Active Guard",
+                            tint = SafeGreen,
+                            modifier = Modifier.size(17.dp)
                         )
-                        StatusBadge(
-                            text = badgeText,
-                            statusType = badgeType
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = if (locale == "hi") "सुरक्षा गार्ड: 0 परस्परविरोध" else "Active Guard: 0 Drug Hazards",
+                            style = MaterialTheme.typography.titleSmall.copy(
+                                color = SafeGreen,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 13.sp
+                            )
                         )
                     }
                     Text(
-                        text = if (locale == "hi") "100% ऑन-डिवाइस एज सुरक्षा • डुप्लिकेट साल्ट ट्रैप सक्रिय" else "100% On-Device Edge Safety • Duplicate Salt Traps Active",
+                        text = if (locale == "hi") "100% ऑन-डिवाइस" else "100% On-Device",
                         style = MaterialTheme.typography.bodySmall.copy(
                             color = TextMuted,
+                            fontWeight = FontWeight.Medium,
                             fontSize = 11.sp
                         )
+                    )
+                }
+            }
+        } else {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .border(1.dp, AlertRed.copy(alpha = 0.5f), RoundedCornerShape(12.dp)),
+                colors = CardDefaults.cardColors(containerColor = AlertRed.copy(alpha = 0.12f)),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 12.dp, vertical = 10.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Warning,
+                            contentDescription = "Warning",
+                            tint = AlertRed,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Column {
+                            Text(
+                                text = if (locale == "hi") "सुरक्षा अलर्ट: $conflictCount परस्परविरोध" else "Safety Alert: $conflictCount Hazards",
+                                style = MaterialTheme.typography.titleSmall.copy(
+                                    color = AlertRed,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 13.sp
+                                )
+                            )
+                            Text(
+                                text = if (locale == "hi") "असुरक्षित खुराक स्वतः अवरुद्ध" else "Unsafe intake blocked",
+                                style = MaterialTheme.typography.bodySmall.copy(
+                                    color = TextMuted,
+                                    fontSize = 11.sp
+                                )
+                            )
+                        }
+                    }
+                    StatusBadge(
+                        text = if (locale == "hi") "$conflictCount अवरुद्ध" else "$conflictCount Blocked",
+                        statusType = StatusType.DANGER
                     )
                 }
             }
