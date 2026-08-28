@@ -87,3 +87,6 @@ emulator_*.png
 screen.png
 window_dump.xml
 
+# Ingestion data cache
+scripts/data/
+
