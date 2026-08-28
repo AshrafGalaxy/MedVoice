@@ -106,7 +106,7 @@ class FakeMedicineDao : MedicineDao {
         return sampleMedicines.firstOrNull { it.id == id }
     }
 
-    override suspend fun getAllMedicines(): List<MedicineEntity> = sampleMedicines
+    override suspend fun getCabinetMedicines(): List<MedicineEntity> = sampleMedicines
 
     override suspend fun insertMedicine(medicine: MedicineEntity): Long {
         sampleMedicines.add(medicine)
