@@ -2,6 +2,7 @@ package com.medvoice.feature.scanner
 
 import android.app.Application
 import android.util.Log
+import androidx.core.content.edit
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.medvoice.core.audio.VernacularTtsManager
@@ -115,12 +116,12 @@ class ScanViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun completeOnboarding() {
-        prefs.edit().putBoolean("onboarding_done", true).apply()
+        prefs.edit { putBoolean("onboarding_done", true) }
         _isOnboardingCompleted.value = true
     }
 
     fun restartOnboarding() {
-        prefs.edit().putBoolean("onboarding_done", false).apply()
+        prefs.edit { putBoolean("onboarding_done", false) }
         _isOnboardingCompleted.value = false
     }
 
@@ -350,7 +351,7 @@ class ScanViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun toggleDailyReminders(enabled: Boolean) {
-        prefs.edit().putBoolean("daily_reminders_enabled", enabled).apply()
+        prefs.edit { putBoolean("daily_reminders_enabled", enabled) }
         _isDailyRemindersEnabled.value = enabled
         if (enabled) {
             alarmScheduler.scheduleAllReminders()
@@ -365,7 +366,6 @@ class ScanViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     override fun onCleared() {
-        super.onCleared()
         ttsManager.shutdown()
     }
 }

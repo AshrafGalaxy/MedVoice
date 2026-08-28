@@ -37,6 +37,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -70,7 +71,7 @@ fun CaregiverAuditScreen(
     val caregiverPhone by viewModel.caregiverPhone.collectAsState()
     val patientName by viewModel.patientName.collectAsState()
     val haptic = LocalHapticFeedback.current
-    val timeFormatter = SimpleDateFormat("hh:mm a", Locale.getDefault())
+    val timeFormatter = remember { SimpleDateFormat("hh:mm a", Locale.US) }
 
     Column(
         modifier = Modifier

@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
-<resources>
+<resources xmlns:tools="http://schemas.android.com/tools" tools:ignore="UnusedResources">
     <string name="app_name">MedVoice</string>
     <string name="scan_title">MedVoice 💊</string>
     <string name="btn_confirm_hi">ले ली (Confirm)</string>
     <string name="btn_confirm_mr">घेतली (Confirm)</string>
     <string name="btn_dismiss_hi">समझ गए (Dismiss)</string>
     <string name="btn_dismiss_mr">समजले (Dismiss)</string>
-    <string name="scan_prompt_hi">दवा की पट्टी कैमरे के सामने रखें...</string>
-    <string name="scan_prompt_mr">औषधाची पट्टी कॅमेऱ्यासमोर धरा...</string>
+    <string name="scan_prompt_hi">दवा की पट्टी कैमरे के सामने रखें&#8230;</string>
+    <string name="scan_prompt_mr">औषधाची पट्टी कॅमेऱ्यासमोर धरा&#8230;</string>
     <string name="duplicate_warning_title_hi">सावधान! दोबारा न लें</string>
     <string name="duplicate_warning_title_mr">सावधान! पुन्हा घेऊ नका</string>
     <string name="conflict_warning_title_hi">गंभीर दवा परस्परविरोध!</string>

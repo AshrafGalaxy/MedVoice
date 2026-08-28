@@ -44,18 +44,16 @@ class MedicationAlarmReceiver : BroadcastReceiver() {
         val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         val channelId = "medvoice_reminders_channel"
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(
-                channelId,
-                "MedVoice Daily Medication Reminders",
-                NotificationManager.IMPORTANCE_HIGH
-            ).apply {
-                description = "High-priority vernacular voice reminders for senior prescriptions"
-                enableVibration(true)
-                vibrationPattern = longArrayOf(0, 500, 200, 500)
-            }
-            notificationManager.createNotificationChannel(channel)
+        val channel = NotificationChannel(
+            channelId,
+            "MedVoice Daily Medication Reminders",
+            NotificationManager.IMPORTANCE_HIGH
+        ).apply {
+            description = "High-priority vernacular voice reminders for senior prescriptions"
+            enableVibration(true)
+            vibrationPattern = longArrayOf(0, 500, 200, 500)
         }
+        notificationManager.createNotificationChannel(channel)
 
         val openAppIntent = Intent(context, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
