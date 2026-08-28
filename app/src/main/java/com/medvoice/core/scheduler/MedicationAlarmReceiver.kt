@@ -85,9 +85,18 @@ class MedicationAlarmReceiver : BroadcastReceiver() {
 
     private fun playSpokenReminder(context: Context, text: String, locale: String) {
         try {
+            val prefs = context.getSharedPreferences("medvoice_prefs", Context.MODE_PRIVATE)
+            val genderName = prefs.getString("voice_gender", "MALE") ?: "MALE"
+            val gender = try {
+                com.medvoice.core.audio.VoiceGender.valueOf(genderName)
+            } catch (_: Exception) {
+                com.medvoice.core.audio.VoiceGender.MALE
+            }
+
             var ttsManager: VernacularTtsManager? = null
             ttsManager = VernacularTtsManager(context) { success ->
                 if (success) {
+                    ttsManager?.selectedGender = gender
                     ttsManager?.speak(text, locale) {
                         ttsManager?.shutdown()
                     }

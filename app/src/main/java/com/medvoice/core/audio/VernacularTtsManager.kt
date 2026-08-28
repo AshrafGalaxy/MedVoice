@@ -4,32 +4,19 @@ import android.content.Context
 import android.media.AudioAttributes
 import android.media.AudioFocusRequest
 import android.media.AudioManager
-import android.media.MediaPlayer
 import android.os.Build
 import android.speech.tts.TextToSpeech
 import android.speech.tts.UtteranceProgressListener
 import android.speech.tts.Voice
-import android.util.Base64
 import android.util.Log
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import java.io.File
-import java.io.FileOutputStream
-import java.net.HttpURLConnection
-import java.net.URL
 import java.util.Locale
 
 enum class VoiceGender {
     FEMALE,
     MALE
-}
-
-enum class VoiceEngineMode {
-    OFFLINE_DEVICE,
-    HYBRID_SARVAM_AI,
-    HYBRID_ELEVENLABS
 }
 
 class VernacularTtsManager(
@@ -38,17 +25,13 @@ class VernacularTtsManager(
 ) {
     private var tts: TextToSpeech? = null
     private var isInitialized = false
-    private var mediaPlayer: MediaPlayer? = null
     private val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
     private var audioFocusRequest: AudioFocusRequest? = null
 
-    // Senior-optimized cadence and natural acoustic properties
+    // Voice configuration: On-Device High-Definition Google Neural Engine
     var selectedGender: VoiceGender = VoiceGender.MALE
-    var speechRate: Float = 0.88f // 0.88x pacing for elderly comprehension and Devanagari phrasing
+    var speechRate: Float = 0.95f // Fast, crisp, responsive cadence
     var speechPitch: Float = 1.0f // Standard natural pitch
-    var engineMode: VoiceEngineMode = VoiceEngineMode.HYBRID_SARVAM_AI
-    var sarvamApiKey: String = "sk_jvbee2rt_gMpyMqxJ6Xl4IROW8BoWnXHN"
-    var elevenLabsApiKey: String = ""
 
     companion object {
         private const val GOOGLE_TTS_PACKAGE = "com.google.android.tts"
@@ -60,13 +43,12 @@ class VernacularTtsManager(
     }
 
     /**
-     * Explicit Engine Binding: Bind to Google Neural Speech Synthesis (com.google.android.tts)
+     * Explicit Engine Binding: Bind directly to Google Speech Synthesis (com.google.android.tts)
      * with graceful fallback to system default if Google engine is missing.
      */
     private fun initializeGoogleNeuralTts() {
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                // Step 1: Attempt explicit binding to Google Speech Synthesis
                 val initListener = TextToSpeech.OnInitListener { status ->
                     if (status == TextToSpeech.SUCCESS) {
                         configureTtsInstance()
@@ -112,142 +94,11 @@ class VernacularTtsManager(
     }
 
     /**
-     * Main Spoken Voice Entrypoint
+     * Fast, On-Device Google Neural Spoken Voice Entrypoint
      */
     fun speak(text: String, languageCode: String = "en", onDone: () -> Unit = {}) {
         stop()
 
-        // 1. Try Hybrid Online Sarvam AI (Studio-Grade Indian Vernacular)
-        if (engineMode == VoiceEngineMode.HYBRID_SARVAM_AI && sarvamApiKey.isNotBlank()) {
-            speakViaSarvamAi(text, languageCode, onDone, fallback = {
-                speakOffline(text, languageCode, onDone)
-            })
-            return
-        }
-
-        // 2. Try Hybrid ElevenLabs if enabled
-        if (engineMode == VoiceEngineMode.HYBRID_ELEVENLABS && elevenLabsApiKey.isNotBlank()) {
-            speakViaElevenLabs(text, onDone, fallback = {
-                speakOffline(text, languageCode, onDone)
-            })
-            return
-        }
-
-        // 3. 100% Offline Google Neural On-Device Engine
-        speakOffline(text, languageCode, onDone)
-    }
-
-    /**
-     * Sarvam AI Bulbul v3 Indian Vernacular Integration (Hindi / Indian English)
-     */
-    private fun speakViaSarvamAi(text: String, languageCode: String, onDone: () -> Unit, fallback: () -> Unit) {
-        CoroutineScope(Dispatchers.IO).launch {
-            try {
-                val targetLang = if (languageCode.lowercase().startsWith("hi")) "hi-IN" else "en-IN"
-                val speaker = if (selectedGender == VoiceGender.FEMALE) "meera" else "shubh"
-
-                val url = URL("https://api.sarvam.ai/text-to-speech")
-                val conn = (url.openConnection() as HttpURLConnection).apply {
-                    requestMethod = "POST"
-                    setRequestProperty("Content-Type", "application/json; charset=utf-8")
-                    setRequestProperty("api-subscription-key", sarvamApiKey.trim())
-                    doOutput = true
-                    connectTimeout = 3500
-                    readTimeout = 6500
-                }
-
-                val cleanText = preprocessMedicalText(text, targetLang)
-                val payload = """
-                    {
-                        "inputs": ["${cleanText.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", " ")}"],
-                        "target_language_code": "$targetLang",
-                        "speaker": "$speaker",
-                        "model": "bulbul:v3"
-                    }
-                """.trimIndent()
-
-                conn.outputStream.use { it.write(payload.toByteArray(Charsets.UTF_8)) }
-
-                val responseCode = conn.responseCode
-                if (responseCode == 200) {
-                    val responseStr = conn.inputStream.bufferedReader(Charsets.UTF_8).use { it.readText() }
-                    val audioBase64 = Regex("\"audios\":\\s*\\[\\s*\"([^\"]+)\"").find(responseStr)?.groupValues?.get(1)
-                    if (!audioBase64.isNullOrBlank()) {
-                        val audioBytes = Base64.decode(audioBase64, Base64.DEFAULT)
-                        val tempFile = File(context.cacheDir, "sarvam_tts_${System.currentTimeMillis()}.wav")
-                        FileOutputStream(tempFile).use { it.write(audioBytes) }
-
-                        withContext(Dispatchers.Main) {
-                            playAudioFile(tempFile, onDone)
-                        }
-                        return@launch
-                    }
-                } else {
-                    val errorMsg = conn.errorStream?.bufferedReader()?.use { it.readText() }
-                    Log.w(TAG, "Sarvam AI HTTP $responseCode: $errorMsg")
-                }
-
-                // Fallback to Google Neural On-Device
-                withContext(Dispatchers.Main) { fallback() }
-            } catch (e: Exception) {
-                Log.w(TAG, "Sarvam AI network error, falling back to Google Neural On-Device", e)
-                withContext(Dispatchers.Main) { fallback() }
-            }
-        }
-    }
-
-    private fun speakViaElevenLabs(text: String, onDone: () -> Unit, fallback: () -> Unit) {
-        CoroutineScope(Dispatchers.IO).launch {
-            try {
-                val voiceId = if (selectedGender == VoiceGender.FEMALE) "21m00Tcm4TlvDq8ikWAM" else "pNInz6obpgDQGcFmaJgB"
-                val url = URL("https://api.elevenlabs.io/v1/text-to-speech/$voiceId")
-                val conn = (url.openConnection() as HttpURLConnection).apply {
-                    requestMethod = "POST"
-                    setRequestProperty("Content-Type", "application/json")
-                    setRequestProperty("xi-api-key", elevenLabsApiKey)
-                    doOutput = true
-                    connectTimeout = 3000
-                    readTimeout = 5000
-                }
-
-                val cleanText = preprocessMedicalText(text, "en-IN")
-                val payload = """
-                    {
-                        "text": "${cleanText.replace("\"", "\\\"")}",
-                        "model_id": "eleven_multilingual_v2",
-                        "voice_settings": {
-                            "stability": 0.5,
-                            "similarity_boost": 0.75
-                        }
-                    }
-                """.trimIndent()
-
-                conn.outputStream.use { it.write(payload.toByteArray()) }
-
-                if (conn.responseCode == 200) {
-                    val tempFile = File(context.cacheDir, "elevenlabs_${System.currentTimeMillis()}.mp3")
-                    conn.inputStream.use { input ->
-                        FileOutputStream(tempFile).use { output ->
-                            input.copyTo(output)
-                        }
-                    }
-                    withContext(Dispatchers.Main) {
-                        playAudioFile(tempFile, onDone)
-                    }
-                    return@launch
-                }
-                withContext(Dispatchers.Main) { fallback() }
-            } catch (e: Exception) {
-                Log.w(TAG, "ElevenLabs failed, using fallback", e)
-                withContext(Dispatchers.Main) { fallback() }
-            }
-        }
-    }
-
-    /**
-     * 100% Offline Google High-Definition Neural Speech Synthesis
-     */
-    private fun speakOffline(text: String, languageCode: String, onDone: () -> Unit) {
         if (!isInitialized || tts == null) {
             onDone()
             return
@@ -265,10 +116,10 @@ class VernacularTtsManager(
             tts?.setLanguage(Locale.ENGLISH)
         }
 
-        // Voice Selection & Highest-Quality Local Filtering
+        // Voice Selection: Select best offline Google Neural voice matching gender and Indian locale
         selectOptimalGoogleNeuralVoice(targetLocale, selectedGender)
 
-        // Set Senior Cadence (0.88x) and Natural Pitch (1.0x)
+        // Set Cadence and Pitch
         tts?.setSpeechRate(speechRate)
         tts?.setPitch(speechPitch)
 
@@ -303,14 +154,12 @@ class VernacularTtsManager(
             val voices: Set<Voice>? = tts?.voices
             if (voices.isNullOrEmpty()) return
 
-            // Filter for matching language and 100% offline local availability
             val localMatchingVoices = voices.filter { voice ->
                 voice.locale.language.equals(locale.language, ignoreCase = true) && !voice.isNetworkConnectionRequired
             }
 
             if (localMatchingVoices.isEmpty()) return
 
-            // Score and sort voices by quality attribute and neural gender names
             val bestVoice = localMatchingVoices.sortedWith(
                 compareByDescending<Voice> { it.quality }
                     .thenByDescending { voice ->
@@ -334,7 +183,7 @@ class VernacularTtsManager(
 
             if (bestVoice != null) {
                 tts?.voice = bestVoice
-                Log.d(TAG, "Selected Google Neural Voice: ${bestVoice.name} (Quality=${bestVoice.quality}, Latency=${bestVoice.latency}) for $gender in $locale")
+                Log.d(TAG, "Selected Google Neural Voice: ${bestVoice.name} (Quality=${bestVoice.quality}) for $gender in $locale")
             }
         } catch (e: Exception) {
             Log.w(TAG, "Voice discovery exception, using engine default", e)
@@ -351,7 +200,6 @@ class VernacularTtsManager(
         val isHindi = langCode.startsWith("hi", ignoreCase = true)
 
         if (isHindi) {
-            // Expand medical abbreviations to natural Devanagari words
             processed = processed
                 .replace(Regex("""(?i)\b(\d+)\s*mg\b"""), "$1 मिलीग्राम")
                 .replace(Regex("""(?i)\b(\d+)\s*mcg\b"""), "$1 माइक्रोग्राम")
@@ -363,7 +211,6 @@ class VernacularTtsManager(
                 .replace(Regex("""(?i)\b-?SR\b"""), " सस्टेन्ड रिलीज़ ")
                 .replace(Regex("""(?i)\b-?CR\b"""), " कंट्रोल्ड रिलीज़ ")
                 .replace(Regex("""(?i)\b-?ER\b"""), " एक्सटेंडेड रिलीज़ ")
-                // Number conversions for key dosage numbers
                 .replace(Regex("""\b1\s+गोली\b"""), "एक गोली")
                 .replace(Regex("""\b2\s+गोली\b"""), "दो गोली")
                 .replace(Regex("""\b1/2\s+गोली\b"""), "आधी गोली")
@@ -371,7 +218,6 @@ class VernacularTtsManager(
                 .replace(Regex("""\b650\s+मिलीग्राम\b"""), "छह सौ पचास मिलीग्राम")
                 .replace(Regex("""\b1000\s+मिलीग्राम\b"""), "एक हज़ार मिलीग्राम")
         } else {
-            // Expand medical abbreviations to full English terms
             processed = processed
                 .replace(Regex("""(?i)\b(\d+)\s*mg\b"""), "$1 milligrams")
                 .replace(Regex("""(?i)\b(\d+)\s*mcg\b"""), "$1 micrograms")
@@ -385,7 +231,6 @@ class VernacularTtsManager(
                 .replace(Regex("""(?i)\b-?ER\b"""), " extended release ")
         }
 
-        // Insert natural breathing pauses around punctuation and alert markers
         processed = processed
             .replace("!", "! , ")
             .replace("।", "। , ")
@@ -436,60 +281,8 @@ class VernacularTtsManager(
         }
     }
 
-    private fun playAudioFile(file: File, onDone: () -> Unit) {
-        try {
-            requestAudioFocus()
-            mediaPlayer?.release()
-            mediaPlayer = MediaPlayer().apply {
-                setDataSource(file.absolutePath)
-                setOnCompletionListener {
-                    it.release()
-                    mediaPlayer = null
-                    file.delete()
-                    abandonAudioFocus()
-                    onDone()
-                }
-                setOnErrorListener { mp, _, _ ->
-                    mp.release()
-                    mediaPlayer = null
-                    file.delete()
-                    abandonAudioFocus()
-                    onDone()
-                    true
-                }
-                prepare()
-                start()
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "MediaPlayer playback failed", e)
-            abandonAudioFocus()
-            onDone()
-        }
-    }
-
-    fun openTtsSystemSettings(ctx: Context) {
-        try {
-            val intent = android.content.Intent("com.android.settings.TTS_SETTINGS").apply {
-                flags = android.content.Intent.FLAG_ACTIVITY_NEW_TASK
-            }
-            ctx.startActivity(intent)
-        } catch (_: Exception) {
-            try {
-                val intent = android.content.Intent(android.provider.Settings.ACTION_SETTINGS).apply {
-                    flags = android.content.Intent.FLAG_ACTIVITY_NEW_TASK
-                }
-                ctx.startActivity(intent)
-            } catch (e: Exception) {
-                Log.e(TAG, "Could not open system settings", e)
-            }
-        }
-    }
-
     fun stop() {
         tts?.stop()
-        mediaPlayer?.stop()
-        mediaPlayer?.release()
-        mediaPlayer = null
         abandonAudioFocus()
     }
 

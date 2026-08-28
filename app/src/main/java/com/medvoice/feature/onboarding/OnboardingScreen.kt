@@ -72,7 +72,6 @@ fun OnboardingScreen(
 ) {
     val locale by viewModel.selectedLocale.collectAsState()
     val selectedGender by viewModel.selectedGender.collectAsState()
-    val speechRate by viewModel.speechRate.collectAsState()
     val haptic = LocalHapticFeedback.current
 
     var currentStep by remember { mutableIntStateOf(1) }
@@ -287,37 +286,6 @@ fun OnboardingScreen(
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    // Speech Speed Selector
-                    Text(
-                        text = if (locale == "hi") "बोलने की गति (Speech Rate):" else "Speech Rate:",
-                        color = TextWhite,
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        listOf(0.75f to "0.75x Slow", 0.88f to "0.88x Senior", 1.0f to "1.0x Normal").forEach { (rate, label) ->
-                            Button(
-                                onClick = {
-                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                    viewModel.setSpeechRate(rate)
-                                },
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = if (speechRate == rate) SafeGreen else SurfaceCardElevated
-                                ),
-                                shape = RoundedCornerShape(10.dp),
-                                modifier = Modifier.weight(1f).height(44.dp)
-                            ) {
-                                Text(label, fontSize = 11.sp, color = TextWhite)
-                            }
-                        }
-                    }
-
                     Spacer(modifier = Modifier.height(20.dp))
 
                     // Test Voice Button
@@ -328,12 +296,12 @@ fun OnboardingScreen(
                         },
                         colors = ButtonDefaults.buttonColors(containerColor = ReticleCyan),
                         shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier.fillMaxWidth().height(50.dp)
+                        modifier = Modifier.fillMaxWidth().height(56.dp)
                     ) {
-                        Icon(Icons.Default.PlayArrow, contentDescription = null, tint = BackgroundCharcoal)
+                        Icon(Icons.Default.PlayArrow, contentDescription = null, tint = BackgroundCharcoal, modifier = Modifier.size(22.dp))
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = if (locale == "hi") "आवाज का नमूना सुनें" else "Play Audio Sample",
+                            text = if (locale == "hi") "आवाज का नमूना सुनें (Test Voice)" else "Play Audio Sample",
                             color = BackgroundCharcoal,
                             fontWeight = FontWeight.Bold,
                             fontSize = 15.sp

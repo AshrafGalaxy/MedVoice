@@ -9,7 +9,6 @@ import com.medvoice.core.ai.AiEngineTier
 import com.medvoice.core.ai.MedGemmaOrchestrator
 import com.medvoice.core.audio.VernacularTtsManager
 import com.medvoice.core.audio.VoiceConfirmationListener
-import com.medvoice.core.audio.VoiceEngineMode
 import com.medvoice.core.audio.VoiceGender
 import com.medvoice.core.data.local.AppDatabase
 import com.medvoice.core.data.local.entity.MedicationLogEntity
@@ -105,18 +104,6 @@ class ScanViewModel(application: Application) : AndroidViewModel(application) {
     )
     val selectedGender: StateFlow<VoiceGender> = _selectedGender.asStateFlow()
 
-    private val _speechRate = MutableStateFlow(prefs.getFloat("speech_rate", 0.88f))
-    val speechRate: StateFlow<Float> = _speechRate.asStateFlow()
-
-    private val _engineMode = MutableStateFlow(
-        try {
-            VoiceEngineMode.valueOf(prefs.getString("engine_mode", "HYBRID_SARVAM_AI") ?: "HYBRID_SARVAM_AI")
-        } catch (_: Exception) {
-            VoiceEngineMode.HYBRID_SARVAM_AI
-        }
-    )
-    val engineMode: StateFlow<VoiceEngineMode> = _engineMode.asStateFlow()
-
     private val _caregiverPhone = MutableStateFlow(prefs.getString("caregiver_phone", "+919876543210") ?: "+919876543210")
     val caregiverPhone: StateFlow<String> = _caregiverPhone.asStateFlow()
 
@@ -153,10 +140,6 @@ class ScanViewModel(application: Application) : AndroidViewModel(application) {
     init {
         // Hydrate audio & MedGemma persistent configuration
         ttsManager.selectedGender = _selectedGender.value
-        ttsManager.speechRate = _speechRate.value
-        ttsManager.engineMode = _engineMode.value
-        ttsManager.sarvamApiKey = prefs.getString("sarvam_api_key", "sk_jvbee2rt_gMpyMqxJ6Xl4IROW8BoWnXHN") ?: "sk_jvbee2rt_gMpyMqxJ6Xl4IROW8BoWnXHN"
-        ttsManager.elevenLabsApiKey = prefs.getString("elevenlabs_api_key", "") ?: ""
         aiEngine.cloudMedGemmaApiKey = prefs.getString("cloud_medgemma_api_key", "") ?: ""
         aiEngine.allowCloudPrivacyEgress = prefs.getBoolean("cloud_privacy_egress", false)
         try {
@@ -205,31 +188,6 @@ class ScanViewModel(application: Application) : AndroidViewModel(application) {
         _selectedGender.value = gender
         ttsManager.selectedGender = gender
         prefs.edit { putString("voice_gender", gender.name) }
-    }
-
-    fun setSpeechRate(rate: Float) {
-        _speechRate.value = rate
-        ttsManager.speechRate = rate
-        prefs.edit { putFloat("speech_rate", rate) }
-    }
-
-    fun setEngineMode(mode: VoiceEngineMode, sarvamKey: String = "") {
-        _engineMode.value = mode
-        ttsManager.engineMode = mode
-        prefs.edit { putString("engine_mode", mode.name) }
-        if (sarvamKey.isNotBlank()) {
-            setSarvamApiKey(sarvamKey)
-        }
-    }
-
-    fun setSarvamApiKey(key: String) {
-        ttsManager.sarvamApiKey = key
-        prefs.edit { putString("sarvam_api_key", key) }
-    }
-
-    fun setElevenLabsApiKey(key: String) {
-        ttsManager.elevenLabsApiKey = key
-        prefs.edit { putString("elevenlabs_api_key", key) }
     }
 
     fun setCloudMedGemmaApiKey(key: String) {

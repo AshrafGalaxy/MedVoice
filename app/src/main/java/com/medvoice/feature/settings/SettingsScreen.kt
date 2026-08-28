@@ -61,7 +61,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import com.medvoice.core.ai.AiEngineTier
-import com.medvoice.core.audio.VoiceEngineMode
 import com.medvoice.core.audio.VoiceGender
 import com.medvoice.feature.scanner.ScanViewModel
 import com.medvoice.ui.theme.AccentBorder
@@ -79,8 +78,6 @@ import kotlinx.coroutines.launch
 fun SettingsScreen(viewModel: ScanViewModel) {
     val locale by viewModel.selectedLocale.collectAsState()
     val selectedGender by viewModel.selectedGender.collectAsState()
-    val speechRate by viewModel.speechRate.collectAsState()
-    val engineMode by viewModel.engineMode.collectAsState()
     val caregiverPhone by viewModel.caregiverPhone.collectAsState()
     val patientName by viewModel.patientName.collectAsState()
     val context = LocalContext.current
@@ -88,8 +85,6 @@ fun SettingsScreen(viewModel: ScanViewModel) {
 
     var phoneInput by remember { mutableStateOf(caregiverPhone) }
     var nameInput by remember { mutableStateOf(patientName) }
-    var sarvamKeyInput by remember { mutableStateOf(viewModel.ttsManager.sarvamApiKey) }
-    var elevenLabsKeyInput by remember { mutableStateOf(viewModel.ttsManager.elevenLabsApiKey) }
     var medGemmaKeyInput by remember { mutableStateOf(viewModel.aiEngine.cloudMedGemmaApiKey) }
     var allowCloudPrivacy by remember { mutableStateOf(viewModel.aiEngine.allowCloudPrivacyEgress) }
 
@@ -196,18 +191,23 @@ fun SettingsScreen(viewModel: ScanViewModel) {
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(imageVector = Icons.Default.GraphicEq, contentDescription = null, tint = ReticleCyan, modifier = Modifier.size(18.dp))
+                    Icon(
+                        imageVector = Icons.Default.GraphicEq,
+                        contentDescription = null,
+                        tint = SafeGreen,
+                        modifier = Modifier.size(20.dp)
+                    )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = if (locale == "hi") "आवाज चयन और भारतीय उच्चारण" else "Voice Style & Indian Accents",
+                        text = if (locale == "hi") "आवाज चयन (Google Neural HD)" else "Vernacular Voice Assistant",
                         color = TextWhite,
                         fontWeight = FontWeight.Bold,
                         fontSize = 15.sp
                     )
                 }
-                Spacer(modifier = Modifier.height(10.dp))
+                Spacer(modifier = Modifier.height(12.dp))
 
-                // Voice Gender
+                // Voice Gender Selection
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -220,13 +220,17 @@ fun SettingsScreen(viewModel: ScanViewModel) {
                         colors = ButtonDefaults.buttonColors(
                             containerColor = if (selectedGender == VoiceGender.FEMALE) SafeGreen else SurfaceCardElevated
                         ),
-                        shape = RoundedCornerShape(8.dp),
-                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp),
-                        modifier = Modifier.weight(1f).heightIn(min = 44.dp)
+                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier.weight(1f).height(56.dp)
                     ) {
-                        Icon(imageVector = Icons.Default.RecordVoiceOver, contentDescription = null, tint = TextWhite, modifier = Modifier.size(16.dp))
+                        Icon(imageVector = Icons.Default.RecordVoiceOver, contentDescription = null, tint = TextWhite, modifier = Modifier.size(20.dp))
                         Spacer(modifier = Modifier.width(6.dp))
-                        Text("Female (Warm)", fontSize = 12.sp, color = TextWhite, fontWeight = FontWeight.Bold)
+                        Text(
+                            text = if (locale == "hi") "महिला (Female)" else "Female (Warm)",
+                            fontSize = 13.sp,
+                            color = TextWhite,
+                            fontWeight = FontWeight.Bold
+                        )
                     }
 
                     Button(
@@ -237,192 +241,40 @@ fun SettingsScreen(viewModel: ScanViewModel) {
                         colors = ButtonDefaults.buttonColors(
                             containerColor = if (selectedGender == VoiceGender.MALE) SafeGreen else SurfaceCardElevated
                         ),
-                        shape = RoundedCornerShape(8.dp),
-                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp),
-                        modifier = Modifier.weight(1f).heightIn(min = 44.dp)
+                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier.weight(1f).height(56.dp)
                     ) {
-                        Icon(imageVector = Icons.Default.RecordVoiceOver, contentDescription = null, tint = TextWhite, modifier = Modifier.size(16.dp))
+                        Icon(imageVector = Icons.Default.RecordVoiceOver, contentDescription = null, tint = TextWhite, modifier = Modifier.size(20.dp))
                         Spacer(modifier = Modifier.width(6.dp))
-                        Text("Male (Clear)", fontSize = 12.sp, color = TextWhite, fontWeight = FontWeight.Bold)
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                // Speech Speed Selector
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(imageVector = Icons.Default.Speed, contentDescription = null, tint = TextMuted, modifier = Modifier.size(14.dp))
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(
-                        text = if (locale == "hi") "बोलने की गति (Speech Rate):" else "Speech Rate (Senior Clarity):",
-                        color = TextMuted,
-                        fontSize = 12.sp
-                    )
-                }
-                Spacer(modifier = Modifier.height(8.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    listOf(0.75f to "0.75x Slow", 0.88f to "0.88x Senior", 1.0f to "1.0x Normal").forEach { (rate, label) ->
-                        Button(
-                            onClick = {
-                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                viewModel.setSpeechRate(rate)
-                            },
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = if (speechRate == rate) SafeGreen else SurfaceCardElevated
-                            ),
-                            shape = RoundedCornerShape(6.dp),
-                            contentPadding = PaddingValues(horizontal = 4.dp, vertical = 4.dp),
-                            modifier = Modifier.weight(1f).heightIn(min = 40.dp)
-                        ) {
-                            Text(label, fontSize = 11.sp, color = TextWhite, fontWeight = FontWeight.SemiBold)
-                        }
+                        Text(
+                            text = if (locale == "hi") "पुरुष (Male)" else "Male (Clear)",
+                            fontSize = 13.sp,
+                            color = TextWhite,
+                            fontWeight = FontWeight.Bold
+                        )
                     }
                 }
 
                 Spacer(modifier = Modifier.height(14.dp))
 
-                // Voice Engine Selection (Sarvam AI / ElevenLabs / On-Device)
-                Text(
-                    text = "TTS Engine Provider:",
-                    color = TextMuted,
-                    fontSize = 12.sp
-                )
-                Spacer(modifier = Modifier.height(6.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                // Test Voice Button
+                Button(
+                    onClick = {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        viewModel.testVoicePreview()
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = ReticleCyan),
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.fillMaxWidth().height(56.dp)
                 ) {
-                    Button(
-                        onClick = {
-                            viewModel.setEngineMode(VoiceEngineMode.OFFLINE_DEVICE)
-                        },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = if (engineMode == VoiceEngineMode.OFFLINE_DEVICE) SafeGreen else SurfaceCardElevated
-                        ),
-                        shape = RoundedCornerShape(6.dp),
-                        contentPadding = PaddingValues(horizontal = 4.dp, vertical = 4.dp),
-                        modifier = Modifier.weight(1f).heightIn(min = 40.dp)
-                    ) {
-                        Text("On-Device", fontSize = 11.sp, color = TextWhite, fontWeight = FontWeight.Bold)
-                    }
-
-                    Button(
-                        onClick = {
-                            viewModel.setEngineMode(VoiceEngineMode.HYBRID_SARVAM_AI, sarvamKeyInput)
-                        },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = if (engineMode == VoiceEngineMode.HYBRID_SARVAM_AI) SafeGreen else SurfaceCardElevated
-                        ),
-                        shape = RoundedCornerShape(6.dp),
-                        contentPadding = PaddingValues(horizontal = 4.dp, vertical = 4.dp),
-                        modifier = Modifier.weight(1f).heightIn(min = 40.dp)
-                    ) {
-                        Text("Sarvam AI", fontSize = 11.sp, color = TextWhite, fontWeight = FontWeight.Bold)
-                    }
-
-                    Button(
-                        onClick = {
-                            viewModel.setEngineMode(VoiceEngineMode.HYBRID_ELEVENLABS)
-                            viewModel.setElevenLabsApiKey(elevenLabsKeyInput)
-                        },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = if (engineMode == VoiceEngineMode.HYBRID_ELEVENLABS) SafeGreen else SurfaceCardElevated
-                        ),
-                        shape = RoundedCornerShape(6.dp),
-                        contentPadding = PaddingValues(horizontal = 4.dp, vertical = 4.dp),
-                        modifier = Modifier.weight(1f).heightIn(min = 40.dp)
-                    ) {
-                        Text("ElevenLabs", fontSize = 11.sp, color = TextWhite, fontWeight = FontWeight.Bold)
-                    }
-                }
-
-                if (engineMode == VoiceEngineMode.HYBRID_SARVAM_AI) {
-                    Spacer(modifier = Modifier.height(10.dp))
-                    OutlinedTextField(
-                        value = sarvamKeyInput,
-                        onValueChange = {
-                            sarvamKeyInput = it
-                            viewModel.setSarvamApiKey(it)
-                        },
-                        label = { Text("Sarvam AI API Key") },
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedTextColor = TextWhite,
-                            unfocusedTextColor = TextWhite,
-                            focusedBorderColor = SafeGreen,
-                            unfocusedBorderColor = AccentBorder
-                        ),
-                        shape = RoundedCornerShape(10.dp),
-                        modifier = Modifier.fillMaxWidth()
+                    Icon(imageVector = Icons.Default.PlayArrow, contentDescription = null, tint = BackgroundCharcoal, modifier = Modifier.size(22.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = if (locale == "hi") "आवाज का नमूना सुनें (Test Audio)" else "Play Spoken Voice Preview",
+                        color = BackgroundCharcoal,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 14.sp
                     )
-                }
-
-                if (engineMode == VoiceEngineMode.HYBRID_ELEVENLABS) {
-                    Spacer(modifier = Modifier.height(10.dp))
-                    OutlinedTextField(
-                        value = elevenLabsKeyInput,
-                        onValueChange = {
-                            elevenLabsKeyInput = it
-                            viewModel.setElevenLabsApiKey(it)
-                        },
-                        label = { Text("ElevenLabs API Key") },
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedTextColor = TextWhite,
-                            unfocusedTextColor = TextWhite,
-                            focusedBorderColor = SafeGreen,
-                            unfocusedBorderColor = AccentBorder
-                        ),
-                        shape = RoundedCornerShape(10.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                // Test Voice Button & System Settings Button
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Button(
-                        onClick = {
-                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                            viewModel.testVoicePreview()
-                        },
-                        colors = ButtonDefaults.buttonColors(containerColor = ReticleCyan),
-                        shape = RoundedCornerShape(8.dp),
-                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp),
-                        modifier = Modifier.weight(1f).heightIn(min = 44.dp)
-                    ) {
-                        Icon(imageVector = Icons.Default.PlayArrow, contentDescription = null, tint = BackgroundCharcoal, modifier = Modifier.size(16.dp))
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(
-                            text = if (locale == "hi") "आवाज सुनें" else "Test Voice",
-                            color = BackgroundCharcoal,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 12.sp
-                        )
-                    }
-
-                    Button(
-                        onClick = {
-                            viewModel.ttsManager.openTtsSystemSettings(context)
-                        },
-                        colors = ButtonDefaults.buttonColors(containerColor = SurfaceCardElevated),
-                        shape = RoundedCornerShape(8.dp),
-                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp),
-                        modifier = Modifier.weight(1f).heightIn(min = 44.dp)
-                    ) {
-                        Icon(imageVector = Icons.Default.Settings, contentDescription = null, tint = TextWhite, modifier = Modifier.size(16.dp))
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(
-                            text = "TTS Settings",
-                            color = TextWhite,
-                            fontSize = 12.sp
-                        )
-                    }
                 }
             }
         }
