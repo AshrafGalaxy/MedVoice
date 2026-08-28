@@ -98,4 +98,17 @@ interface MedicineDao {
 
     @Query("DELETE FROM medication_logs")
     suspend fun clearAllLogs()
+
+    @Query("""
+        SELECT m.id, m.brand_name, m.dosage_form, m.strength_mg, m.primary_salt_id, 
+               m.is_high_risk, m.vernacular_usage_en, m.vernacular_usage_hi, m.vernacular_usage_mr,
+               s.salt_name, s.therapeutic_class, s.max_daily_dose_mg, s.active_window_hours,
+               s.vernacular_salt_desc_en, s.vernacular_salt_desc_hi, s.vernacular_salt_desc_mr,
+               r.rule_code, r.food_relation, r.vernacular_instruction_en, r.vernacular_instruction_hi, r.vernacular_instruction_mr
+        FROM medicines m
+        JOIN active_salts s ON m.primary_salt_id = s.id
+        JOIN food_temporal_rules r ON m.timing_rule_id = r.id
+        ORDER BY m.id ASC
+    """)
+    suspend fun getAllMedicines(): List<MedicineQueryResult>
 }

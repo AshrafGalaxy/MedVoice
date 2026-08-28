@@ -147,6 +147,8 @@ class FakeMedicineDao : MedicineDao {
     override suspend fun clearAllLogs() {
         logs.clear()
     }
+
+    override suspend fun getAllMedicines(): List<MedicineQueryResult> = sampleMedicines
 }
 
 class SafetyEngineTest {

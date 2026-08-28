@@ -51,7 +51,11 @@ class ScanViewModel(application: Application) : AndroidViewModel(application) {
     private val db = AppDatabase.getInstance(application)
     private val safetyEngine = SafetyEvaluationEngine(db.medicineDao())
     val ttsManager = VernacularTtsManager(application)
+    val aiEngine = com.medvoice.core.ai.AiPharmacologyEngine(application)
     private val prefs = application.getSharedPreferences("medvoice_prefs", android.content.Context.MODE_PRIVATE)
+
+    private val _allMedicines = MutableStateFlow<List<com.medvoice.core.data.local.dao.MedicineQueryResult>>(emptyList())
+    val allMedicines: StateFlow<List<com.medvoice.core.data.local.dao.MedicineQueryResult>> = _allMedicines.asStateFlow()
 
     private val _isOnboardingCompleted = MutableStateFlow(prefs.getBoolean("onboarding_done", true))
     val isOnboardingCompleted: StateFlow<Boolean> = _isOnboardingCompleted.asStateFlow()
@@ -93,6 +97,17 @@ class ScanViewModel(application: Application) : AndroidViewModel(application) {
 
     init {
         refreshLogs()
+        loadAllMedicines()
+    }
+
+    fun loadAllMedicines() {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                _allMedicines.value = db.medicineDao().getAllMedicines()
+            } catch (e: Exception) {
+                Log.e("MedVoice_ScanVM", "Error loading master medicines", e)
+            }
+        }
     }
 
     fun completeOnboarding() {
