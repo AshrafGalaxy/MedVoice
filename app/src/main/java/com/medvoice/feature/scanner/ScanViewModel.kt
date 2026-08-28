@@ -80,8 +80,8 @@ class ScanViewModel(application: Application) : AndroidViewModel(application) {
     private val _isDailyRemindersEnabled = MutableStateFlow(prefs.getBoolean("daily_reminders_enabled", true))
     val isDailyRemindersEnabled: StateFlow<Boolean> = _isDailyRemindersEnabled.asStateFlow()
 
-    private val _allMedicines = MutableStateFlow<List<MedicineEntity>>(emptyList())
-    val allMedicines: StateFlow<List<MedicineEntity>> = _allMedicines.asStateFlow()
+    private val _cabinetMedicines = MutableStateFlow<List<MedicineEntity>>(emptyList())
+    val cabinetMedicines: StateFlow<List<MedicineEntity>> = _cabinetMedicines.asStateFlow()
 
     private val _isOnboardingCompleted = MutableStateFlow(prefs.getBoolean("onboarding_done", true))
     val isOnboardingCompleted: StateFlow<Boolean> = _isOnboardingCompleted.asStateFlow()
@@ -108,7 +108,7 @@ class ScanViewModel(application: Application) : AndroidViewModel(application) {
     val caregiverPhone: StateFlow<String> = _caregiverPhone.asStateFlow()
 
     private val _patientName = MutableStateFlow(
-        prefs.getString("patient_name", "")?.takeIf { it.isNotBlank() && !it.contains("Dadi", ignoreCase = true) } ?: "Senior Patient"
+        prefs.getString("patient_name", "")?.takeIf { it.isNotBlank() } ?: "Senior Patient"
     )
     val patientName: StateFlow<String> = _patientName.asStateFlow()
 
@@ -154,13 +154,13 @@ class ScanViewModel(application: Application) : AndroidViewModel(application) {
         }
 
         refreshLogs()
-        loadAllMedicines()
+        loadCabinetMedicines()
     }
 
-    fun loadAllMedicines() {
+    fun loadCabinetMedicines() {
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                _allMedicines.value = db.medicineDao().getAllMedicines()
+                _cabinetMedicines.value = db.medicineDao().getCabinetMedicines()
             } catch (e: Exception) {
                 Log.e("MedVoice_ScanVM", "Error loading master medicines", e)
             }
@@ -243,7 +243,7 @@ class ScanViewModel(application: Application) : AndroidViewModel(application) {
 
     fun testVoicePreview() {
         val currentName = _patientName.value.trim().takeIf {
-            it.isNotBlank() && !it.contains("Dadi", ignoreCase = true) && it != "Senior Patient"
+            it.isNotBlank() && it != "Senior Patient"
         }
         val sampleText = if (_selectedLocale.value == "hi") {
             if (currentName != null) {
@@ -452,7 +452,7 @@ class ScanViewModel(application: Application) : AndroidViewModel(application) {
                         dosageForm = state.dosageForm
                     )
                     db.medicineDao().insertMedicine(medEntity)
-                    loadAllMedicines()
+                    loadCabinetMedicines()
                     Log.d("MedVoice_ScanVM", "Auto-persisted discovered medicine to Room DB: $brandName")
                 } catch (e: Exception) {
                     Log.e("MedVoice_ScanVM", "Could not auto-persist discovered medicine", e)

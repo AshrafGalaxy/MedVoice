@@ -55,11 +55,11 @@ import com.medvoice.ui.theme.TextWhite
 @Composable
 fun CabinetScreen(viewModel: ScanViewModel) {
     val locale by viewModel.selectedLocale.collectAsState()
-    val allMedicines by viewModel.allMedicines.collectAsState()
+    val cabinetMedicines by viewModel.cabinetMedicines.collectAsState()
     val haptic = LocalHapticFeedback.current
     var searchQuery by remember { mutableStateOf("") }
 
-    val filteredList = allMedicines.filter {
+    val filteredList = cabinetMedicines.filter {
         it.brandName.contains(searchQuery, ignoreCase = true) ||
                 it.rawComposition.contains(searchQuery, ignoreCase = true) ||
                 it.manufacturer?.contains(searchQuery, ignoreCase = true) == true

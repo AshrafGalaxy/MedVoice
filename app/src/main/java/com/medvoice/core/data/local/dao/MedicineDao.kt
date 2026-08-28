@@ -27,8 +27,13 @@ interface MedicineDao {
     @Query("SELECT * FROM medicines WHERE id = :id LIMIT 1")
     suspend fun getMedicineById(id: Long): MedicineEntity?
 
-    @Query("SELECT * FROM medicines ORDER BY id ASC LIMIT 50")
-    suspend fun getAllMedicines(): List<MedicineEntity>
+    @Query("""
+        SELECT DISTINCT m.* 
+        FROM medicines m 
+        INNER JOIN medication_logs l ON m.id = l.medicine_id
+        ORDER BY m.brand_name ASC
+    """)
+    suspend fun getCabinetMedicines(): List<MedicineEntity>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertMedicine(medicine: MedicineEntity): Long

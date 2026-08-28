@@ -25,7 +25,7 @@ class MedicationAlarmScheduler(private val context: Context) {
 
     private fun getPatientPrefixEn(): String {
         val name = prefs.getString("patient_name", "")?.trim() ?: ""
-        return if (name.isNotBlank() && !name.contains("Dadi", ignoreCase = true) && name != "Senior Patient") {
+        return if (name.isNotBlank() && name != "Senior Patient") {
             "$name, "
         } else {
             ""
@@ -34,7 +34,7 @@ class MedicationAlarmScheduler(private val context: Context) {
 
     private fun getPatientPrefixHi(): String {
         val name = prefs.getString("patient_name", "")?.trim() ?: ""
-        return if (name.isNotBlank() && !name.contains("Dadi", ignoreCase = true) && name != "Senior Patient") {
+        return if (name.isNotBlank() && name != "Senior Patient") {
             "$name जी, "
         } else {
             ""

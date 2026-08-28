@@ -18,10 +18,10 @@ class MedicationBootReceiver : BroadcastReceiver() {
             CoroutineScope(Dispatchers.IO).launch {
                 try {
                     val db = AppDatabase.getInstance(context)
-                    val allMedicines = db.medicineDao().getAllMedicines()
+                    val cabinetMedicines = db.medicineDao().getCabinetMedicines()
                     val scheduler = MedicationAlarmScheduler(context)
-                    scheduler.scheduleRemindersForMedicines(allMedicines)
-                    Log.d("MedVoice_BootReceiver", "Restored alarms for ${allMedicines.size} active prescriptions")
+                    scheduler.scheduleRemindersForMedicines(cabinetMedicines)
+                    Log.d("MedVoice_BootReceiver", "Restored alarms for ${cabinetMedicines.size} active prescriptions")
                 } catch (e: Exception) {
                     Log.e("MedVoice_BootReceiver", "Failed to restore alarms from database, fallback to defaults", e)
                     val scheduler = MedicationAlarmScheduler(context)

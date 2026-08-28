@@ -77,7 +77,7 @@ fun OnboardingScreen(
     var currentStep by remember { mutableIntStateOf(1) }
     var patientNameInput by remember {
         mutableStateOf(
-            viewModel.patientName.value.takeIf { !it.contains("Dadi", ignoreCase = true) && it != "Senior Patient" } ?: ""
+            viewModel.patientName.value.takeIf { it != "Senior Patient" } ?: ""
         )
     }
     var phoneInput by remember { mutableStateOf(viewModel.caregiverPhone.value.ifBlank { "+919876543210" }) }

@@ -76,7 +76,7 @@ fun HomeScreen(viewModel: ScanViewModel) {
     val caregiverPhone by viewModel.caregiverPhone.collectAsState()
     val patientName by viewModel.patientName.collectAsState()
     val logs by viewModel.medicationLogs.collectAsState()
-    val allMedicines by viewModel.allMedicines.collectAsState()
+    val cabinetMedicines by viewModel.cabinetMedicines.collectAsState()
     val context = LocalContext.current
     val haptic = LocalHapticFeedback.current
 
@@ -197,53 +197,8 @@ fun HomeScreen(viewModel: ScanViewModel) {
             }
         }
 
-        Spacer(modifier = Modifier.height(12.dp))
-
-        // 3. Dynamic Safety Status Guardrail (Clean, Compact, Uncluttered)
-        if (conflictCount == 0) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(SafeGreen.copy(alpha = 0.10f), RoundedCornerShape(10.dp))
-                    .border(1.dp, SafeGreen.copy(alpha = 0.30f), RoundedCornerShape(10.dp))
-                    .padding(horizontal = 12.dp, vertical = 9.dp)
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.weight(1f, fill = false)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Shield,
-                            contentDescription = "Active Guard",
-                            tint = SafeGreen,
-                            modifier = Modifier.size(17.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = if (locale == "hi") "सुरक्षा गार्ड: 0 परस्परविरोध" else "Active Guard: 0 Drug Hazards",
-                            style = MaterialTheme.typography.titleSmall.copy(
-                                color = SafeGreen,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 13.sp
-                            )
-                        )
-                    }
-                    Text(
-                        text = if (locale == "hi") "100% ऑन-डिवाइस" else "100% On-Device",
-                        style = MaterialTheme.typography.bodySmall.copy(
-                            color = TextMuted,
-                            fontWeight = FontWeight.Medium,
-                            fontSize = 11.sp
-                        )
-                    )
-                }
-            }
-        } else {
+        if (conflictCount > 0) {
+            Spacer(modifier = Modifier.height(12.dp))
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -415,7 +370,7 @@ fun HomeScreen(viewModel: ScanViewModel) {
         Spacer(modifier = Modifier.height(8.dp))
 
         // Render Dynamic Medication Schedule from Room
-        if (allMedicines.isEmpty()) {
+        if (cabinetMedicines.isEmpty()) {
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(containerColor = SurfaceCardDark),
@@ -435,7 +390,7 @@ fun HomeScreen(viewModel: ScanViewModel) {
                 }
             }
         } else {
-            allMedicines.take(4).forEach { med ->
+            cabinetMedicines.take(4).forEach { med ->
                 val isTaken = logs.any { it.scannedBrandName.contains(med.brandName.split(" ").first(), ignoreCase = true) && it.status == "TAKEN" }
                 val formLabel = when (med.dosageForm) {
                     "EYE_DROPS" -> if (locale == "hi") "👁️ आई ड्रॉप्स" else "👁️ Eye Drops"
