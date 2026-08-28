@@ -544,11 +544,11 @@ fun SettingsScreen(viewModel: ScanViewModel) {
 
                 // Interactive AI Testing Sandbox
                 var testOcrInput by remember { mutableStateOf("CADILA GLYCOMET SR 500 METFORMIN HCL 500MG IP") }
-                var aiTestResult by remember { mutableStateOf<com.medvoice.core.ai.ExtractedMedicineComposition?>(null) }
+                var aiTestResult by remember { mutableStateOf<com.medvoice.core.ai.MedGemmaSafetyResult?>(null) }
                 val coroutineScope = androidx.compose.runtime.rememberCoroutineScope()
 
                 Text(
-                    text = "🧪 Live MedGemma AI Testing Sandbox:",
+                    text = "🧪 Live MedGemma AI Clinical Reasoning Sandbox:",
                     color = ReticleCyan,
                     fontWeight = FontWeight.Bold,
                     fontSize = 13.sp
@@ -560,14 +560,14 @@ fun SettingsScreen(viewModel: ScanViewModel) {
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
-                    listOf("Glycomet 500", "Brufen 400", "Thyronorm 50", "Combiflam").forEach { preset ->
+                    listOf("Glycomet 500", "Brufen 400", "Thyronorm 50", "Eye Drops").forEach { preset ->
                         Button(
                             onClick = {
                                 testOcrInput = when (preset) {
                                     "Glycomet 500" -> "CADILA GLYCOMET SR 500 METFORMIN HCL 500MG IP EXP 12/28"
                                     "Brufen 400" -> "ABBOTT BRUFEN 400MG IBUPROFEN IP TABLETS"
                                     "Thyronorm 50" -> "CIPLA THYRONORM 50 MCG LEVOTHYROXINE SODIUM"
-                                    else -> "COMBIFLAM SANOFI IBUPROFEN 400MG + PARACETAMOL 325MG"
+                                    else -> "MARITIMA EUPHRASIA EYE DROPS 10ML OPHTHALMIC STERILE"
                                 }
                             },
                             colors = ButtonDefaults.buttonColors(containerColor = SurfaceCardElevated),
@@ -585,7 +585,7 @@ fun SettingsScreen(viewModel: ScanViewModel) {
                 OutlinedTextField(
                     value = testOcrInput,
                     onValueChange = { testOcrInput = it },
-                    label = { Text("Raw OCR Text Input") },
+                    label = { Text("Raw OCR Formulation / Blister Pack Text") },
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedTextColor = TextWhite,
                         unfocusedTextColor = TextWhite,
@@ -602,7 +602,12 @@ fun SettingsScreen(viewModel: ScanViewModel) {
                     onClick = {
                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                         coroutineScope.launch {
-                            aiTestResult = viewModel.aiEngine.parsePrescriptionText(testOcrInput)
+                            aiTestResult = viewModel.medGemmaOrchestrator.evaluateSafety(
+                                scannedText = testOcrInput,
+                                matchedMedicine = null,
+                                recentLogs = emptyList(),
+                                locale = locale
+                            )
                         }
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = ReticleCyan),
@@ -612,7 +617,7 @@ fun SettingsScreen(viewModel: ScanViewModel) {
                 ) {
                     Icon(imageVector = Icons.Default.FlashOn, contentDescription = null, tint = BackgroundCharcoal, modifier = Modifier.size(16.dp))
                     Spacer(modifier = Modifier.width(6.dp))
-                    Text("⚡ Run MedGemma AI Extraction", color = BackgroundCharcoal, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                    Text("⚡ Run MedGemma AI Clinical Reasoning", color = BackgroundCharcoal, fontWeight = FontWeight.Bold, fontSize = 13.sp)
                 }
 
                 aiTestResult?.let { res ->
@@ -625,10 +630,12 @@ fun SettingsScreen(viewModel: ScanViewModel) {
                             .padding(10.dp)
                     ) {
                         Column {
-                            Text("✓ AI Extracted Brand: ${res.brandName}", color = SafeGreen, fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                            Text("✓ Active Salts: ${res.activeSalts.joinToString(", ")}", color = TextWhite, fontSize = 12.sp)
-                            Text("✓ Strength: ${res.strengthMg} mg | Form: ${res.dosageForm}", color = ReticleCyan, fontSize = 12.sp)
-                            Text("✓ Class: ${res.therapeuticCategory} (Confidence: ${(res.confidenceScore * 100).toInt()}%)", color = TextMuted, fontSize = 11.sp)
+                            Text("✓ Verdict: ${res.safetyVerdict.name}", color = SafeGreen, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                            Text("✓ Brand: ${res.brandName} (${res.dosageForm})", color = TextWhite, fontSize = 12.sp)
+                            Text("✓ Active Salts: ${res.parsedSalts.joinToString(", ")}", color = ReticleCyan, fontSize = 12.sp)
+                            Text("✓ Food Timing: ${res.foodTimingRule.name} • Class: ${res.therapeuticClass}", color = TextMuted, fontSize = 11.sp)
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text("🗣️ Spoken Audio: ${res.spokenVernacularText}", color = TextWhite, fontSize = 12.sp)
                         }
                     }
                 }

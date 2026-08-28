@@ -5,18 +5,12 @@ import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import com.medvoice.core.data.local.dao.MedicineDao
-import com.medvoice.core.data.local.entity.ActiveSaltEntity
-import com.medvoice.core.data.local.entity.FoodRuleEntity
 import com.medvoice.core.data.local.entity.MedicationLogEntity
 import com.medvoice.core.data.local.entity.MedicineEntity
-import com.medvoice.core.data.local.entity.SaltContraindicationEntity
 
 @Database(
     entities = [
         MedicineEntity::class,
-        ActiveSaltEntity::class,
-        FoodRuleEntity::class,
-        SaltContraindicationEntity::class,
         MedicationLogEntity::class
     ],
     version = 1,

@@ -421,7 +421,7 @@ fun ScanScreen(viewModel: ScanViewModel) {
                             Button(
                                 onClick = {
                                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                    viewModel.confirmDoseTaken(state.medicineId, state.saltId, state.brandName)
+                                    viewModel.confirmDoseTaken(state.medicineId, state.saltId, state.brandName, state.rawComposition)
                                 },
                                 modifier = Modifier
                                     .fillMaxWidth()

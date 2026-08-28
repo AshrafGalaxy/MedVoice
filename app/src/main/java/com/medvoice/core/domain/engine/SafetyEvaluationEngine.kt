@@ -1,51 +1,66 @@
 package com.medvoice.core.domain.engine
 
-import com.medvoice.core.ai.AiPharmacologyEngine
-import com.medvoice.core.data.local.dao.ContraindicationResult
+import com.medvoice.core.ai.FoodTimingRule
+import com.medvoice.core.ai.MedGemmaOrchestrator
+import com.medvoice.core.ai.MedGemmaSafetyResult
+import com.medvoice.core.ai.SafetyVerdict
 import com.medvoice.core.data.local.dao.MedicineDao
-import com.medvoice.core.data.local.dao.MedicineQueryResult
-import com.medvoice.core.data.local.entity.MedicationLogEntity
-import kotlin.math.absoluteValue
+import com.medvoice.core.data.local.entity.MedicineEntity
 
 sealed class SafetyEvaluationResult {
     data class SafeToTake(
-        val medicine: MedicineQueryResult,
-        val vernacularInstructionEn: String,
-        val vernacularInstructionHi: String,
-        val vernacularInstructionMr: String
-    ) : SafetyEvaluationResult()
+        val safetyResult: MedGemmaSafetyResult,
+        val matchedMedicine: MedicineEntity?
+    ) : SafetyEvaluationResult() {
+        val brandName: String get() = safetyResult.brandName
+        val saltName: String get() = safetyResult.parsedSalts.joinToString(", ")
+        val instructionText: String get() = safetyResult.spokenVernacularText
+        val displayTitle: String get() = safetyResult.displayTitle
+        val dosageForm: String get() = safetyResult.dosageForm
+    }
 
     data class DuplicateDoseBlocked(
-        val medicine: MedicineQueryResult,
-        val recentLog: MedicationLogEntity,
-        val spokenAlertEn: String,
-        val spokenAlertHi: String,
-        val spokenAlertMr: String
-    ) : SafetyEvaluationResult()
+        val safetyResult: MedGemmaSafetyResult,
+        val matchedMedicine: MedicineEntity?
+    ) : SafetyEvaluationResult() {
+        val brandName: String get() = safetyResult.brandName
+        val saltName: String get() = safetyResult.parsedSalts.joinToString(", ")
+        val alertMessage: String get() = safetyResult.spokenVernacularText
+        val clinicalReason: String get() = safetyResult.clinicalReason
+    }
 
     data class CriticalInteractionBlocked(
-        val medicine: MedicineQueryResult,
-        val conflict: ContraindicationResult
-    ) : SafetyEvaluationResult()
+        val safetyResult: MedGemmaSafetyResult,
+        val matchedMedicine: MedicineEntity?
+    ) : SafetyEvaluationResult() {
+        val brandName: String get() = safetyResult.brandName
+        val saltName: String get() = safetyResult.parsedSalts.joinToString(", ")
+        val conflictRisk: String get() = safetyResult.clinicalReason
+        val alertMessage: String get() = safetyResult.spokenVernacularText
+    }
 
     data object NoMatchFound : SafetyEvaluationResult()
 }
 
 class SafetyEvaluationEngine(
     private val medicineDao: MedicineDao,
-    private val aiPharmacologyEngine: AiPharmacologyEngine = AiPharmacologyEngine()
+    private val medGemmaOrchestrator: MedGemmaOrchestrator = MedGemmaOrchestrator()
 ) {
-    suspend fun evaluateCandidateTokens(tokens: List<String>): SafetyEvaluationResult {
+    suspend fun evaluateCandidateTokens(
+        tokens: List<String>,
+        locale: String = "hi"
+    ): SafetyEvaluationResult {
         if (tokens.isEmpty()) return SafetyEvaluationResult.NoMatchFound
 
-        var matchedMedicine: MedicineQueryResult? = null
+        var matchedMedicine: MedicineEntity? = null
 
-        // Step 1: Fast Lookup in Local SQLite Pharmacopeia DB (<5ms)
+        // Step 1: Two-Tier Lookup - Try Fast FTS5 Catalog Search (<5ms)
         for (rawToken in tokens) {
             val words = rawToken.split(Regex("[\\s,/\\-]+")).filter { it.length >= 3 }
             val cleanLine = rawToken.replace(Regex("[^a-zA-Z0-9]"), "").trim()
             if (cleanLine.length >= 3) {
-                matchedMedicine = medicineDao.findMedicineByPrefix(cleanLine)
+                matchedMedicine = medicineDao.searchCatalog(cleanLine)
+                    ?: medicineDao.findMedicineByPrefix(cleanLine)
                     ?: medicineDao.findMedicineByFts(cleanLine)
                 if (matchedMedicine != null) break
             }
@@ -53,7 +68,8 @@ class SafetyEvaluationEngine(
             for (word in words) {
                 val cleanWord = word.replace(Regex("[^a-zA-Z0-9]"), "").trim()
                 if (cleanWord.length >= 3) {
-                    matchedMedicine = medicineDao.findMedicineByPrefix(cleanWord)
+                    matchedMedicine = medicineDao.searchCatalog(cleanWord)
+                        ?: medicineDao.findMedicineByPrefix(cleanWord)
                         ?: medicineDao.findMedicineByFts(cleanWord)
                     if (matchedMedicine != null) break
                 }
@@ -61,91 +77,39 @@ class SafetyEvaluationEngine(
             if (matchedMedicine != null) break
         }
 
-        // Step 2: Graceful Universal Fallback - Invoke AI Pharmacology Engine for Unlisted Real Medicines
-        if (matchedMedicine == null) {
-            val combinedOcr = tokens.joinToString("\n")
-            val composition = aiPharmacologyEngine.parsePrescriptionText(combinedOcr)
-            if (composition != null && composition.brandName.isNotBlank() && composition.brandName != "Scanned Medicine") {
-                val dynamicSaltId = composition.activeSalts.firstOrNull()?.uppercase()?.hashCode()?.toLong()?.absoluteValue?.coerceAtLeast(1000L) ?: 9999L
-                val dynamicMedId = composition.brandName.uppercase().hashCode().toLong().absoluteValue.coerceAtLeast(1000L)
-
-                matchedMedicine = MedicineQueryResult(
-                    id = dynamicMedId,
-                    brand_name = composition.brandName,
-                    dosage_form = composition.dosageForm,
-                    strength_mg = composition.strengthMg,
-                    primary_salt_id = dynamicSaltId,
-                    is_high_risk = false,
-                    vernacular_usage_en = composition.therapeuticCategory,
-                    vernacular_usage_hi = composition.therapeuticCategory,
-                    vernacular_usage_mr = composition.therapeuticCategory,
-                    salt_name = composition.activeSalts.joinToString(", "),
-                    therapeutic_class = composition.therapeuticCategory,
-                    max_daily_dose_mg = 2000.0,
-                    active_window_hours = 8.0,
-                    vernacular_salt_desc_en = composition.therapeuticCategory,
-                    vernacular_salt_desc_hi = composition.therapeuticCategory,
-                    vernacular_salt_desc_mr = composition.therapeuticCategory,
-                    rule_code = composition.dosageForm,
-                    food_relation = "AS_DIRECTED",
-                    vernacular_instruction_en = composition.vernacularInstructionEn,
-                    vernacular_instruction_hi = composition.vernacularInstructionHi,
-                    vernacular_instruction_mr = composition.vernacularInstructionMr
-                )
-            }
+        // Determine Scanned Chemical Formulation Text
+        val scannedFormulation = if (matchedMedicine != null) {
+            "${matchedMedicine.brandName} - ${matchedMedicine.rawComposition}"
+        } else {
+            // Zero-Shot Fallback: Treat raw OCR block directly as chemical formulation
+            tokens.joinToString("\n")
         }
 
-        if (matchedMedicine == null) {
-            return SafetyEvaluationResult.NoMatchFound
-        }
+        // Query active 24-hour medication logs
+        val threshold24h = System.currentTimeMillis() - (24 * 3600 * 1000L)
+        val recentLogs = medicineDao.getRecentLogs(threshold24h)
 
-        val currentTime = System.currentTimeMillis()
-        val activeWindowMillis = (matchedMedicine.active_window_hours * 3600 * 1000).toLong()
-        val threshold = currentTime - activeWindowMillis
-
-        // Step 3: Check for Duplicate Active Molecule within therapeutic window
-        val recentDose = medicineDao.getRecentActiveDose(matchedMedicine.primary_salt_id, threshold)
-        if (recentDose != null) {
-            val saltName = matchedMedicine.salt_name
-            val previousBrand = recentDose.scannedBrandName
-            val spokenAlertEn = "Warning! Stop! You already took $previousBrand ($saltName). Do not take this medicine again."
-            val spokenAlertHi = "सावधान! रुकिए! आप $previousBrand ($saltName) पहले ही ले चुके हैं। इसे दोबारा न लें।"
-            val spokenAlertMr = "सावधान! थांबा! तुम्ही आधीच $previousBrand ($saltName) घेतले आहे. हे औषध पुन्हा घेऊ नका."
-
-            return SafetyEvaluationResult.DuplicateDoseBlocked(
-                medicine = matchedMedicine,
-                recentLog = recentDose,
-                spokenAlertEn = spokenAlertEn,
-                spokenAlertHi = spokenAlertHi,
-                spokenAlertMr = spokenAlertMr
-            )
-        }
-
-        // Step 4: Check Drug-to-Drug Interaction Matrix
-        val contraindication = medicineDao.checkContraindications(matchedMedicine.primary_salt_id, threshold)
-        if (contraindication != null) {
-            return SafetyEvaluationResult.CriticalInteractionBlocked(
-                medicine = matchedMedicine,
-                conflict = contraindication
-            )
-        }
-
-        // Step 5: Formulate Validated Safe Guidance
-        val instructionEn = listOf(matchedMedicine.vernacular_usage_en, matchedMedicine.vernacular_instruction_en)
-            .filter { it.isNotBlank() }
-            .joinToString(" ")
-        val instructionHi = listOf(matchedMedicine.vernacular_usage_hi, matchedMedicine.vernacular_instruction_hi)
-            .filter { it.isNotBlank() }
-            .joinToString(" ")
-        val instructionMr = listOf(matchedMedicine.vernacular_usage_mr, matchedMedicine.vernacular_instruction_mr)
-            .filter { it.isNotBlank() }
-            .joinToString(" ")
-
-        return SafetyEvaluationResult.SafeToTake(
-            medicine = matchedMedicine,
-            vernacularInstructionEn = instructionEn,
-            vernacularInstructionHi = instructionHi,
-            vernacularInstructionMr = instructionMr
+        // Step 2: MedGemma Clinical Reasoning Engine
+        val safetyResult = medGemmaOrchestrator.evaluateSafety(
+            scannedText = scannedFormulation,
+            matchedMedicine = matchedMedicine,
+            recentLogs = recentLogs,
+            locale = locale
         )
+
+        return when (safetyResult.safetyVerdict) {
+            SafetyVerdict.SAFE_TO_TAKE -> SafetyEvaluationResult.SafeToTake(
+                safetyResult = safetyResult,
+                matchedMedicine = matchedMedicine
+            )
+            SafetyVerdict.DUPLICATE_OVERDOSE_BLOCKED -> SafetyEvaluationResult.DuplicateDoseBlocked(
+                safetyResult = safetyResult,
+                matchedMedicine = matchedMedicine
+            )
+            SafetyVerdict.CRITICAL_INTERACTION_BLOCKED -> SafetyEvaluationResult.CriticalInteractionBlocked(
+                safetyResult = safetyResult,
+                matchedMedicine = matchedMedicine
+            )
+        }
     }
 }

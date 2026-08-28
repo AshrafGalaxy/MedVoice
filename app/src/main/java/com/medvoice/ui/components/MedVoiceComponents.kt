@@ -59,27 +59,18 @@ fun MedVoiceLogo(
                 brush = Brush.linearGradient(
                     colors = listOf(SafeGreen, ReticleCyan)
                 ),
-                shape = RoundedCornerShape((size * 0.28).dp)
-            )
-            .border(
-                width = 1.dp,
-                color = Color.White.copy(alpha = 0.25f),
-                shape = RoundedCornerShape((size * 0.28).dp)
+                shape = RoundedCornerShape((size * 0.22).dp) // Slightly tighter corners for a "Mark" look
             ),
         contentAlignment = Alignment.Center
     ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.Center
-        ) {
-            Text(
-                text = "MV",
-                color = TextWhite,
-                fontWeight = FontWeight.Black,
-                fontSize = (size * 0.44).sp,
-                letterSpacing = (-0.5).sp
-            )
-        }
+        Text(
+            text = "MV",
+            color = Color.White,
+            fontWeight = FontWeight.ExtraBold,
+            fontSize = (size * 0.5).sp, // Larger text relative to box
+            letterSpacing = (-1.5).sp, // Tighter tracking for a "Mark" feel
+            lineHeight = 0.sp
+        )
     }
 }
 

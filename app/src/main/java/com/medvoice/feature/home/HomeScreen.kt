@@ -456,9 +456,13 @@ fun HomeScreen(viewModel: ScanViewModel) {
             }
         } else {
             allMedicines.take(4).forEach { med ->
-                val isTaken = logs.any { it.scannedBrandName.contains(med.brand_name.split(" ").first(), ignoreCase = true) && it.status == "TAKEN" }
-                val instruction = if (locale == "hi") med.vernacular_instruction_hi else med.vernacular_instruction_en
-                val timing = if (locale == "hi") med.rule_code else med.rule_code
+                val isTaken = logs.any { it.scannedBrandName.contains(med.brandName.split(" ").first(), ignoreCase = true) && it.status == "TAKEN" }
+                val formLabel = when (med.dosageForm) {
+                    "EYE_DROPS" -> if (locale == "hi") "👁️ आई ड्रॉप्स" else "👁️ Eye Drops"
+                    "SYRUP" -> if (locale == "hi") "🧪 सिरप" else "🧪 Syrup"
+                    "GEL" -> if (locale == "hi") "🧴 जेल" else "🧴 Gel"
+                    else -> if (locale == "hi") "💊 गोली (Tablet)" else "💊 Tablet"
+                }
 
                 Card(
                     modifier = Modifier
@@ -478,7 +482,7 @@ fun HomeScreen(viewModel: ScanViewModel) {
                     ) {
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                text = timing,
+                                text = formLabel,
                                 style = MaterialTheme.typography.bodySmall.copy(
                                     color = if (isTaken) SafeGreen else ReticleCyan,
                                     fontWeight = FontWeight.Bold,
@@ -486,7 +490,7 @@ fun HomeScreen(viewModel: ScanViewModel) {
                                 )
                             )
                             Text(
-                                text = med.brand_name,
+                                text = med.brandName,
                                 style = MaterialTheme.typography.titleMedium.copy(
                                     color = TextWhite,
                                     fontWeight = FontWeight.Bold,
@@ -496,7 +500,7 @@ fun HomeScreen(viewModel: ScanViewModel) {
                                 overflow = TextOverflow.Ellipsis
                             )
                             Text(
-                                text = instruction,
+                                text = med.rawComposition,
                                 style = MaterialTheme.typography.bodySmall.copy(
                                     color = TextMuted,
                                     fontSize = 12.sp

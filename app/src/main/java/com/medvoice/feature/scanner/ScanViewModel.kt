@@ -6,13 +6,12 @@ import androidx.core.content.edit
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.medvoice.core.ai.AiEngineTier
+import com.medvoice.core.ai.MedGemmaOrchestrator
 import com.medvoice.core.audio.VernacularTtsManager
 import com.medvoice.core.audio.VoiceConfirmationListener
 import com.medvoice.core.audio.VoiceEngineMode
 import com.medvoice.core.audio.VoiceGender
 import com.medvoice.core.data.local.AppDatabase
-import com.medvoice.core.data.local.entity.ActiveSaltEntity
-import com.medvoice.core.data.local.entity.FoodRuleEntity
 import com.medvoice.core.data.local.entity.MedicationLogEntity
 import com.medvoice.core.data.local.entity.MedicineEntity
 import com.medvoice.core.domain.engine.SafetyEvaluationEngine
@@ -33,10 +32,11 @@ sealed class ScanUiState {
         val brandName: String,
         val saltName: String,
         val instructionText: String,
-        val medicineId: Long,
-        val saltId: Long,
-        val timingRuleCode: String,
-        val dosageForm: String = "TABLET"
+        val medicineId: Long = 0L,
+        val saltId: Long = 0L,
+        val timingRuleCode: String = "AFTER_FOOD",
+        val dosageForm: String = "TABLET",
+        val rawComposition: String = ""
     ) : ScanUiState()
 
     data class DuplicateAlert(
@@ -57,8 +57,9 @@ sealed class ScanUiState {
 class ScanViewModel(application: Application) : AndroidViewModel(application) {
 
     private val db = AppDatabase.getInstance(application)
+    val medGemmaOrchestrator = MedGemmaOrchestrator(application)
     val aiEngine = com.medvoice.core.ai.AiPharmacologyEngine(application)
-    private val safetyEngine = SafetyEvaluationEngine(db.medicineDao(), aiEngine)
+    private val safetyEngine = SafetyEvaluationEngine(db.medicineDao(), medGemmaOrchestrator)
     val ttsManager = VernacularTtsManager(application)
     val alarmScheduler = com.medvoice.core.scheduler.MedicationAlarmScheduler(application)
     private val prefs = application.getSharedPreferences("medvoice_prefs", android.content.Context.MODE_PRIVATE)
@@ -69,8 +70,8 @@ class ScanViewModel(application: Application) : AndroidViewModel(application) {
     private val _isDailyRemindersEnabled = MutableStateFlow(prefs.getBoolean("daily_reminders_enabled", true))
     val isDailyRemindersEnabled: StateFlow<Boolean> = _isDailyRemindersEnabled.asStateFlow()
 
-    private val _allMedicines = MutableStateFlow<List<com.medvoice.core.data.local.dao.MedicineQueryResult>>(emptyList())
-    val allMedicines: StateFlow<List<com.medvoice.core.data.local.dao.MedicineQueryResult>> = _allMedicines.asStateFlow()
+    private val _allMedicines = MutableStateFlow<List<MedicineEntity>>(emptyList())
+    val allMedicines: StateFlow<List<MedicineEntity>> = _allMedicines.asStateFlow()
 
     private val _isOnboardingCompleted = MutableStateFlow(prefs.getBoolean("onboarding_done", true))
     val isOnboardingCompleted: StateFlow<Boolean> = _isOnboardingCompleted.asStateFlow()
@@ -98,9 +99,9 @@ class ScanViewModel(application: Application) : AndroidViewModel(application) {
 
     private val _engineMode = MutableStateFlow(
         try {
-            VoiceEngineMode.valueOf(prefs.getString("engine_mode", "OFFLINE_DEVICE") ?: "OFFLINE_DEVICE")
+            VoiceEngineMode.valueOf(prefs.getString("engine_mode", "HYBRID_SARVAM_AI") ?: "HYBRID_SARVAM_AI")
         } catch (_: Exception) {
-            VoiceEngineMode.OFFLINE_DEVICE
+            VoiceEngineMode.HYBRID_SARVAM_AI
         }
     )
     val engineMode: StateFlow<VoiceEngineMode> = _engineMode.asStateFlow()
@@ -132,23 +133,29 @@ class ScanViewModel(application: Application) : AndroidViewModel(application) {
             confirmDoseTaken(
                 medicineId = currentState.medicineId,
                 saltId = currentState.saltId,
-                brandName = currentState.brandName
+                brandName = currentState.brandName,
+                rawComposition = currentState.rawComposition
             )
         }
     }
 
     init {
-        // Hydrate audio & AI manager persistent states
+        // Hydrate audio & MedGemma persistent configuration
         ttsManager.selectedGender = _selectedGender.value
         ttsManager.speechRate = _speechRate.value
         ttsManager.engineMode = _engineMode.value
-        ttsManager.sarvamApiKey = prefs.getString("sarvam_api_key", "") ?: ""
+        ttsManager.sarvamApiKey = prefs.getString("sarvam_api_key", "sk_jvbee2rt_gMpyMqxJ6Xl4IROW8BoWnXHN") ?: "sk_jvbee2rt_gMpyMqxJ6Xl4IROW8BoWnXHN"
         ttsManager.elevenLabsApiKey = prefs.getString("elevenlabs_api_key", "") ?: ""
+        medGemmaOrchestrator.cloudMedGemmaApiKey = prefs.getString("cloud_medgemma_api_key", "") ?: ""
+        medGemmaOrchestrator.allowCloudPrivacyEgress = prefs.getBoolean("cloud_privacy_egress", false)
         aiEngine.cloudMedGemmaApiKey = prefs.getString("cloud_medgemma_api_key", "") ?: ""
         aiEngine.allowCloudPrivacyEgress = prefs.getBoolean("cloud_privacy_egress", false)
         try {
-            aiEngine.activeTier = AiEngineTier.valueOf(prefs.getString("ai_tier", "ON_DEVICE_MEDGEMMA_INT4") ?: "ON_DEVICE_MEDGEMMA_INT4")
+            val tier = AiEngineTier.valueOf(prefs.getString("ai_tier", "ON_DEVICE_MEDGEMMA_INT4") ?: "ON_DEVICE_MEDGEMMA_INT4")
+            medGemmaOrchestrator.activeTier = tier
+            aiEngine.activeTier = tier
         } catch (_: Exception) {
+            medGemmaOrchestrator.activeTier = AiEngineTier.ON_DEVICE_MEDGEMMA_INT4
             aiEngine.activeTier = AiEngineTier.ON_DEVICE_MEDGEMMA_INT4
         }
 
@@ -217,16 +224,19 @@ class ScanViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun setCloudMedGemmaApiKey(key: String) {
+        medGemmaOrchestrator.cloudMedGemmaApiKey = key
         aiEngine.cloudMedGemmaApiKey = key
         prefs.edit { putString("cloud_medgemma_api_key", key) }
     }
 
     fun setCloudPrivacyEgress(allow: Boolean) {
+        medGemmaOrchestrator.allowCloudPrivacyEgress = allow
         aiEngine.allowCloudPrivacyEgress = allow
         prefs.edit { putBoolean("cloud_privacy_egress", allow) }
     }
 
     fun setAiTier(tier: AiEngineTier) {
+        medGemmaOrchestrator.activeTier = tier
         aiEngine.activeTier = tier
         prefs.edit { putString("ai_tier", tier.name) }
     }
@@ -291,7 +301,7 @@ class ScanViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch(Dispatchers.IO) {
             isProcessingEvaluation = true
             try {
-                val result = safetyEngine.evaluateCandidateTokens(tokens)
+                val result = safetyEngine.evaluateCandidateTokens(tokens, _selectedLocale.value)
                 handleEvaluationResult(result)
             } catch (e: Exception) {
                 Log.e("MedVoice_ScanVM", "Error evaluating tokens", e)
@@ -304,24 +314,19 @@ class ScanViewModel(application: Application) : AndroidViewModel(application) {
     private suspend fun handleEvaluationResult(result: SafetyEvaluationResult) {
         when (result) {
             is SafetyEvaluationResult.SafeToTake -> {
-                val instruction = when (_selectedLocale.value) {
-                    "hi" -> result.vernacularInstructionHi
-                    "mr" -> result.vernacularInstructionMr
-                    else -> result.vernacularInstructionEn
-                }
-
                 _uiState.value = ScanUiState.SafeDetected(
-                    brandName = result.medicine.brand_name,
-                    saltName = result.medicine.salt_name,
-                    instructionText = instruction,
-                    medicineId = result.medicine.id,
-                    saltId = result.medicine.primary_salt_id,
-                    timingRuleCode = result.medicine.rule_code,
-                    dosageForm = result.medicine.dosage_form
+                    brandName = result.brandName,
+                    saltName = result.saltName,
+                    instructionText = result.instructionText,
+                    medicineId = result.matchedMedicine?.id ?: 0L,
+                    saltId = result.matchedMedicine?.id ?: 0L,
+                    timingRuleCode = result.safetyResult.foodTimingRule.name,
+                    dosageForm = result.dosageForm,
+                    rawComposition = result.matchedMedicine?.rawComposition ?: result.saltName
                 )
 
                 // Speak vernacular dosage instruction aloud, then start hands-free voice listener
-                ttsManager.speak(instruction, _selectedLocale.value) {
+                ttsManager.speak(result.instructionText, _selectedLocale.value) {
                     voiceConfirmationListener.startListening(_selectedLocale.value) { isListening ->
                         _isVoiceListening.value = isListening
                     }
@@ -329,27 +334,21 @@ class ScanViewModel(application: Application) : AndroidViewModel(application) {
             }
 
             is SafetyEvaluationResult.DuplicateDoseBlocked -> {
-                val alert = when (_selectedLocale.value) {
-                    "hi" -> result.spokenAlertHi
-                    "mr" -> result.spokenAlertMr
-                    else -> result.spokenAlertEn
-                }
-
                 _uiState.value = ScanUiState.DuplicateAlert(
-                    brandName = result.medicine.brand_name,
-                    saltName = result.medicine.salt_name,
-                    alertMessage = alert,
-                    previousBrand = result.recentLog.scannedBrandName
+                    brandName = result.brandName,
+                    saltName = result.saltName,
+                    alertMessage = result.alertMessage,
+                    previousBrand = result.brandName
                 )
 
-                ttsManager.speak(alert, _selectedLocale.value)
+                ttsManager.speak(result.alertMessage, _selectedLocale.value)
 
                 // Log blocked duplicate attempt
                 db.medicineDao().logIntake(
                     MedicationLogEntity(
-                        medicineId = result.medicine.id,
-                        scannedBrandName = result.medicine.brand_name,
-                        resolvedSaltId = result.medicine.primary_salt_id,
+                        medicineId = result.matchedMedicine?.id ?: 0L,
+                        scannedText = result.brandName,
+                        parsedSalts = result.saltName,
                         status = "BLOCKED_DUPLICATE",
                         voiceConfirmed = false,
                         sosSmsDispatched = true
@@ -358,38 +357,34 @@ class ScanViewModel(application: Application) : AndroidViewModel(application) {
                 refreshLogs()
 
                 // Dispatch Offline SOS SMS to Caregiver
-                SmsDispatcher.sendEmergencyAlert(
-                    context = getApplication(),
-                    recipientPhone = _caregiverPhone.value,
-                    patientName = _patientName.value,
-                    scannedDrug = result.medicine.brand_name,
-                    conflictDetails = "DUPLICATE DOSE: Already took ${result.recentLog.scannedBrandName} (${result.medicine.salt_name})"
-                )
+                if (result.safetyResult.isEmergencyAlert) {
+                    SmsDispatcher.sendEmergencyAlert(
+                        context = getApplication(),
+                        recipientPhone = _caregiverPhone.value,
+                        patientName = _patientName.value,
+                        scannedDrug = result.brandName,
+                        conflictDetails = "DUPLICATE DOSE: ${result.clinicalReason}"
+                    )
+                }
             }
 
             is SafetyEvaluationResult.CriticalInteractionBlocked -> {
-                val alert = when (_selectedLocale.value) {
-                    "hi" -> result.conflict.spoken_warning_hi
-                    "mr" -> result.conflict.spoken_warning_mr
-                    else -> result.conflict.spoken_warning_en
-                }
-
                 _uiState.value = ScanUiState.ConflictAlert(
-                    brandName = result.medicine.brand_name,
-                    conflictRisk = result.conflict.clinical_risk_mechanism,
-                    alertMessage = alert,
-                    severityLevel = result.conflict.severity_level
+                    brandName = result.brandName,
+                    conflictRisk = result.conflictRisk,
+                    alertMessage = result.alertMessage,
+                    severityLevel = "CRITICAL"
                 )
 
-                ttsManager.speak(alert, _selectedLocale.value)
+                ttsManager.speak(result.alertMessage, _selectedLocale.value)
 
                 // Log conflict attempt
                 db.medicineDao().logIntake(
                     MedicationLogEntity(
-                        medicineId = result.medicine.id,
-                        scannedBrandName = result.medicine.brand_name,
-                        resolvedSaltId = result.medicine.primary_salt_id,
-                        status = "CONFLICT_WARNED",
+                        medicineId = result.matchedMedicine?.id ?: 0L,
+                        scannedText = result.brandName,
+                        parsedSalts = result.saltName,
+                        status = "BLOCKED_INTERACTION",
                         voiceConfirmed = false,
                         sosSmsDispatched = true
                     )
@@ -397,13 +392,15 @@ class ScanViewModel(application: Application) : AndroidViewModel(application) {
                 refreshLogs()
 
                 // Dispatch Offline SOS SMS to Caregiver
-                SmsDispatcher.sendEmergencyAlert(
-                    context = getApplication(),
-                    recipientPhone = _caregiverPhone.value,
-                    patientName = _patientName.value,
-                    scannedDrug = result.medicine.brand_name,
-                    conflictDetails = "CRITICAL DRUG CONFLICT: ${result.conflict.clinical_risk_mechanism}"
-                )
+                if (result.safetyResult.isEmergencyAlert) {
+                    SmsDispatcher.sendEmergencyAlert(
+                        context = getApplication(),
+                        recipientPhone = _caregiverPhone.value,
+                        patientName = _patientName.value,
+                        scannedDrug = result.brandName,
+                        conflictDetails = "CRITICAL DRUG CONFLICT: ${result.conflictRisk}"
+                    )
+                }
             }
 
             is SafetyEvaluationResult.NoMatchFound -> {
@@ -412,7 +409,12 @@ class ScanViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun confirmDoseTaken(medicineId: Long, saltId: Long, brandName: String) {
+    fun confirmDoseTaken(
+        medicineId: Long,
+        saltId: Long,
+        brandName: String,
+        rawComposition: String = ""
+    ) {
         voiceConfirmationListener.stopListening()
         _isVoiceListening.value = false
 
@@ -422,44 +424,11 @@ class ScanViewModel(application: Application) : AndroidViewModel(application) {
             if (existing == null && _uiState.value is ScanUiState.SafeDetected) {
                 val state = _uiState.value as ScanUiState.SafeDetected
                 try {
-                    val saltEntity = ActiveSaltEntity(
-                        id = saltId,
-                        saltName = state.saltName,
-                        therapeuticClass = "Prescription Medication",
-                        maxDailyDoseMg = 2000.0,
-                        halfLifeHours = 6.0,
-                        activeWindowHours = 8.0,
-                        vernacularSaltDescEn = state.saltName,
-                        vernacularSaltDescHi = state.saltName,
-                        vernacularSaltDescMr = state.saltName
-                    )
-                    db.medicineDao().insertSalt(saltEntity)
-
-                    val ruleEntity = FoodRuleEntity(
-                        id = if (state.timingRuleCode == "EMPTY_STOMACH") 1 else 2,
-                        ruleCode = state.timingRuleCode,
-                        foodRelation = "WITH_OR_AFTER_FOOD",
-                        leadTimeMinutes = 0,
-                        dietaryRestriction = null,
-                        vernacularInstructionEn = state.instructionText,
-                        vernacularInstructionHi = state.instructionText,
-                        vernacularInstructionMr = state.instructionText
-                    )
-                    db.medicineDao().insertTimingRule(ruleEntity)
-
                     val medEntity = MedicineEntity(
-                        id = medicineId,
                         brandName = brandName,
+                        rawComposition = if (rawComposition.isNotBlank()) rawComposition else state.saltName,
                         manufacturer = "Verified Pharmaceutical",
-                        dosageForm = state.dosageForm,
-                        strengthMg = 500.0,
-                        primarySaltId = saltId,
-                        secondarySaltId = null,
-                        timingRuleId = ruleEntity.id,
-                        isHighRisk = false,
-                        vernacularUsageEn = state.instructionText,
-                        vernacularUsageHi = state.instructionText,
-                        vernacularUsageMr = state.instructionText
+                        dosageForm = state.dosageForm
                     )
                     db.medicineDao().insertMedicine(medEntity)
                     loadAllMedicines()
@@ -472,8 +441,8 @@ class ScanViewModel(application: Application) : AndroidViewModel(application) {
             db.medicineDao().logIntake(
                 MedicationLogEntity(
                     medicineId = medicineId,
-                    scannedBrandName = brandName,
-                    resolvedSaltId = saltId,
+                    scannedText = brandName,
+                    parsedSalts = rawComposition.ifBlank { brandName },
                     status = "TAKEN",
                     voiceConfirmed = true
                 )

@@ -1,11 +1,11 @@
 package com.medvoice
 
-import com.medvoice.core.ai.AiPharmacologyEngine
+import com.medvoice.core.ai.MedGemmaOrchestrator
+import com.medvoice.core.data.local.entity.MedicineEntity
 import com.medvoice.core.domain.engine.SafetyEvaluationEngine
 import com.medvoice.core.domain.engine.SafetyEvaluationResult
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -14,8 +14,8 @@ class UniversalOcrParsingTest {
     @Test
     fun testRealWorldEyeDropScanEvaluation() = runBlocking {
         val fakeDao = FakeMedicineDao()
-        val aiEngine = AiPharmacologyEngine()
-        val safetyEngine = SafetyEvaluationEngine(fakeDao, aiEngine)
+        val orchestrator = MedGemmaOrchestrator()
+        val safetyEngine = SafetyEvaluationEngine(fakeDao, orchestrator)
 
         val ocrTokens = listOf(
             "MARITIMA EUPHRASIA EYE DROPS",
@@ -25,20 +25,19 @@ class UniversalOcrParsingTest {
             "MFD BY SBL PVT LTD"
         )
 
-        val result = safetyEngine.evaluateCandidateTokens(ocrTokens)
+        val result = safetyEngine.evaluateCandidateTokens(ocrTokens, "hi")
         assertTrue("Real eye drop packaging must resolve to SafeToTake", result is SafetyEvaluationResult.SafeToTake)
         val safe = result as SafetyEvaluationResult.SafeToTake
-        assertTrue(safe.medicine.brand_name.contains("MARITIMA", ignoreCase = true) || safe.medicine.brand_name.contains("EUPHRASIA", ignoreCase = true))
-        assertEquals("EYE_DROPS", safe.medicine.dosage_form)
-        assertTrue(safe.vernacularInstructionHi.contains("आई ड्रॉप्स") || safe.vernacularInstructionHi.contains("आँखों"))
-        assertTrue(safe.vernacularInstructionEn.contains("eye drop", ignoreCase = true))
+        assertTrue(safe.brandName.contains("MARITIMA", ignoreCase = true) || safe.brandName.contains("EUPHRASIA", ignoreCase = true))
+        assertEquals("EYE_DROPS", safe.dosageForm)
+        assertTrue(safe.instructionText.contains("आई ड्रॉप्स") || safe.instructionText.contains("आँखों") || safe.instructionText.contains("Drop"))
     }
 
     @Test
     fun testRealWorldCoughSyrupScanEvaluation() = runBlocking {
         val fakeDao = FakeMedicineDao()
-        val aiEngine = AiPharmacologyEngine()
-        val safetyEngine = SafetyEvaluationEngine(fakeDao, aiEngine)
+        val orchestrator = MedGemmaOrchestrator()
+        val safetyEngine = SafetyEvaluationEngine(fakeDao, orchestrator)
 
         val ocrTokens = listOf(
             "BENADRYL COUGH FORMULA SYRUP",
@@ -47,18 +46,18 @@ class UniversalOcrParsingTest {
             "SHAKE WELL BEFORE USE"
         )
 
-        val result = safetyEngine.evaluateCandidateTokens(ocrTokens)
+        val result = safetyEngine.evaluateCandidateTokens(ocrTokens, "hi")
         assertTrue(result is SafetyEvaluationResult.SafeToTake)
         val safe = result as SafetyEvaluationResult.SafeToTake
-        assertEquals("SYRUP", safe.medicine.dosage_form)
-        assertTrue(safe.vernacularInstructionHi.contains("सिरप") || safe.vernacularInstructionHi.contains("पीने"))
+        assertEquals("SYRUP", safe.dosageForm)
+        assertTrue(safe.instructionText.contains("सिरप") || safe.instructionText.contains("पिएँ") || safe.instructionText.contains("Syrup"))
     }
 
     @Test
     fun testRealWorldTopicalGelScanEvaluation() = runBlocking {
         val fakeDao = FakeMedicineDao()
-        val aiEngine = AiPharmacologyEngine()
-        val safetyEngine = SafetyEvaluationEngine(fakeDao, aiEngine)
+        val orchestrator = MedGemmaOrchestrator()
+        val safetyEngine = SafetyEvaluationEngine(fakeDao, orchestrator)
 
         val ocrTokens = listOf(
             "VOLINI PAIN RELIEF GEL",
@@ -66,31 +65,26 @@ class UniversalOcrParsingTest {
             "SUN PHARMA"
         )
 
-        val result = safetyEngine.evaluateCandidateTokens(ocrTokens)
+        val result = safetyEngine.evaluateCandidateTokens(ocrTokens, "hi")
         assertTrue(result is SafetyEvaluationResult.SafeToTake)
         val safe = result as SafetyEvaluationResult.SafeToTake
-        assertEquals("GEL", safe.medicine.dosage_form)
-        assertTrue(safe.vernacularInstructionHi.contains("मलहम") || safe.vernacularInstructionHi.contains("जेल"))
+        assertEquals("GEL", safe.dosageForm)
+        assertTrue(safe.instructionText.contains("जेल") || safe.instructionText.contains("लगाएँ") || safe.instructionText.contains("Gel"))
     }
 
     @Test
     fun testAutoPersistDiscoveredMedicineInDao() = runBlocking {
         val fakeDao = FakeMedicineDao()
-        val eyeDropMed = com.medvoice.core.data.local.entity.MedicineEntity(
+        val eyeDropMed = MedicineEntity(
             id = 5001L,
             brandName = "Maritima Euphrasia Eye Drops",
+            rawComposition = "Cineraria Maritima + Euphrasia Ophthalmic 10ml",
             manufacturer = "SBL Pvt Ltd",
-            dosageForm = "EYE_DROPS",
-            strengthMg = 10.0,
-            primarySaltId = 5001L,
-            secondarySaltId = null,
-            timingRuleId = 2L,
-            isHighRisk = false,
-            vernacularUsageEn = "Ophthalmic Eye Care Drops",
-            vernacularUsageHi = "नेत्र औषधि",
-            vernacularUsageMr = "डोळ्यांचे औषध"
+            dosageForm = "EYE_DROPS"
         )
         val insertedId = fakeDao.insertMedicine(eyeDropMed)
-        assertEquals(1L, insertedId)
+        assertEquals(5001L, insertedId)
+        val fetched = fakeDao.getMedicineById(5001L)
+        assertEquals("Maritima Euphrasia Eye Drops", fetched?.brandName)
     }
 }

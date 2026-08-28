@@ -17,8 +17,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
-import androidx.compose.material.icons.filled.AccessTime
-import androidx.compose.material.icons.filled.Inventory2
 import androidx.compose.material.icons.filled.Medication
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Card
@@ -28,6 +26,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -44,8 +43,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.medvoice.feature.scanner.ScanViewModel
-import com.medvoice.ui.components.StatusBadge
-import com.medvoice.ui.components.StatusType
 import com.medvoice.ui.theme.AccentBorder
 import com.medvoice.ui.theme.BackgroundCharcoal
 import com.medvoice.ui.theme.ReticleCyan
@@ -63,9 +60,9 @@ fun CabinetScreen(viewModel: ScanViewModel) {
     var searchQuery by remember { mutableStateOf("") }
 
     val filteredList = allMedicines.filter {
-        it.brand_name.contains(searchQuery, ignoreCase = true) ||
-                it.salt_name.contains(searchQuery, ignoreCase = true) ||
-                it.therapeutic_class.contains(searchQuery, ignoreCase = true)
+        it.brandName.contains(searchQuery, ignoreCase = true) ||
+                it.rawComposition.contains(searchQuery, ignoreCase = true) ||
+                it.manufacturer?.contains(searchQuery, ignoreCase = true) == true
     }
 
     Column(
@@ -105,7 +102,7 @@ fun CabinetScreen(viewModel: ScanViewModel) {
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
-                    text = if (locale == "hi") "सक्रिय दवाएं और खुराक निर्देश" else "Active Prescriptions & Dosage Rules",
+                    text = if (locale == "hi") "सक्रिय दवाएं और रासायनिक संरचना" else "Active Prescriptions & Chemical Formulations",
                     style = MaterialTheme.typography.bodySmall.copy(
                         color = TextMuted,
                         fontSize = 12.sp
@@ -171,9 +168,15 @@ fun CabinetScreen(viewModel: ScanViewModel) {
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 items(filteredList) { item ->
-                    val timing = if (locale == "hi") item.vernacular_instruction_hi else item.vernacular_instruction_en
-                    val usage = if (locale == "hi") item.vernacular_usage_hi else item.vernacular_usage_en
-                    val spokenText = "${item.brand_name}। $usage $timing"
+                    val spokenText = "${item.brandName}। ${item.rawComposition}"
+                    val dosageFormLabel = when (item.dosageForm) {
+                        "EYE_DROPS" -> "👁️ Eye Drops"
+                        "SYRUP" -> "🧪 Syrup / Tonic"
+                        "GEL" -> "🧴 Topical Gel"
+                        "INHALER" -> "🫁 Inhaler"
+                        "CAPSULE" -> "💊 Capsule"
+                        else -> "💊 Tablet"
+                    }
 
                     Card(
                         modifier = Modifier.fillMaxWidth(),
@@ -192,7 +195,7 @@ fun CabinetScreen(viewModel: ScanViewModel) {
                             ) {
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text(
-                                        text = item.brand_name,
+                                        text = item.brandName,
                                         style = MaterialTheme.typography.titleMedium.copy(
                                             color = TextWhite,
                                             fontWeight = FontWeight.Bold,
@@ -202,16 +205,18 @@ fun CabinetScreen(viewModel: ScanViewModel) {
                                         overflow = TextOverflow.Ellipsis
                                     )
                                     Text(
-                                        text = "Active: ${item.salt_name}",
+                                        text = item.rawComposition,
                                         style = MaterialTheme.typography.bodySmall.copy(
                                             color = ReticleCyan,
                                             fontSize = 12.sp,
                                             fontWeight = FontWeight.SemiBold
                                         ),
-                                        maxLines = 1,
+                                        maxLines = 2,
                                         overflow = TextOverflow.Ellipsis
                                     )
                                 }
+
+                                Spacer(modifier = Modifier.width(8.dp))
 
                                 // Speaker Button: Read out dosage
                                 IconButton(
@@ -232,69 +237,36 @@ fun CabinetScreen(viewModel: ScanViewModel) {
                                 }
                             }
 
-                            Spacer(modifier = Modifier.height(6.dp))
+                            Spacer(modifier = Modifier.height(8.dp))
 
-                            // Timing Rule Banner
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .background(SurfaceCardElevated, RoundedCornerShape(6.dp))
-                                    .padding(horizontal = 8.dp, vertical = 5.dp)
-                            ) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(
-                                        imageVector = Icons.Default.AccessTime,
-                                        contentDescription = null,
-                                        tint = TextMuted,
-                                        modifier = Modifier.size(12.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(5.dp))
-                                    Text(
-                                        text = timing,
-                                        style = MaterialTheme.typography.bodySmall.copy(
-                                            color = TextWhite,
-                                            fontSize = 11.sp,
-                                            fontWeight = FontWeight.Medium
-                                        ),
-                                        maxLines = 2,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
-                                }
-                            }
-
-                            Spacer(modifier = Modifier.height(6.dp))
-
-                            // Therapeutic Class Tag
+                            // Dosage Form Pill & Manufacturer
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
+                                Surface(
+                                    color = SurfaceCardElevated,
+                                    shape = RoundedCornerShape(6.dp)
+                                ) {
+                                    Text(
+                                        text = dosageFormLabel,
+                                        color = TextWhite,
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                    )
+                                }
+
                                 Text(
-                                    text = "Class: ${item.therapeutic_class}",
+                                    text = item.manufacturer ?: "Standard Pharma",
                                     style = MaterialTheme.typography.bodySmall.copy(
                                         color = TextMuted,
                                         fontSize = 11.sp
-                                    )
+                                    ),
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
                                 )
-
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(
-                                        imageVector = Icons.Default.Inventory2,
-                                        contentDescription = null,
-                                        tint = SafeGreen,
-                                        modifier = Modifier.size(12.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(3.dp))
-                                    Text(
-                                        text = "Active Strip",
-                                        style = MaterialTheme.typography.bodySmall.copy(
-                                            color = SafeGreen,
-                                            fontWeight = FontWeight.Bold,
-                                            fontSize = 11.sp
-                                        )
-                                    )
-                                }
                             }
                         }
                     }
