@@ -136,7 +136,56 @@ class MedicationAlarmScheduler(private val context: Context) {
     }
 
     /**
-     * Schedule all active prescription reminders at once
+     * Dynamically schedule alarms for user's actual registered medications
+     */
+    fun scheduleRemindersForMedicines(medicines: List<com.medvoice.core.data.local.entity.MedicineEntity>) {
+        if (medicines.isEmpty()) {
+            scheduleAllReminders()
+            return
+        }
+
+        medicines.take(4).forEachIndexed { index, med ->
+            val (hour, minute, timing, enPhrase, hiPhrase) = when (index) {
+                0 -> {
+                    val isThyroid = med.brandName.contains("Thyro", ignoreCase = true) || med.rawComposition.contains("Levothyroxine", ignoreCase = true)
+                    if (isThyroid) {
+                        Tuple5(7, 0, "STRICT_EMPTY_STOMACH",
+                            "Dadi, it is 7:00 AM. Please take ${med.brandName} on an empty stomach with half glass water.",
+                            "दादीजी, सुबह के 7 बज गए हैं। कृपया ${med.brandName} खाली पेट आधे गिलास पानी के साथ लें।")
+                    } else {
+                        Tuple5(8, 30, "AFTER_MEAL",
+                            "Dadi, morning medicine time. Please take ${med.brandName} after breakfast.",
+                            "दादीजी, सुबह नाश्ते के बाद का समय। कृपया ${med.brandName} लें।")
+                    }
+                }
+                1 -> Tuple5(13, 30, "AFTER_MEAL",
+                    "Dadi, afternoon medicine time. Please take ${med.brandName} after lunch.",
+                    "दादीजी, दोपहर की दवा का समय। कृपया ${med.brandName} भोजन के बाद लें।")
+                2 -> Tuple5(20, 0, "BEFORE_MEAL",
+                    "Dadi, night medicine time. Please take ${med.brandName} before dinner.",
+                    "दादीजी, रात की दवा का समय। कृपया ${med.brandName} रात के खाने से पहले लें।")
+                else -> Tuple5(21, 30, "BEDTIME",
+                    "Dadi, bedtime medicine time. Please take ${med.brandName} before sleeping.",
+                    "दादीजी, सोने से पहले की दवा का समय। कृपया ${med.brandName} लें।")
+            }
+
+            val reminder = ScheduledReminder(
+                id = 200 + index,
+                medicineName = med.brandName,
+                hour = hour,
+                minute = minute,
+                timingRule = timing,
+                vernacularEn = enPhrase,
+                vernacularHi = hiPhrase
+            )
+            scheduleReminder(reminder)
+        }
+    }
+
+    private data class Tuple5(val hour: Int, val minute: Int, val timing: String, val en: String, val hi: String)
+
+    /**
+     * Schedule all default prescription reminders at once
      */
     fun scheduleAllReminders() {
         val reminders = getDefaultPrescriptionReminders()

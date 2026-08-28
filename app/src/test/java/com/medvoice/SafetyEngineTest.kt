@@ -51,18 +51,50 @@ class FakeMedicineDao : MedicineDao {
             rawComposition = "Cineraria Maritima + Euphrasia Ophthalmic 10ml",
             manufacturer = "SBL Pvt Ltd",
             dosageForm = "EYE_DROPS"
+        ),
+        MedicineEntity(
+            id = 13,
+            brandName = "Sorbitrate 10",
+            rawComposition = "Isosorbide Dinitrate 10mg",
+            manufacturer = "Abbott",
+            dosageForm = "TABLET"
+        ),
+        MedicineEntity(
+            id = 14,
+            brandName = "Telma 40",
+            rawComposition = "Telmisartan 40mg",
+            manufacturer = "Glenmark",
+            dosageForm = "TABLET"
+        ),
+        MedicineEntity(
+            id = 15,
+            brandName = "Warf 5",
+            rawComposition = "Warfarin Sodium 5mg",
+            manufacturer = "Cipla",
+            dosageForm = "TABLET"
+        ),
+        MedicineEntity(
+            id = 16,
+            brandName = "Cifran 500",
+            rawComposition = "Ciprofloxacin 500mg",
+            manufacturer = "Sun Pharma",
+            dosageForm = "TABLET"
         )
     )
 
     override suspend fun searchCatalog(query: String): MedicineEntity? {
         val q = query.trim().lowercase()
-        return sampleMedicines.firstOrNull {
-            it.brandName.lowercase().contains(q) || it.rawComposition.lowercase().contains(q)
+        if (q.length < 3) return null
+        return sampleMedicines.firstOrNull { med ->
+            val brandWords = med.brandName.lowercase().split(Regex("[\\s,/\\-]+"))
+            val saltWords = med.rawComposition.lowercase().split(Regex("[\\s,/\\-]+"))
+            brandWords.any { it == q || it.startsWith(q) } || saltWords.any { it == q || it.startsWith(q) }
         }
     }
 
     override suspend fun findMedicineByPrefix(query: String): MedicineEntity? {
         val q = query.trim().lowercase()
+        if (q.length < 3) return null
         return sampleMedicines.firstOrNull { it.brandName.lowercase().startsWith(q) }
     }
 
@@ -171,12 +203,152 @@ class SafetyEngineTest {
     }
 
     @Test
+    fun testFailClosedUnidentifiedGibberishScanBlocked() = runBlocking {
+        val fakeDao = FakeMedicineDao()
+        val orchestrator = MedGemmaOrchestrator()
+        val engine = SafetyEvaluationEngine(fakeDao, orchestrator)
+
+        // Random non-medicine barcode or noise text
+        val noiseTokens = listOf("ACME COURIER 12345", "DO NOT BEND", "TRACKING XYZ")
+        val result = engine.evaluateCandidateTokens(noiseTokens, "hi")
+
+        assertTrue("Unidentified noisy scan must fail closed to UnidentifiedMedicineBlocked", result is SafetyEvaluationResult.UnidentifiedMedicineBlocked)
+        val blocked = result as SafetyEvaluationResult.UnidentifiedMedicineBlocked
+        assertTrue(blocked.alertMessage.contains("पहचान") || blocked.alertMessage.contains("Unidentified"))
+    }
+
+    @Test
+    fun testExpiredMedicineBlocked() = runBlocking {
+        val fakeDao = FakeMedicineDao()
+        val orchestrator = MedGemmaOrchestrator()
+        val engine = SafetyEvaluationEngine(fakeDao, orchestrator)
+
+        // Packaging with expired date
+        val expiredTokens = listOf(
+            "CROXIN 500",
+            "PARACETAMOL 500MG",
+            "EXP 01/2021",
+            "BATCH B992"
+        )
+        val result = engine.evaluateCandidateTokens(expiredTokens, "hi")
+
+        assertTrue("Expired packaging must be blocked from consumption", result is SafetyEvaluationResult.ExpiredMedicineBlocked)
+        val expired = result as SafetyEvaluationResult.ExpiredMedicineBlocked
+        assertEquals(SafetyVerdict.EXPIRED_MEDICINE_BLOCKED, expired.safetyResult.safetyVerdict)
+        assertTrue(expired.alertMessage.contains("समाप्त") || expired.alertMessage.contains("एक्सपायर") || expired.alertMessage.contains("expired", ignoreCase = true))
+    }
+
+    @Test
+    fun testPolypharmacyNitrateSildenafilBlocked() = runBlocking {
+        val fakeDao = FakeMedicineDao()
+        val orchestrator = MedGemmaOrchestrator()
+        val engine = SafetyEvaluationEngine(fakeDao, orchestrator)
+
+        // Patient on Sorbitrate (Nitrate)
+        fakeDao.logIntake(
+            MedicationLogEntity(
+                medicineId = 13,
+                scannedText = "Sorbitrate 10",
+                parsedSalts = "Isosorbide Dinitrate",
+                intakeTimestamp = System.currentTimeMillis() - (1 * 3600 * 1000L),
+                status = "TAKEN"
+            )
+        )
+
+        // Patient scans Sildenafil (PDE5 Inhibitor)
+        val sildenafilTokens = listOf("MANFORCE 50", "SILDENAFIL CITRATE 50MG", "MANKIND")
+        val result = engine.evaluateCandidateTokens(sildenafilTokens, "hi")
+
+        assertTrue("Nitrate + Sildenafil must trigger fatal interaction block", result is SafetyEvaluationResult.CriticalInteractionBlocked)
+        val conflict = result as SafetyEvaluationResult.CriticalInteractionBlocked
+        assertTrue(conflict.conflictRisk.contains("hypotension", ignoreCase = true))
+    }
+
+    @Test
+    fun testPolypharmacyArbSpironolactoneBlocked() = runBlocking {
+        val fakeDao = FakeMedicineDao()
+        val orchestrator = MedGemmaOrchestrator()
+        val engine = SafetyEvaluationEngine(fakeDao, orchestrator)
+
+        // Patient on Telmisartan (ARB)
+        fakeDao.logIntake(
+            MedicationLogEntity(
+                medicineId = 14,
+                scannedText = "Telma 40",
+                parsedSalts = "Telmisartan",
+                intakeTimestamp = System.currentTimeMillis() - (2 * 3600 * 1000L),
+                status = "TAKEN"
+            )
+        )
+
+        // Patient scans Spironolactone (Aldactone)
+        val spiroTokens = listOf("ALDACTONE 25", "SPIRONOLACTONE 25MG", "RPG LIFE")
+        val result = engine.evaluateCandidateTokens(spiroTokens, "hi")
+
+        assertTrue("ARB + Spironolactone must trigger hyperkalemia hazard block", result is SafetyEvaluationResult.CriticalInteractionBlocked)
+        val conflict = result as SafetyEvaluationResult.CriticalInteractionBlocked
+        assertTrue(conflict.conflictRisk.contains("hyperkalemia", ignoreCase = true))
+    }
+
+    @Test
+    fun testPolypharmacyWarfarinNsaidBlocked() = runBlocking {
+        val fakeDao = FakeMedicineDao()
+        val orchestrator = MedGemmaOrchestrator()
+        val engine = SafetyEvaluationEngine(fakeDao, orchestrator)
+
+        // Patient on Warfarin anticoagulant
+        fakeDao.logIntake(
+            MedicationLogEntity(
+                medicineId = 15,
+                scannedText = "Warf 5",
+                parsedSalts = "Warfarin Sodium",
+                intakeTimestamp = System.currentTimeMillis() - (3 * 3600 * 1000L),
+                status = "TAKEN"
+            )
+        )
+
+        // Patient attempts to take Diclofenac
+        val nsaidTokens = listOf("VOVERAN 50", "DICLOFENAC SODIUM 50MG", "NOVARTIS")
+        val result = engine.evaluateCandidateTokens(nsaidTokens, "hi")
+
+        assertTrue("Warfarin + NSAID must trigger hemorrhage risk block", result is SafetyEvaluationResult.CriticalInteractionBlocked)
+        val conflict = result as SafetyEvaluationResult.CriticalInteractionBlocked
+        assertTrue(conflict.conflictRisk.contains("hemorrhage", ignoreCase = true))
+    }
+
+    @Test
+    fun testPolypharmacyQuinoloneAntacidBlocked() = runBlocking {
+        val fakeDao = FakeMedicineDao()
+        val orchestrator = MedGemmaOrchestrator()
+        val engine = SafetyEvaluationEngine(fakeDao, orchestrator)
+
+        // Patient took Gelusil antacid
+        fakeDao.logIntake(
+            MedicationLogEntity(
+                medicineId = 99,
+                scannedText = "Gelusil Antacid",
+                parsedSalts = "Aluminium Hydroxide + Magnesium",
+                intakeTimestamp = System.currentTimeMillis() - (1 * 3600 * 1000L),
+                status = "TAKEN"
+            )
+        )
+
+        // Patient scans Ciprofloxacin
+        val ciproTokens = listOf("CIFRAN 500", "CIPROFLOXACIN 500MG", "SUN PHARMA")
+        val result = engine.evaluateCandidateTokens(ciproTokens, "hi")
+
+        assertTrue("Quinolone + Antacid must trigger absorption chelation conflict", result is SafetyEvaluationResult.CriticalInteractionBlocked)
+        val conflict = result as SafetyEvaluationResult.CriticalInteractionBlocked
+        assertTrue(conflict.conflictRisk.contains("chelate", ignoreCase = true) || conflict.conflictRisk.contains("absorption", ignoreCase = true))
+    }
+
+    @Test
     fun testZeroShotUnlistedPackagingEvaluation() = runBlocking {
         val fakeDao = FakeMedicineDao()
         val orchestrator = MedGemmaOrchestrator()
         val engine = SafetyEvaluationEngine(fakeDao, orchestrator)
 
-        // Completely unlisted foreign / rare blister pack
+        // Completely unlisted real packaging
         val unlistedOcr = listOf(
             "NOVARTIS GALVUS MET",
             "VILDAGLIPTIN 50MG + METFORMIN HCL 500MG",

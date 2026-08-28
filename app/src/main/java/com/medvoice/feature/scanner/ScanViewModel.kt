@@ -52,6 +52,17 @@ sealed class ScanUiState {
         val alertMessage: String,
         val severityLevel: String
     ) : ScanUiState()
+
+    data class ExpiredAlert(
+        val brandName: String,
+        val expiryDate: String,
+        val alertMessage: String
+    ) : ScanUiState()
+
+    data class UnidentifiedAlert(
+        val alertMessage: String,
+        val clinicalReason: String
+    ) : ScanUiState()
 }
 
 class ScanViewModel(application: Application) : AndroidViewModel(application) {
@@ -146,8 +157,6 @@ class ScanViewModel(application: Application) : AndroidViewModel(application) {
         ttsManager.engineMode = _engineMode.value
         ttsManager.sarvamApiKey = prefs.getString("sarvam_api_key", "sk_jvbee2rt_gMpyMqxJ6Xl4IROW8BoWnXHN") ?: "sk_jvbee2rt_gMpyMqxJ6Xl4IROW8BoWnXHN"
         ttsManager.elevenLabsApiKey = prefs.getString("elevenlabs_api_key", "") ?: ""
-        medGemmaOrchestrator.cloudMedGemmaApiKey = prefs.getString("cloud_medgemma_api_key", "") ?: ""
-        medGemmaOrchestrator.allowCloudPrivacyEgress = prefs.getBoolean("cloud_privacy_egress", false)
         aiEngine.cloudMedGemmaApiKey = prefs.getString("cloud_medgemma_api_key", "") ?: ""
         aiEngine.allowCloudPrivacyEgress = prefs.getBoolean("cloud_privacy_egress", false)
         try {
@@ -224,13 +233,11 @@ class ScanViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun setCloudMedGemmaApiKey(key: String) {
-        medGemmaOrchestrator.cloudMedGemmaApiKey = key
         aiEngine.cloudMedGemmaApiKey = key
         prefs.edit { putString("cloud_medgemma_api_key", key) }
     }
 
     fun setCloudPrivacyEgress(allow: Boolean) {
-        medGemmaOrchestrator.allowCloudPrivacyEgress = allow
         aiEngine.allowCloudPrivacyEgress = allow
         prefs.edit { putBoolean("cloud_privacy_egress", allow) }
     }
@@ -401,6 +408,48 @@ class ScanViewModel(application: Application) : AndroidViewModel(application) {
                         conflictDetails = "CRITICAL DRUG CONFLICT: ${result.conflictRisk}"
                     )
                 }
+            }
+
+            is SafetyEvaluationResult.ExpiredMedicineBlocked -> {
+                _uiState.value = ScanUiState.ExpiredAlert(
+                    brandName = result.brandName,
+                    expiryDate = result.expiryDateString ?: "Expired",
+                    alertMessage = result.alertMessage
+                )
+
+                ttsManager.speak(result.alertMessage, _selectedLocale.value)
+
+                // Log expired drug attempt
+                db.medicineDao().logIntake(
+                    MedicationLogEntity(
+                        medicineId = result.matchedMedicine?.id ?: 0L,
+                        scannedText = result.brandName,
+                        parsedSalts = result.expiryDateString ?: "EXPIRED",
+                        status = "BLOCKED_EXPIRED",
+                        voiceConfirmed = false,
+                        sosSmsDispatched = true
+                    )
+                )
+                refreshLogs()
+
+                if (result.safetyResult.isEmergencyAlert) {
+                    SmsDispatcher.sendEmergencyAlert(
+                        context = getApplication(),
+                        recipientPhone = _caregiverPhone.value,
+                        patientName = _patientName.value,
+                        scannedDrug = result.brandName,
+                        conflictDetails = "EXPIRED DRUG DETECTED (EXP: ${result.expiryDateString}): Dose was automatically blocked."
+                    )
+                }
+            }
+
+            is SafetyEvaluationResult.UnidentifiedMedicineBlocked -> {
+                _uiState.value = ScanUiState.UnidentifiedAlert(
+                    alertMessage = result.alertMessage,
+                    clinicalReason = result.clinicalReason
+                )
+
+                ttsManager.speak(result.alertMessage, _selectedLocale.value)
             }
 
             is SafetyEvaluationResult.NoMatchFound -> {

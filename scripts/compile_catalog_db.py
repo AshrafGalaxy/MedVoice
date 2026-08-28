@@ -50,7 +50,7 @@ def build_database():
         brand_name TEXT NOT NULL COLLATE NOCASE,
         raw_composition TEXT NOT NULL,
         manufacturer TEXT,
-        dosage_form TEXT DEFAULT 'TABLET'
+        dosage_form TEXT NOT NULL
     );
 
     CREATE VIRTUAL TABLE IF NOT EXISTS medicines_fts USING fts5(
@@ -77,7 +77,7 @@ def build_database():
         identity_hash TEXT
     );
     INSERT OR REPLACE INTO room_master_table (id, identity_hash) 
-    VALUES(42, '1dbbbad710cad038638a39cf2ec24a2a');
+    VALUES(42, 'eb32bad5c1e563f6971e7e6fa20a64c9');
     """)
 
     batch = []

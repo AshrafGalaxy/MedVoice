@@ -368,41 +368,31 @@ fun HomeScreen(viewModel: ScanViewModel) {
                 }
 
                 if (isRemindersEnabled) {
-                    Spacer(modifier = Modifier.height(10.dp))
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Button(
+                        onClick = {
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            viewModel.triggerTestAlarm()
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = ReticleCyan),
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(56.dp)
                     ) {
-                        Text(
-                            text = if (locale == "hi") "अलार्म परीक्षण (2 सेकंड में बोलेगा):" else "Test Alarm (Plays in 2s):",
-                            color = TextMuted,
-                            fontSize = 11.sp
+                        Icon(
+                            imageVector = Icons.Default.PlayArrow,
+                            contentDescription = null,
+                            tint = BackgroundCharcoal,
+                            modifier = Modifier.size(22.dp)
                         )
-                        Button(
-                            onClick = {
-                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                viewModel.triggerTestAlarm()
-                            },
-                            colors = ButtonDefaults.buttonColors(containerColor = ReticleCyan),
-                            shape = RoundedCornerShape(8.dp),
-                            contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 10.dp, vertical = 4.dp),
-                            modifier = Modifier.height(32.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.PlayArrow,
-                                contentDescription = null,
-                                tint = BackgroundCharcoal,
-                                modifier = Modifier.size(14.dp)
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(
-                                text = if (locale == "hi") "परीक्षण अलार्म" else "Test Alarm",
-                                color = BackgroundCharcoal,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 11.sp
-                            )
-                        }
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = if (locale == "hi") "अलार्म आवाज का परीक्षण करें (Test Alarm 2s)" else "Test Medication Reminder Alarm",
+                            color = BackgroundCharcoal,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.sp
+                        )
                     }
                 }
             }
@@ -546,76 +536,74 @@ fun HomeScreen(viewModel: ScanViewModel) {
         Card(
             modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(containerColor = SurfaceCardDark),
-            shape = RoundedCornerShape(12.dp)
+            shape = RoundedCornerShape(14.dp)
         ) {
-            Column(modifier = Modifier.padding(12.dp)) {
+            Column(modifier = Modifier.padding(16.dp)) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Row(
-                        modifier = Modifier.weight(1f),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Phone,
-                            contentDescription = "Caregiver",
-                            tint = SafeGreen,
-                            modifier = Modifier.size(20.dp)
-                        )
-                        Spacer(modifier = Modifier.width(10.dp))
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = if (locale == "hi") "केयरगिवर आपातकालीन SOS" else "Caregiver Emergency SOS",
-                                style = MaterialTheme.typography.titleSmall.copy(
-                                    color = TextWhite,
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 13.sp
-                                )
-                            )
-                            Text(
-                                text = caregiverPhone,
-                                style = MaterialTheme.typography.bodySmall.copy(
-                                    color = TextMuted,
-                                    fontSize = 12.sp
-                                )
-                            )
-                        }
-                    }
-
-                    Button(
-                        onClick = {
-                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                            if (!hasSmsPermission) {
-                                smsPermissionLauncher.launch(Manifest.permission.SEND_SMS)
-                            } else {
-                                viewModel.testEmergencySms()
-                            }
-                        },
-                        colors = ButtonDefaults.buttonColors(containerColor = SurfaceCardElevated),
-                        shape = RoundedCornerShape(8.dp),
-                        modifier = Modifier.height(34.dp)
-                    ) {
+                    Icon(
+                        imageVector = Icons.Default.Phone,
+                        contentDescription = "Caregiver",
+                        tint = SafeGreen,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = if (!hasSmsPermission) {
-                                if (locale == "hi") "अनुमति दें" else "Grant SMS"
-                            } else {
-                                if (locale == "hi") "परीक्षण SOS" else "Test SOS"
-                            },
-                            color = if (!hasSmsPermission) AlertRed else TextWhite,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold
+                            text = if (locale == "hi") "केयरगिवर आपातकालीन SOS" else "Caregiver Emergency SOS",
+                            style = MaterialTheme.typography.titleMedium.copy(
+                                color = TextWhite,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 15.sp
+                            )
+                        )
+                        Text(
+                            text = caregiverPhone,
+                            style = MaterialTheme.typography.bodySmall.copy(
+                                color = TextMuted,
+                                fontSize = 13.sp
+                            )
                         )
                     }
                 }
 
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Button(
+                    onClick = {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        if (!hasSmsPermission) {
+                            smsPermissionLauncher.launch(Manifest.permission.SEND_SMS)
+                        } else {
+                            viewModel.testEmergencySms()
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = SurfaceCardElevated),
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(56.dp)
+                ) {
+                    Text(
+                        text = if (!hasSmsPermission) {
+                            if (locale == "hi") "SMS अनुमति दें (Grant Permission)" else "Grant Cellular SMS Permission"
+                        } else {
+                            if (locale == "hi") "परीक्षण SOS संदेश भेजें (Test Emergency SOS)" else "Dispatch Test Emergency SOS SMS"
+                        },
+                        color = if (!hasSmsPermission) AlertRed else TextWhite,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+
                 if (!hasSmsPermission) {
-                    Spacer(modifier = Modifier.height(6.dp))
+                    Spacer(modifier = Modifier.height(8.dp))
                     Text(
                         text = if (locale == "hi") "⚠️ आपातकालीन संदेश भेजने के लिए SMS अनुमति आवश्यक है।" else "⚠️ Cellular SMS permission required for emergency dispatch.",
                         color = AlertRed,
-                        fontSize = 11.sp
+                        fontSize = 12.sp
                     )
                 }
             }

@@ -1,11 +1,11 @@
 package com.medvoice.core.domain.engine
 
-import com.medvoice.core.ai.FoodTimingRule
 import com.medvoice.core.ai.MedGemmaOrchestrator
 import com.medvoice.core.ai.MedGemmaSafetyResult
 import com.medvoice.core.ai.SafetyVerdict
 import com.medvoice.core.data.local.dao.MedicineDao
 import com.medvoice.core.data.local.entity.MedicineEntity
+import java.util.Locale
 
 sealed class SafetyEvaluationResult {
     data class SafeToTake(
@@ -39,6 +39,23 @@ sealed class SafetyEvaluationResult {
         val alertMessage: String get() = safetyResult.spokenVernacularText
     }
 
+    data class ExpiredMedicineBlocked(
+        val safetyResult: MedGemmaSafetyResult,
+        val matchedMedicine: MedicineEntity?,
+        val expiryDateString: String?
+    ) : SafetyEvaluationResult() {
+        val brandName: String get() = safetyResult.brandName
+        val alertMessage: String get() = safetyResult.spokenVernacularText
+        val clinicalReason: String get() = safetyResult.clinicalReason
+    }
+
+    data class UnidentifiedMedicineBlocked(
+        val safetyResult: MedGemmaSafetyResult
+    ) : SafetyEvaluationResult() {
+        val alertMessage: String get() = safetyResult.spokenVernacularText
+        val clinicalReason: String get() = safetyResult.clinicalReason
+    }
+
     data object NoMatchFound : SafetyEvaluationResult()
 }
 
@@ -52,13 +69,28 @@ class SafetyEvaluationEngine(
     ): SafetyEvaluationResult {
         if (tokens.isEmpty()) return SafetyEvaluationResult.NoMatchFound
 
+        val combinedText = tokens.joinToString(" ")
+
+        // Step 1: Scan for Expiry Date across all tokens
+        val expiryInfo = ExpiryParser.parse(combinedText)
+
         var matchedMedicine: MedicineEntity? = null
 
-        // Step 1: Two-Tier Lookup - Try Fast FTS5 Catalog Search (<5ms)
+        // Step 2: Two-Tier Lookup - Try Fast SQLite FTS5 Catalog Search (<5ms)
+        val strengthRegex = Regex("^\\d+\\s*(?:mg|mcg|gm|g|ml|l|%|tab|cap|tabs|caps)?$", RegexOption.IGNORE_CASE)
+        val commonCounterIons = setOf(
+            "SODIUM", "HYDROCHLORIDE", "HCL", "POTASSIUM", "CALCIUM", "SUCCINATE",
+            "CITRATE", "MALEATE", "SULPHATE", "SULFATE", "PHOSPHATE", "ACETATE",
+            "NITRATE", "HYDRATE", "MESYLATE", "TARTRATE", "FUMARATE", "CHLORIDE",
+            "TABLET", "TABLETS", "CAPSULE", "CAPSULES", "SYRUP", "DROPS", "SOLUTION",
+            "SUSPENSION", "CREAM", "OINTMENT", "GEL", "EMULGEL", "INJECTION", "INHALER",
+            "LIMITED", "LTD", "PVT", "PHARMA", "LABORATORIES", "INDIA"
+        )
+
         for (rawToken in tokens) {
             val words = rawToken.split(Regex("[\\s,/\\-]+")).filter { it.length >= 3 }
-            val cleanLine = rawToken.replace(Regex("[^a-zA-Z0-9]"), "").trim()
-            if (cleanLine.length >= 3) {
+            val cleanLine = rawToken.replace(Regex("[^a-zA-Z0-9 ]"), "").trim()
+            if (cleanLine.length >= 3 && !cleanLine.matches(strengthRegex) && !cleanLine.all { it.isDigit() }) {
                 matchedMedicine = medicineDao.searchCatalog(cleanLine)
                     ?: medicineDao.findMedicineByPrefix(cleanLine)
                     ?: medicineDao.findMedicineByFts(cleanLine)
@@ -67,7 +99,12 @@ class SafetyEvaluationEngine(
 
             for (word in words) {
                 val cleanWord = word.replace(Regex("[^a-zA-Z0-9]"), "").trim()
-                if (cleanWord.length >= 3) {
+                val upperWord = cleanWord.uppercase(Locale.ROOT)
+                if (cleanWord.length >= 3 &&
+                    !cleanWord.matches(strengthRegex) &&
+                    !cleanWord.all { it.isDigit() } &&
+                    !commonCounterIons.contains(upperWord)
+                ) {
                     matchedMedicine = medicineDao.searchCatalog(cleanWord)
                         ?: medicineDao.findMedicineByPrefix(cleanWord)
                         ?: medicineDao.findMedicineByFts(cleanWord)
@@ -81,7 +118,6 @@ class SafetyEvaluationEngine(
         val scannedFormulation = if (matchedMedicine != null) {
             "${matchedMedicine.brandName} - ${matchedMedicine.rawComposition}"
         } else {
-            // Zero-Shot Fallback: Treat raw OCR block directly as chemical formulation
             tokens.joinToString("\n")
         }
 
@@ -89,12 +125,14 @@ class SafetyEvaluationEngine(
         val threshold24h = System.currentTimeMillis() - (24 * 3600 * 1000L)
         val recentLogs = medicineDao.getRecentLogs(threshold24h)
 
-        // Step 2: MedGemma Clinical Reasoning Engine
+        // Step 3: MedGemma Clinical Reasoning Engine with Expiry Guard
         val safetyResult = medGemmaOrchestrator.evaluateSafety(
             scannedText = scannedFormulation,
             matchedMedicine = matchedMedicine,
             recentLogs = recentLogs,
-            locale = locale
+            locale = locale,
+            expiryDate = expiryInfo.expiryDateString,
+            isExpired = expiryInfo.isExpired
         )
 
         return when (safetyResult.safetyVerdict) {
@@ -109,6 +147,14 @@ class SafetyEvaluationEngine(
             SafetyVerdict.CRITICAL_INTERACTION_BLOCKED -> SafetyEvaluationResult.CriticalInteractionBlocked(
                 safetyResult = safetyResult,
                 matchedMedicine = matchedMedicine
+            )
+            SafetyVerdict.EXPIRED_MEDICINE_BLOCKED -> SafetyEvaluationResult.ExpiredMedicineBlocked(
+                safetyResult = safetyResult,
+                matchedMedicine = matchedMedicine,
+                expiryDateString = expiryInfo.expiryDateString
+            )
+            SafetyVerdict.UNIDENTIFIED_MEDICINE_BLOCKED -> SafetyEvaluationResult.UnidentifiedMedicineBlocked(
+                safetyResult = safetyResult
             )
         }
     }

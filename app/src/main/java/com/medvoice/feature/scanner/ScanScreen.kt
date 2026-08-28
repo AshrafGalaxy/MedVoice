@@ -1,5 +1,11 @@
 package com.medvoice.feature.scanner
 
+import android.Manifest
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.net.Uri
+import android.provider.Settings
+import androidx.camera.core.CameraControl
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.Preview
@@ -20,7 +26,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -31,24 +36,28 @@ import androidx.compose.material.icons.filled.FlashOn
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
@@ -79,7 +88,24 @@ fun ScanScreen(viewModel: ScanViewModel) {
     val isVoiceListening by viewModel.isVoiceListening.collectAsState()
     val lifecycleOwner = LocalLifecycleOwner.current
     val haptic = LocalHapticFeedback.current
+    val context = LocalContext.current
     val cameraExecutor = remember { java.util.concurrent.Executors.newSingleThreadExecutor() }
+
+    var cameraControl by remember { mutableStateOf<CameraControl?>(null) }
+    var hasCameraPermission by remember {
+        mutableStateOf(
+            ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
+        )
+    }
+
+    // Reactive Torch Toggle
+    LaunchedEffect(isTorchOn, cameraControl) {
+        try {
+            cameraControl?.enableTorch(isTorchOn)
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
 
     Surface(
         modifier = Modifier.fillMaxSize(),
@@ -119,85 +145,88 @@ fun ScanScreen(viewModel: ScanViewModel) {
                             style = MaterialTheme.typography.titleMedium.copy(
                                 color = TextWhite,
                                 fontWeight = FontWeight.Bold,
-                                fontSize = 16.sp
+                                fontSize = 15.sp
                             ),
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
                         Text(
-                            text = if (locale == "hi") "पट्टी • ड्रॉप्स • सिरप • मलम" else "Strips • Drops • Tonics • Ointments",
+                            text = if (locale == "hi") "100% ऑन-डिवाइस क्लिनिकल एआई" else "100% On-Device Clinical AI",
                             style = MaterialTheme.typography.bodySmall.copy(
                                 color = SafeGreen,
-                                fontWeight = FontWeight.Medium,
+                                fontWeight = FontWeight.SemiBold,
                                 fontSize = 11.sp
-                            ),
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
+                            )
                         )
                     }
                 }
 
-                // Controls: Torch + Language Pills
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    IconButton(
-                        onClick = {
-                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                            viewModel.toggleTorch()
-                        },
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    // Flash Torch Toggle
+                    Box(
                         modifier = Modifier
-                            .size(36.dp)
-                            .background(SurfaceCardElevated, CircleShape)
+                            .size(38.dp)
+                            .background(
+                                if (isTorchOn) SafeGreen.copy(alpha = 0.25f) else SurfaceCardElevated,
+                                RoundedCornerShape(10.dp)
+                            )
+                            .clickable {
+                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                viewModel.toggleTorch()
+                            },
+                        contentAlignment = Alignment.Center
                     ) {
                         Icon(
                             imageVector = if (isTorchOn) Icons.Default.FlashOn else Icons.Default.FlashOff,
-                            contentDescription = "Torch",
-                            tint = if (isTorchOn) Color(0xFFFFD700) else TextMuted,
-                            modifier = Modifier.size(18.dp)
+                            contentDescription = "Torch Toggle",
+                            tint = if (isTorchOn) SafeGreen else TextMuted,
+                            modifier = Modifier.size(20.dp)
                         )
                     }
 
-                    Row(
-                        modifier = Modifier
-                            .background(SurfaceCardElevated, RoundedCornerShape(10.dp))
-                            .padding(3.dp),
-                        horizontalArrangement = Arrangement.spacedBy(2.dp)
+                    Spacer(modifier = Modifier.width(8.dp))
+
+                    // Language Quick Toggle Pill
+                    Surface(
+                        color = SurfaceCardElevated,
+                        shape = RoundedCornerShape(8.dp),
+                        modifier = Modifier.height(34.dp)
                     ) {
-                        Box(
-                            modifier = Modifier
-                                .background(
-                                    if (locale == "en") SafeGreen else Color.Transparent,
-                                    RoundedCornerShape(8.dp)
-                                )
-                                .clickable {
-                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                    viewModel.setLocale("en")
-                                }
-                                .padding(horizontal = 8.dp, vertical = 4.dp)
-                        ) {
-                            Text("EN", color = TextWhite, fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                        }
-                        Box(
-                            modifier = Modifier
-                                .background(
-                                    if (locale == "hi") SafeGreen else Color.Transparent,
-                                    RoundedCornerShape(8.dp)
-                                )
-                                .clickable {
-                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                    viewModel.setLocale("hi")
-                                }
-                                .padding(horizontal = 8.dp, vertical = 4.dp)
-                        ) {
-                            Text("हिंदी", color = TextWhite, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                modifier = Modifier
+                                    .background(
+                                        if (locale == "en") SafeGreen else Color.Transparent,
+                                        RoundedCornerShape(8.dp)
+                                    )
+                                    .clickable {
+                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                        viewModel.setLocale("en")
+                                    }
+                                    .padding(horizontal = 8.dp, vertical = 4.dp)
+                            ) {
+                                Text("EN", color = TextWhite, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                            }
+                            Box(
+                                modifier = Modifier
+                                    .background(
+                                        if (locale == "hi") SafeGreen else Color.Transparent,
+                                        RoundedCornerShape(8.dp)
+                                    )
+                                    .clickable {
+                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                        viewModel.setLocale("hi")
+                                    }
+                                    .padding(horizontal = 8.dp, vertical = 4.dp)
+                            ) {
+                                Text("हिंदी", color = TextWhite, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                            }
                         }
                     }
                 }
             }
 
-            // 2. Camera Viewport & Dynamic Reticle
+            // 2. Camera Viewport & Dynamic Reticle (or Permission Denial Recovery View)
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -205,94 +234,158 @@ fun ScanScreen(viewModel: ScanViewModel) {
                     .padding(horizontal = 12.dp, vertical = 4.dp)
                     .border(1.5.dp, AccentBorder, RoundedCornerShape(18.dp))
             ) {
-                AndroidView(
-                    factory = { ctx ->
-                        val previewView = PreviewView(ctx)
-                        val cameraProviderFuture = ProcessCameraProvider.getInstance(ctx)
-                        cameraProviderFuture.addListener({
-                            val cameraProvider = cameraProviderFuture.get()
-                            val preview = Preview.Builder().build().also {
-                                it.setSurfaceProvider(previewView.surfaceProvider)
-                            }
-                            val imageAnalysis = ImageAnalysis.Builder()
-                                .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
-                                .build()
-                                .also {
-                                    it.setAnalyzer(cameraExecutor, TextAnalyzer { tokens ->
-                                        viewModel.processOcrTokens(tokens)
-                                    })
+                if (hasCameraPermission) {
+                    AndroidView(
+                        factory = { ctx ->
+                            val previewView = PreviewView(ctx)
+                            val cameraProviderFuture = ProcessCameraProvider.getInstance(ctx)
+                            cameraProviderFuture.addListener({
+                                val cameraProvider = cameraProviderFuture.get()
+                                val preview = Preview.Builder().build().also {
+                                    it.setSurfaceProvider(previewView.surfaceProvider)
                                 }
+                                val imageAnalysis = ImageAnalysis.Builder()
+                                    .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+                                    .build()
+                                    .also {
+                                        it.setAnalyzer(cameraExecutor, TextAnalyzer { tokens ->
+                                            viewModel.processOcrTokens(tokens)
+                                        })
+                                    }
 
-                            val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
-                            try {
-                                cameraProvider.unbindAll()
-                                val camera = cameraProvider.bindToLifecycle(
-                                    lifecycleOwner,
-                                    cameraSelector,
-                                    preview,
-                                    imageAnalysis
-                                )
-                                camera.cameraControl.enableTorch(isTorchOn)
-                            } catch (exc: Exception) {
-                                exc.printStackTrace()
-                            }
-                        }, ContextCompat.getMainExecutor(ctx))
-                        previewView
-                    },
-                    modifier = Modifier.fillMaxSize()
-                )
+                                val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
+                                try {
+                                    cameraProvider.unbindAll()
+                                    val camera = cameraProvider.bindToLifecycle(
+                                        lifecycleOwner,
+                                        cameraSelector,
+                                        preview,
+                                        imageAnalysis
+                                    )
+                                    cameraControl = camera.cameraControl
+                                    camera.cameraControl.enableTorch(isTorchOn)
+                                } catch (exc: Exception) {
+                                    exc.printStackTrace()
+                                }
+                            }, ContextCompat.getMainExecutor(ctx))
+                            previewView
+                        },
+                        modifier = Modifier.fillMaxSize()
+                    )
 
-                // High-Contrast Dynamic Reticle
-                val reticleColor = when (uiState) {
-                    is ScanUiState.SafeDetected -> SafeGreen
-                    is ScanUiState.DuplicateAlert, is ScanUiState.ConflictAlert -> AlertRed
-                    else -> ReticleCyan
-                }
+                    // High-Contrast Dynamic Reticle
+                    val reticleColor = when (uiState) {
+                        is ScanUiState.SafeDetected -> SafeGreen
+                        is ScanUiState.DuplicateAlert, is ScanUiState.ConflictAlert, is ScanUiState.ExpiredAlert -> AlertRed
+                        is ScanUiState.UnidentifiedAlert -> Color(0xFFFF8B00)
+                        else -> ReticleCyan
+                    }
 
-                Box(
-                    modifier = Modifier
-                        .size(280.dp, 160.dp)
-                        .align(Alignment.Center)
-                        .border(width = 3.dp, color = reticleColor, shape = RoundedCornerShape(16.dp))
-                )
-
-                // Live OCR HUD Viewfinder Overlay
-                if (uiState is ScanUiState.Scanning && liveOcrSnippet.isNotBlank()) {
-                    Surface(
+                    Box(
                         modifier = Modifier
-                            .align(Alignment.BottomCenter)
-                            .padding(bottom = 12.dp, start = 16.dp, end = 16.dp),
-                        color = Color(0xE60B0F17),
-                        shape = RoundedCornerShape(12.dp),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, SafeGreen.copy(alpha = 0.6f))
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                            verticalAlignment = Alignment.CenterVertically
+                            .size(280.dp, 160.dp)
+                            .align(Alignment.Center)
+                            .border(width = 3.dp, color = reticleColor, shape = RoundedCornerShape(16.dp))
+                    )
+
+                    // Live OCR HUD Viewfinder Overlay
+                    if (uiState is ScanUiState.Scanning && liveOcrSnippet.isNotBlank()) {
+                        Surface(
+                            modifier = Modifier
+                                .align(Alignment.BottomCenter)
+                                .padding(bottom = 12.dp, start = 16.dp, end = 16.dp),
+                            color = Color(0xE60B0F17),
+                            shape = RoundedCornerShape(12.dp),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, SafeGreen.copy(alpha = 0.6f))
                         ) {
-                            Icon(
-                                imageVector = Icons.Default.Search,
-                                contentDescription = null,
-                                tint = SafeGreen,
-                                modifier = Modifier.size(14.dp)
-                            )
-                            Spacer(modifier = Modifier.width(6.dp))
+                            Row(
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Search,
+                                    contentDescription = null,
+                                    tint = SafeGreen,
+                                    modifier = Modifier.size(14.dp)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = liveOcrSnippet,
+                                    style = MaterialTheme.typography.bodySmall.copy(
+                                        color = TextWhite,
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Medium
+                                    ),
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                        }
+                    }
+                } else {
+                    // Full-Screen Accessible Permission Recovery View (WCAG AAA)
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(SurfaceCardDark)
+                            .padding(24.dp),
+                        verticalArrangement = Arrangement.Center,
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.CameraAlt,
+                            contentDescription = null,
+                            tint = SafeGreen,
+                            modifier = Modifier.size(64.dp)
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text(
+                            text = if (locale == "hi") "कैमरा अनुमति आवश्यक है" else "Camera Permission Required",
+                            style = MaterialTheme.typography.headlineSmall.copy(
+                                color = TextWhite,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 20.sp
+                            ),
+                            textAlign = TextAlign.Center
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = if (locale == "hi") "दवाइयों की पर्ची और शीशी स्कैन करने के लिए कृपया सेटिंग्स में जाकर कैमरा अनुमति दें।" else "To scan medicine labels and blister packs offline, please grant camera access in system settings.",
+                            style = MaterialTheme.typography.bodyMedium.copy(
+                                color = TextMuted,
+                                fontSize = 14.sp
+                            ),
+                            textAlign = TextAlign.Center
+                        )
+                        Spacer(modifier = Modifier.height(24.dp))
+                        Button(
+                            onClick = {
+                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                                    data = Uri.fromParts("package", context.packageName, null)
+                                }
+                                context.startActivity(intent)
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(80.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = SafeGreen),
+                            shape = RoundedCornerShape(16.dp)
+                        ) {
+                            Icon(imageVector = Icons.Default.Settings, contentDescription = null, tint = TextWhite, modifier = Modifier.size(28.dp))
+                            Spacer(modifier = Modifier.width(12.dp))
                             Text(
-                                text = liveOcrSnippet,
-                                style = MaterialTheme.typography.bodySmall.copy(
-                                    color = TextWhite,
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.Medium
-                                ),
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
+                                text = if (locale == "hi") "अनुमति दें (Open Settings)" else "Grant Permission in Settings",
+                                color = TextWhite,
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.Bold
                             )
                         }
                     }
                 }
             }
 
-            // 3. Bottom Accessible Action Area (Scroll-Safe & Zero Clipping)
+            // 3. Bottom Accessible Action Area (Senior 80dp Touch Targets)
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -425,21 +518,21 @@ fun ScanScreen(viewModel: ScanViewModel) {
                                 },
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .height(54.dp),
+                                    .height(80.dp),
                                 colors = ButtonDefaults.buttonColors(containerColor = TextWhite),
-                                shape = RoundedCornerShape(12.dp)
+                                shape = RoundedCornerShape(16.dp)
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.CheckCircle,
                                     contentDescription = null,
                                     tint = SafeGreen,
-                                    modifier = Modifier.size(24.dp)
+                                    modifier = Modifier.size(32.dp)
                                 )
-                                Spacer(modifier = Modifier.width(8.dp))
+                                Spacer(modifier = Modifier.width(12.dp))
                                 Text(
                                     text = if (locale == "hi") "ले ली (Confirm Taken)" else "Confirm Taken",
                                     color = SafeGreen,
-                                    fontSize = 16.sp,
+                                    fontSize = 20.sp,
                                     fontWeight = FontWeight.Bold
                                 )
                             }
@@ -488,21 +581,21 @@ fun ScanScreen(viewModel: ScanViewModel) {
                                 },
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .height(48.dp),
+                                    .height(80.dp),
                                 colors = ButtonDefaults.buttonColors(containerColor = TextWhite),
-                                shape = RoundedCornerShape(12.dp)
+                                shape = RoundedCornerShape(16.dp)
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.Refresh,
                                     contentDescription = null,
                                     tint = AlertRed,
-                                    modifier = Modifier.size(18.dp)
+                                    modifier = Modifier.size(28.dp)
                                 )
-                                Spacer(modifier = Modifier.width(6.dp))
+                                Spacer(modifier = Modifier.width(10.dp))
                                 Text(
                                     text = if (locale == "hi") "अगली दवा स्कैन करें" else "Scan Next Medicine",
                                     color = AlertRed,
-                                    fontSize = 15.sp,
+                                    fontSize = 18.sp,
                                     fontWeight = FontWeight.Bold
                                 )
                             }
@@ -551,14 +644,133 @@ fun ScanScreen(viewModel: ScanViewModel) {
                                 },
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .height(48.dp),
+                                    .height(80.dp),
                                 colors = ButtonDefaults.buttonColors(containerColor = TextWhite),
-                                shape = RoundedCornerShape(12.dp)
+                                shape = RoundedCornerShape(16.dp)
                             ) {
                                 Text(
                                     text = if (locale == "hi") "समझ गए (Dismiss)" else "Understood (Dismiss)",
                                     color = AlertRed,
-                                    fontSize = 15.sp,
+                                    fontSize = 18.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+                    }
+
+                    is ScanUiState.ExpiredAlert -> {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(AlertRed, RoundedCornerShape(14.dp))
+                                .padding(12.dp)
+                                .verticalScroll(rememberScrollState()),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Warning,
+                                contentDescription = null,
+                                tint = TextWhite,
+                                modifier = Modifier.size(30.dp)
+                            )
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = if (locale == "hi") "समाप्त दवा (Expired Drug)!" else "Expired Drug Blocked!",
+                                style = MaterialTheme.typography.titleLarge.copy(
+                                    color = TextWhite,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 18.sp
+                                )
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = state.alertMessage,
+                                style = MaterialTheme.typography.bodyMedium.copy(
+                                    color = TextWhite,
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.SemiBold
+                                ),
+                                textAlign = TextAlign.Center
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Button(
+                                onClick = {
+                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    viewModel.resetScanner()
+                                },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(80.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = TextWhite),
+                                shape = RoundedCornerShape(16.dp)
+                            ) {
+                                Text(
+                                    text = if (locale == "hi") "खुराक रोकी गई (Dismiss)" else "Dose Blocked (Dismiss)",
+                                    color = AlertRed,
+                                    fontSize = 18.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+                    }
+
+                    is ScanUiState.UnidentifiedAlert -> {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(Color(0xFFD97706), RoundedCornerShape(14.dp))
+                                .padding(12.dp)
+                                .verticalScroll(rememberScrollState()),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Warning,
+                                contentDescription = null,
+                                tint = TextWhite,
+                                modifier = Modifier.size(30.dp)
+                            )
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = if (locale == "hi") "दवा की पहचान नहीं हो सकी" else "Unidentified Medicine",
+                                style = MaterialTheme.typography.titleLarge.copy(
+                                    color = TextWhite,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 18.sp
+                                )
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = state.alertMessage,
+                                style = MaterialTheme.typography.bodyMedium.copy(
+                                    color = TextWhite,
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.SemiBold
+                                ),
+                                textAlign = TextAlign.Center
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Button(
+                                onClick = {
+                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    viewModel.resetScanner()
+                                },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(80.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = TextWhite),
+                                shape = RoundedCornerShape(16.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Refresh,
+                                    contentDescription = null,
+                                    tint = Color(0xFFD97706),
+                                    modifier = Modifier.size(28.dp)
+                                )
+                                Spacer(modifier = Modifier.width(10.dp))
+                                Text(
+                                    text = if (locale == "hi") "पुनः स्पष्ट स्कैन करें" else "Scan Clearly Again",
+                                    color = Color(0xFFD97706),
+                                    fontSize = 18.sp,
                                     fontWeight = FontWeight.Bold
                                 )
                             }
