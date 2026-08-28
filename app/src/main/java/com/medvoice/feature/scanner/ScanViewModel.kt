@@ -29,7 +29,8 @@ sealed class ScanUiState {
         val instructionText: String,
         val medicineId: Long,
         val saltId: Long,
-        val timingRuleCode: String
+        val timingRuleCode: String,
+        val dosageForm: String = "TABLET"
     ) : ScanUiState()
 
     data class DuplicateAlert(
@@ -50,11 +51,14 @@ sealed class ScanUiState {
 class ScanViewModel(application: Application) : AndroidViewModel(application) {
 
     private val db = AppDatabase.getInstance(application)
-    private val safetyEngine = SafetyEvaluationEngine(db.medicineDao())
-    val ttsManager = VernacularTtsManager(application)
     val aiEngine = com.medvoice.core.ai.AiPharmacologyEngine(application)
+    private val safetyEngine = SafetyEvaluationEngine(db.medicineDao(), aiEngine)
+    val ttsManager = VernacularTtsManager(application)
     val alarmScheduler = com.medvoice.core.scheduler.MedicationAlarmScheduler(application)
     private val prefs = application.getSharedPreferences("medvoice_prefs", android.content.Context.MODE_PRIVATE)
+
+    private val _liveOcrSnippet = MutableStateFlow("")
+    val liveOcrSnippet: StateFlow<String> = _liveOcrSnippet.asStateFlow()
 
     private val _isDailyRemindersEnabled = MutableStateFlow(prefs.getBoolean("daily_reminders_enabled", true))
     val isDailyRemindersEnabled: StateFlow<Boolean> = _isDailyRemindersEnabled.asStateFlow()
@@ -186,6 +190,14 @@ class ScanViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun processOcrTokens(tokens: List<String>) {
+        if (tokens.isNotEmpty()) {
+            val preview = tokens.take(2).joinToString(" • ")
+            if (preview.length > 50) {
+                _liveOcrSnippet.value = preview.take(47) + "…"
+            } else {
+                _liveOcrSnippet.value = preview
+            }
+        }
         if (isProcessingEvaluation) return
         if (_uiState.value !is ScanUiState.Scanning) return
 
@@ -224,7 +236,8 @@ class ScanViewModel(application: Application) : AndroidViewModel(application) {
                     instructionText = instruction,
                     medicineId = result.medicine.id,
                     saltId = result.medicine.primary_salt_id,
-                    timingRuleCode = result.medicine.rule_code
+                    timingRuleCode = result.medicine.rule_code,
+                    dosageForm = result.medicine.dosage_form
                 )
 
                 ttsManager.speak(instruction, _selectedLocale.value)
