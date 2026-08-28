@@ -5,11 +5,16 @@ import android.util.Log
 import androidx.core.content.edit
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.medvoice.core.ai.AiEngineTier
 import com.medvoice.core.audio.VernacularTtsManager
+import com.medvoice.core.audio.VoiceConfirmationListener
 import com.medvoice.core.audio.VoiceEngineMode
 import com.medvoice.core.audio.VoiceGender
 import com.medvoice.core.data.local.AppDatabase
+import com.medvoice.core.data.local.entity.ActiveSaltEntity
+import com.medvoice.core.data.local.entity.FoodRuleEntity
 import com.medvoice.core.data.local.entity.MedicationLogEntity
+import com.medvoice.core.data.local.entity.MedicineEntity
 import com.medvoice.core.domain.engine.SafetyEvaluationEngine
 import com.medvoice.core.domain.engine.SafetyEvaluationResult
 import com.medvoice.feature.navigation.MedVoiceTab
@@ -19,6 +24,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import java.util.Locale
 
 sealed class ScanUiState {
     data object Scanning : ScanUiState()
@@ -75,22 +81,34 @@ class ScanViewModel(application: Application) : AndroidViewModel(application) {
     private val _uiState = MutableStateFlow<ScanUiState>(ScanUiState.Scanning)
     val uiState: StateFlow<ScanUiState> = _uiState.asStateFlow()
 
-    private val _selectedLocale = MutableStateFlow("en") // "en" or "hi"
+    private val _selectedLocale = MutableStateFlow(prefs.getString("selected_locale", "en") ?: "en")
     val selectedLocale: StateFlow<String> = _selectedLocale.asStateFlow()
 
-    private val _selectedGender = MutableStateFlow(VoiceGender.FEMALE)
+    private val _selectedGender = MutableStateFlow(
+        try {
+            VoiceGender.valueOf(prefs.getString("voice_gender", "FEMALE") ?: "FEMALE")
+        } catch (_: Exception) {
+            VoiceGender.FEMALE
+        }
+    )
     val selectedGender: StateFlow<VoiceGender> = _selectedGender.asStateFlow()
 
-    private val _speechRate = MutableStateFlow(0.88f)
+    private val _speechRate = MutableStateFlow(prefs.getFloat("speech_rate", 0.88f))
     val speechRate: StateFlow<Float> = _speechRate.asStateFlow()
 
-    private val _engineMode = MutableStateFlow(VoiceEngineMode.OFFLINE_DEVICE)
+    private val _engineMode = MutableStateFlow(
+        try {
+            VoiceEngineMode.valueOf(prefs.getString("engine_mode", "OFFLINE_DEVICE") ?: "OFFLINE_DEVICE")
+        } catch (_: Exception) {
+            VoiceEngineMode.OFFLINE_DEVICE
+        }
+    )
     val engineMode: StateFlow<VoiceEngineMode> = _engineMode.asStateFlow()
 
-    private val _caregiverPhone = MutableStateFlow("+919876543210")
+    private val _caregiverPhone = MutableStateFlow(prefs.getString("caregiver_phone", "+919876543210") ?: "+919876543210")
     val caregiverPhone: StateFlow<String> = _caregiverPhone.asStateFlow()
 
-    private val _patientName = MutableStateFlow("Dadi (आजी)")
+    private val _patientName = MutableStateFlow(prefs.getString("patient_name", "Dadi (आजी)") ?: "Dadi (आजी)")
     val patientName: StateFlow<String> = _patientName.asStateFlow()
 
     private val _medicationLogs = MutableStateFlow<List<MedicationLogEntity>>(emptyList())
@@ -99,12 +117,41 @@ class ScanViewModel(application: Application) : AndroidViewModel(application) {
     private val _isTorchOn = MutableStateFlow(false)
     val isTorchOn: StateFlow<Boolean> = _isTorchOn.asStateFlow()
 
+    private val _isVoiceListening = MutableStateFlow(false)
+    val isVoiceListening: StateFlow<Boolean> = _isVoiceListening.asStateFlow()
+
     private val _showSettingsDialog = MutableStateFlow(false)
     val showSettingsDialog: StateFlow<Boolean> = _showSettingsDialog.asStateFlow()
 
     private var isProcessingEvaluation = false
 
+    // Hands-Free Speech Recognizer
+    private val voiceConfirmationListener = VoiceConfirmationListener(application) {
+        val currentState = _uiState.value
+        if (currentState is ScanUiState.SafeDetected) {
+            confirmDoseTaken(
+                medicineId = currentState.medicineId,
+                saltId = currentState.saltId,
+                brandName = currentState.brandName
+            )
+        }
+    }
+
     init {
+        // Hydrate audio & AI manager persistent states
+        ttsManager.selectedGender = _selectedGender.value
+        ttsManager.speechRate = _speechRate.value
+        ttsManager.engineMode = _engineMode.value
+        ttsManager.sarvamApiKey = prefs.getString("sarvam_api_key", "") ?: ""
+        ttsManager.elevenLabsApiKey = prefs.getString("elevenlabs_api_key", "") ?: ""
+        aiEngine.cloudMedGemmaApiKey = prefs.getString("cloud_medgemma_api_key", "") ?: ""
+        aiEngine.allowCloudPrivacyEgress = prefs.getBoolean("cloud_privacy_egress", false)
+        try {
+            aiEngine.activeTier = AiEngineTier.valueOf(prefs.getString("ai_tier", "ON_DEVICE_MEDGEMMA_INT4") ?: "ON_DEVICE_MEDGEMMA_INT4")
+        } catch (_: Exception) {
+            aiEngine.activeTier = AiEngineTier.ON_DEVICE_MEDGEMMA_INT4
+        }
+
         refreshLogs()
         loadAllMedicines()
     }
@@ -135,41 +182,81 @@ class ScanViewModel(application: Application) : AndroidViewModel(application) {
 
     fun setLocale(locale: String) {
         _selectedLocale.value = locale
+        prefs.edit { putString("selected_locale", locale) }
     }
 
     fun setVoiceGender(gender: VoiceGender) {
         _selectedGender.value = gender
         ttsManager.selectedGender = gender
+        prefs.edit { putString("voice_gender", gender.name) }
     }
 
     fun setSpeechRate(rate: Float) {
         _speechRate.value = rate
         ttsManager.speechRate = rate
+        prefs.edit { putFloat("speech_rate", rate) }
     }
 
     fun setEngineMode(mode: VoiceEngineMode, sarvamKey: String = "") {
         _engineMode.value = mode
         ttsManager.engineMode = mode
-        ttsManager.sarvamApiKey = sarvamKey
+        prefs.edit { putString("engine_mode", mode.name) }
+        if (sarvamKey.isNotBlank()) {
+            setSarvamApiKey(sarvamKey)
+        }
+    }
+
+    fun setSarvamApiKey(key: String) {
+        ttsManager.sarvamApiKey = key
+        prefs.edit { putString("sarvam_api_key", key) }
+    }
+
+    fun setElevenLabsApiKey(key: String) {
+        ttsManager.elevenLabsApiKey = key
+        prefs.edit { putString("elevenlabs_api_key", key) }
+    }
+
+    fun setCloudMedGemmaApiKey(key: String) {
+        aiEngine.cloudMedGemmaApiKey = key
+        prefs.edit { putString("cloud_medgemma_api_key", key) }
+    }
+
+    fun setCloudPrivacyEgress(allow: Boolean) {
+        aiEngine.allowCloudPrivacyEgress = allow
+        prefs.edit { putBoolean("cloud_privacy_egress", allow) }
+    }
+
+    fun setAiTier(tier: AiEngineTier) {
+        aiEngine.activeTier = tier
+        prefs.edit { putString("ai_tier", tier.name) }
     }
 
     fun updateCaregiverInfo(name: String, phone: String) {
         _patientName.value = name
         _caregiverPhone.value = phone
+        prefs.edit {
+            putString("patient_name", name)
+            putString("caregiver_phone", phone)
+        }
         val confirmation = if (_selectedLocale.value == "hi") "केयरगिवर का विवरण सहेज लिया गया है।" else "Caregiver details saved successfully."
         ttsManager.speak(confirmation, _selectedLocale.value)
     }
 
-    fun testEmergencySms() {
-        SmsDispatcher.sendEmergencyAlert(
+    fun testEmergencySms(): Boolean {
+        val success = SmsDispatcher.sendEmergencyAlert(
             context = getApplication(),
             recipientPhone = _caregiverPhone.value,
             patientName = _patientName.value,
             scannedDrug = "TEST_ALARM",
             conflictDetails = "This is a MedVoice test emergency SOS notification."
         )
-        val alert = if (_selectedLocale.value == "hi") "परीक्षण आपातकालीन एसएमएस भेज दिया गया है।" else "Test emergency SOS SMS dispatched."
+        val alert = if (success) {
+            if (_selectedLocale.value == "hi") "परीक्षण आपातकालीन एसएमएस भेज दिया गया है।" else "Test emergency SOS SMS dispatched."
+        } else {
+            if (_selectedLocale.value == "hi") "एसएमएस अनुमति आवश्यक है।" else "SMS permission required to send alert."
+        }
         ttsManager.speak(alert, _selectedLocale.value)
+        return success
     }
 
     fun toggleSettingsDialog(show: Boolean) {
@@ -178,9 +265,9 @@ class ScanViewModel(application: Application) : AndroidViewModel(application) {
 
     fun testVoicePreview() {
         val sampleText = if (_selectedLocale.value == "hi") {
-            "नमस्ते! यह मेडवॉयस की भारतीय आवाज का नमूना है।"
+            "नमस्ते दादीजी! मेडवॉयस आपकी सभी दवाएं समय पर और सुरक्षित रूप से लेने में मदद करेगा।"
         } else {
-            "Hello! This is a preview of the MedVoice Indian voice assistant."
+            "Hello Dadi! MedVoice will ensure all your medications are taken safely on schedule."
         }
         ttsManager.speak(sampleText, _selectedLocale.value)
     }
@@ -214,13 +301,6 @@ class ScanViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun simulateScan(brandName: String) {
-        viewModelScope.launch(Dispatchers.IO) {
-            val result = safetyEngine.evaluateCandidateTokens(listOf(brandName))
-            handleEvaluationResult(result)
-        }
-    }
-
     private suspend fun handleEvaluationResult(result: SafetyEvaluationResult) {
         when (result) {
             is SafetyEvaluationResult.SafeToTake -> {
@@ -240,7 +320,12 @@ class ScanViewModel(application: Application) : AndroidViewModel(application) {
                     dosageForm = result.medicine.dosage_form
                 )
 
-                ttsManager.speak(instruction, _selectedLocale.value)
+                // Speak vernacular dosage instruction aloud, then start hands-free voice listener
+                ttsManager.speak(instruction, _selectedLocale.value) {
+                    voiceConfirmationListener.startListening(_selectedLocale.value) { isListening ->
+                        _isVoiceListening.value = isListening
+                    }
+                }
             }
 
             is SafetyEvaluationResult.DuplicateDoseBlocked -> {
@@ -328,7 +413,62 @@ class ScanViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun confirmDoseTaken(medicineId: Long, saltId: Long, brandName: String) {
+        voiceConfirmationListener.stopListening()
+        _isVoiceListening.value = false
+
         viewModelScope.launch(Dispatchers.IO) {
+            // Auto-persist unlisted medicine into SQLite Room DB if not present
+            val existing = db.medicineDao().findMedicineByPrefix(brandName)
+            if (existing == null && _uiState.value is ScanUiState.SafeDetected) {
+                val state = _uiState.value as ScanUiState.SafeDetected
+                try {
+                    val saltEntity = ActiveSaltEntity(
+                        id = saltId,
+                        saltName = state.saltName,
+                        therapeuticClass = "Prescription Medication",
+                        maxDailyDoseMg = 2000.0,
+                        halfLifeHours = 6.0,
+                        activeWindowHours = 8.0,
+                        vernacularSaltDescEn = state.saltName,
+                        vernacularSaltDescHi = state.saltName,
+                        vernacularSaltDescMr = state.saltName
+                    )
+                    db.medicineDao().insertSalt(saltEntity)
+
+                    val ruleEntity = FoodRuleEntity(
+                        id = if (state.timingRuleCode == "EMPTY_STOMACH") 1 else 2,
+                        ruleCode = state.timingRuleCode,
+                        foodRelation = "WITH_OR_AFTER_FOOD",
+                        leadTimeMinutes = 0,
+                        dietaryRestriction = null,
+                        vernacularInstructionEn = state.instructionText,
+                        vernacularInstructionHi = state.instructionText,
+                        vernacularInstructionMr = state.instructionText
+                    )
+                    db.medicineDao().insertTimingRule(ruleEntity)
+
+                    val medEntity = MedicineEntity(
+                        id = medicineId,
+                        brandName = brandName,
+                        manufacturer = "Verified Pharmaceutical",
+                        dosageForm = state.dosageForm,
+                        strengthMg = 500.0,
+                        primarySaltId = saltId,
+                        secondarySaltId = null,
+                        timingRuleId = ruleEntity.id,
+                        isHighRisk = false,
+                        vernacularUsageEn = state.instructionText,
+                        vernacularUsageHi = state.instructionText,
+                        vernacularUsageMr = state.instructionText
+                    )
+                    db.medicineDao().insertMedicine(medEntity)
+                    loadAllMedicines()
+                    Log.d("MedVoice_ScanVM", "Auto-persisted discovered medicine to Room DB: $brandName")
+                } catch (e: Exception) {
+                    Log.e("MedVoice_ScanVM", "Could not auto-persist discovered medicine", e)
+                }
+            }
+
             db.medicineDao().logIntake(
                 MedicationLogEntity(
                     medicineId = medicineId,
@@ -374,11 +514,14 @@ class ScanViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun resetScanner() {
+        voiceConfirmationListener.stopListening()
+        _isVoiceListening.value = false
         ttsManager.stop()
         _uiState.value = ScanUiState.Scanning
     }
 
     override fun onCleared() {
+        voiceConfirmationListener.stopListening()
         ttsManager.shutdown()
     }
 }

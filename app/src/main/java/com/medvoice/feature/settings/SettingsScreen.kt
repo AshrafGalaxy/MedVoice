@@ -1,5 +1,9 @@
 package com.medvoice.feature.settings
 
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -19,6 +23,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Cloud
 import androidx.compose.material.icons.filled.FlashOn
 import androidx.compose.material.icons.filled.GraphicEq
@@ -46,7 +51,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -55,11 +59,13 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
 import com.medvoice.core.ai.AiEngineTier
 import com.medvoice.core.audio.VoiceEngineMode
 import com.medvoice.core.audio.VoiceGender
 import com.medvoice.feature.scanner.ScanViewModel
 import com.medvoice.ui.theme.AccentBorder
+import com.medvoice.ui.theme.AlertRed
 import com.medvoice.ui.theme.BackgroundCharcoal
 import com.medvoice.ui.theme.ReticleCyan
 import com.medvoice.ui.theme.SafeGreen
@@ -67,6 +73,7 @@ import com.medvoice.ui.theme.SurfaceCardDark
 import com.medvoice.ui.theme.SurfaceCardElevated
 import com.medvoice.ui.theme.TextMuted
 import com.medvoice.ui.theme.TextWhite
+import kotlinx.coroutines.launch
 
 @Composable
 fun SettingsScreen(viewModel: ScanViewModel) {
@@ -85,6 +92,18 @@ fun SettingsScreen(viewModel: ScanViewModel) {
     var elevenLabsKeyInput by remember { mutableStateOf(viewModel.ttsManager.elevenLabsApiKey) }
     var medGemmaKeyInput by remember { mutableStateOf(viewModel.aiEngine.cloudMedGemmaApiKey) }
     var allowCloudPrivacy by remember { mutableStateOf(viewModel.aiEngine.allowCloudPrivacyEgress) }
+
+    var hasSmsPermission by remember {
+        mutableStateOf(
+            ContextCompat.checkSelfPermission(context, Manifest.permission.SEND_SMS) == PackageManager.PERMISSION_GRANTED
+        )
+    }
+
+    val smsPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        hasSmsPermission = isGranted
+    }
 
     Column(
         modifier = Modifier
@@ -307,7 +326,7 @@ fun SettingsScreen(viewModel: ScanViewModel) {
                     Button(
                         onClick = {
                             viewModel.setEngineMode(VoiceEngineMode.HYBRID_ELEVENLABS)
-                            viewModel.ttsManager.elevenLabsApiKey = elevenLabsKeyInput
+                            viewModel.setElevenLabsApiKey(elevenLabsKeyInput)
                         },
                         colors = ButtonDefaults.buttonColors(
                             containerColor = if (engineMode == VoiceEngineMode.HYBRID_ELEVENLABS) SafeGreen else SurfaceCardElevated
@@ -326,7 +345,7 @@ fun SettingsScreen(viewModel: ScanViewModel) {
                         value = sarvamKeyInput,
                         onValueChange = {
                             sarvamKeyInput = it
-                            viewModel.setEngineMode(VoiceEngineMode.HYBRID_SARVAM_AI, it)
+                            viewModel.setSarvamApiKey(it)
                         },
                         label = { Text("Sarvam AI API Key") },
                         colors = OutlinedTextFieldDefaults.colors(
@@ -346,7 +365,7 @@ fun SettingsScreen(viewModel: ScanViewModel) {
                         value = elevenLabsKeyInput,
                         onValueChange = {
                             elevenLabsKeyInput = it
-                            viewModel.ttsManager.elevenLabsApiKey = it
+                            viewModel.setElevenLabsApiKey(it)
                         },
                         label = { Text("ElevenLabs API Key") },
                         colors = OutlinedTextFieldDefaults.colors(
@@ -441,7 +460,7 @@ fun SettingsScreen(viewModel: ScanViewModel) {
                 ) {
                     Button(
                         onClick = {
-                            viewModel.aiEngine.activeTier = AiEngineTier.ON_DEVICE_MEDGEMMA_INT4
+                            viewModel.setAiTier(AiEngineTier.ON_DEVICE_MEDGEMMA_INT4)
                         },
                         colors = ButtonDefaults.buttonColors(
                             containerColor = if (viewModel.aiEngine.activeTier == AiEngineTier.ON_DEVICE_MEDGEMMA_INT4) SafeGreen else SurfaceCardElevated
@@ -457,7 +476,7 @@ fun SettingsScreen(viewModel: ScanViewModel) {
 
                     Button(
                         onClick = {
-                            viewModel.aiEngine.activeTier = AiEngineTier.CLOUD_MEDGEMMA_HOSTED
+                            viewModel.setAiTier(AiEngineTier.CLOUD_MEDGEMMA_HOSTED)
                         },
                         colors = ButtonDefaults.buttonColors(
                             containerColor = if (viewModel.aiEngine.activeTier == AiEngineTier.CLOUD_MEDGEMMA_HOSTED) SafeGreen else SurfaceCardElevated
@@ -492,7 +511,7 @@ fun SettingsScreen(viewModel: ScanViewModel) {
                         checked = allowCloudPrivacy,
                         onCheckedChange = {
                             allowCloudPrivacy = it
-                            viewModel.aiEngine.allowCloudPrivacyEgress = it
+                            viewModel.setCloudPrivacyEgress(it)
                         },
                         colors = SwitchDefaults.colors(
                             checkedThumbColor = TextWhite,
@@ -507,7 +526,7 @@ fun SettingsScreen(viewModel: ScanViewModel) {
                         value = medGemmaKeyInput,
                         onValueChange = {
                             medGemmaKeyInput = it
-                            viewModel.aiEngine.cloudMedGemmaApiKey = it
+                            viewModel.setCloudMedGemmaApiKey(it)
                         },
                         label = { Text("Cloud MedGemma / Vertex API Key") },
                         colors = OutlinedTextFieldDefaults.colors(
@@ -618,22 +637,58 @@ fun SettingsScreen(viewModel: ScanViewModel) {
 
         Spacer(modifier = Modifier.height(14.dp))
 
-        // 4. Caregiver SOS Emergency Contact Setup (FIXED: Zero Clipping / Natural Height)
+        // 4. Caregiver SOS Emergency Contact Setup with Real SMS Permission Check
         Card(
             modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(containerColor = SurfaceCardDark),
             shape = RoundedCornerShape(14.dp)
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
-                Text(
-                    text = if (locale == "hi") "केयरगिवर आपातकालीन विवरण" else "Caregiver Emergency SOS Details",
-                    color = TextWhite,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 16.sp
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = if (locale == "hi") "केयरगिवर आपातकालीन विवरण" else "Caregiver Emergency SOS Details",
+                        color = TextWhite,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 16.sp
+                    )
+                    Button(
+                        onClick = {
+                            if (!hasSmsPermission) {
+                                smsPermissionLauncher.launch(Manifest.permission.SEND_SMS)
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (hasSmsPermission) SafeGreen.copy(alpha = 0.2f) else AlertRed.copy(alpha = 0.2f)
+                        ),
+                        shape = RoundedCornerShape(6.dp),
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+                        modifier = Modifier.heightIn(min = 28.dp)
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = if (hasSmsPermission) Icons.Default.Check else Icons.Default.Security,
+                                contentDescription = null,
+                                tint = if (hasSmsPermission) SafeGreen else AlertRed,
+                                modifier = Modifier.size(12.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = if (hasSmsPermission) "SMS Ready" else "Grant SMS",
+                                color = if (hasSmsPermission) SafeGreen else AlertRed,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                }
+
                 Spacer(modifier = Modifier.height(12.dp))
 
-                // Patient Name (No hardcoded height, crisp Material 3 wrapping)
+                // Patient Name
                 OutlinedTextField(
                     value = nameInput,
                     onValueChange = { nameInput = it },
@@ -652,7 +707,7 @@ fun SettingsScreen(viewModel: ScanViewModel) {
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                // Caregiver Mobile (No hardcoded height, crisp Material 3 wrapping)
+                // Caregiver Mobile
                 OutlinedTextField(
                     value = phoneInput,
                     onValueChange = { phoneInput = it },

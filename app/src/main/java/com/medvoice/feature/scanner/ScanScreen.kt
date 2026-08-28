@@ -28,6 +28,7 @@ import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.FlashOff
 import androidx.compose.material.icons.filled.FlashOn
+import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Warning
@@ -75,6 +76,7 @@ fun ScanScreen(viewModel: ScanViewModel) {
     val locale by viewModel.selectedLocale.collectAsState()
     val liveOcrSnippet by viewModel.liveOcrSnippet.collectAsState()
     val isTorchOn by viewModel.isTorchOn.collectAsState()
+    val isVoiceListening by viewModel.isVoiceListening.collectAsState()
     val lifecycleOwner = LocalLifecycleOwner.current
     val haptic = LocalHapticFeedback.current
     val cameraExecutor = remember { java.util.concurrent.Executors.newSingleThreadExecutor() }
@@ -385,7 +387,37 @@ fun ScanScreen(viewModel: ScanViewModel) {
                                 ),
                                 textAlign = TextAlign.Center
                             )
-                            Spacer(modifier = Modifier.height(8.dp))
+                            Spacer(modifier = Modifier.height(6.dp))
+
+                            if (isVoiceListening) {
+                                Surface(
+                                    color = Color(0x33000000),
+                                    shape = RoundedCornerShape(8.dp),
+                                    modifier = Modifier.padding(bottom = 6.dp)
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Mic,
+                                            contentDescription = "Voice Listening",
+                                            tint = TextWhite,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Text(
+                                            text = if (locale == "hi") "आवाज सुन रहे हैं... 'हाँ ले ली' बोलें" else "Listening... Say 'Yes taken' to confirm",
+                                            style = MaterialTheme.typography.bodySmall.copy(
+                                                color = TextWhite,
+                                                fontWeight = FontWeight.Bold,
+                                                fontSize = 12.sp
+                                            )
+                                        )
+                                    }
+                                }
+                            }
+
                             Button(
                                 onClick = {
                                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)

@@ -1,5 +1,9 @@
 package com.medvoice.feature.home
 
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -19,34 +23,44 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CameraAlt
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Shield
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
 import com.medvoice.feature.navigation.MedVoiceTab
 import com.medvoice.feature.scanner.ScanViewModel
 import com.medvoice.ui.components.MedVoiceLogo
 import com.medvoice.ui.components.StatusBadge
 import com.medvoice.ui.components.StatusType
 import com.medvoice.ui.components.TimeOfDayIcon
+import com.medvoice.ui.theme.AlertRed
 import com.medvoice.ui.theme.BackgroundCharcoal
 import com.medvoice.ui.theme.ReticleCyan
 import com.medvoice.ui.theme.SafeGreen
@@ -63,7 +77,20 @@ fun HomeScreen(viewModel: ScanViewModel) {
     val patientName by viewModel.patientName.collectAsState()
     val logs by viewModel.medicationLogs.collectAsState()
     val allMedicines by viewModel.allMedicines.collectAsState()
+    val context = LocalContext.current
     val haptic = LocalHapticFeedback.current
+
+    var hasSmsPermission by remember {
+        mutableStateOf(
+            ContextCompat.checkSelfPermission(context, Manifest.permission.SEND_SMS) == PackageManager.PERMISSION_GRANTED
+        )
+    }
+
+    val smsPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        hasSmsPermission = isGranted
+    }
 
     val currentHour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
     val greetingText = when {
@@ -71,6 +98,8 @@ fun HomeScreen(viewModel: ScanViewModel) {
         currentHour < 17 -> if (locale == "hi") "शुभ दोपहर" else "Good Afternoon"
         else -> if (locale == "hi") "शुभ संध्या" else "Good Evening"
     }
+
+    val conflictCount = logs.count { it.status.startsWith("BLOCKED") || it.status.startsWith("CONFLICT") }
 
     Column(
         modifier = Modifier
@@ -132,7 +161,10 @@ fun HomeScreen(viewModel: ScanViewModel) {
                             if (locale == "en") SafeGreen else BackgroundCharcoal.copy(alpha = 0f),
                             RoundedCornerShape(8.dp)
                         )
-                        .clickable { viewModel.setLocale("en") }
+                        .clickable {
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            viewModel.setLocale("en")
+                        }
                         .padding(horizontal = 8.dp, vertical = 5.dp)
                 ) {
                     Text("EN", color = TextWhite, fontWeight = FontWeight.Bold, fontSize = 11.sp)
@@ -144,7 +176,10 @@ fun HomeScreen(viewModel: ScanViewModel) {
                             if (locale == "hi") SafeGreen else BackgroundCharcoal.copy(alpha = 0f),
                             RoundedCornerShape(8.dp)
                         )
-                        .clickable { viewModel.setLocale("hi") }
+                        .clickable {
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            viewModel.setLocale("hi")
+                        }
                         .padding(horizontal = 8.dp, vertical = 5.dp)
                 ) {
                     Text("हिंदी", color = TextWhite, fontWeight = FontWeight.Bold, fontSize = 11.sp)
@@ -188,7 +223,7 @@ fun HomeScreen(viewModel: ScanViewModel) {
                 Spacer(modifier = Modifier.width(14.dp))
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = if (locale == "hi") "दवा पट्टी स्कैन करें" else "Point & Scan Strip",
+                        text = if (locale == "hi") "दवा पट्टी स्कैन करें" else "Point & Scan Any Medicine",
                         style = MaterialTheme.typography.titleMedium.copy(
                             color = TextWhite,
                             fontWeight = FontWeight.Bold,
@@ -196,7 +231,7 @@ fun HomeScreen(viewModel: ScanViewModel) {
                         )
                     )
                     Text(
-                        text = if (locale == "hi") "तुरंत भारतीय आवाज में निर्देश सुनें" else "Instant vernacular audio guidance",
+                        text = if (locale == "hi") "तुरंत भारतीय आवाज में निर्देश सुनें" else "Live camera OCR & vernacular audio guidance",
                         style = MaterialTheme.typography.bodySmall.copy(
                             color = TextMuted,
                             fontSize = 12.sp
@@ -208,7 +243,20 @@ fun HomeScreen(viewModel: ScanViewModel) {
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        // 3. Safety Status Guardrail Card
+        // 3. Dynamic Safety Status Guardrail Card
+        val safetyStatusColor = if (conflictCount == 0) SafeGreen else AlertRed
+        val safetyStatusText = if (conflictCount == 0) {
+            if (locale == "hi") "सुरक्षा स्थिति: पूर्ण सुरक्षित" else "Safety Status: Active Guard"
+        } else {
+            if (locale == "hi") "सुरक्षा अलर्ट: $conflictCount परस्परविरोध अवरुद्ध" else "Safety Alert: $conflictCount Conflicts Blocked"
+        }
+        val badgeText = if (conflictCount == 0) {
+            if (locale == "hi") "0 परस्परविरोध" else "0 Conflicts"
+        } else {
+            if (locale == "hi") "$conflictCount अवरुद्ध" else "$conflictCount Blocked"
+        }
+        val badgeType = if (conflictCount == 0) StatusType.SAFE else StatusType.DANGER
+
         Card(
             modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(containerColor = SurfaceCardElevated),
@@ -221,9 +269,9 @@ fun HomeScreen(viewModel: ScanViewModel) {
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Icon(
-                    imageVector = Icons.Default.Shield,
+                    imageVector = if (conflictCount == 0) Icons.Default.Shield else Icons.Default.Warning,
                     contentDescription = "Security",
-                    tint = SafeGreen,
+                    tint = safetyStatusColor,
                     modifier = Modifier.size(24.dp)
                 )
                 Spacer(modifier = Modifier.width(10.dp))
@@ -234,16 +282,16 @@ fun HomeScreen(viewModel: ScanViewModel) {
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = if (locale == "hi") "सुरक्षा स्थिति: सुरक्षित" else "Safety Status: Active",
+                            text = safetyStatusText,
                             style = MaterialTheme.typography.titleSmall.copy(
-                                color = SafeGreen,
+                                color = safetyStatusColor,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 14.sp
                             )
                         )
                         StatusBadge(
-                            text = if (locale == "hi") "0 परस्परविरोध" else "0 Conflicts",
-                            statusType = StatusType.SAFE
+                            text = badgeText,
+                            statusType = badgeType
                         )
                     }
                     Text(
@@ -309,10 +357,10 @@ fun HomeScreen(viewModel: ScanViewModel) {
                         }
                     }
 
-                    androidx.compose.material3.Switch(
+                    Switch(
                         checked = isRemindersEnabled,
                         onCheckedChange = { viewModel.toggleDailyReminders(it) },
-                        colors = androidx.compose.material3.SwitchDefaults.colors(
+                        colors = SwitchDefaults.colors(
                             checkedThumbColor = TextWhite,
                             checkedTrackColor = SafeGreen
                         )
@@ -342,7 +390,7 @@ fun HomeScreen(viewModel: ScanViewModel) {
                             modifier = Modifier.height(32.dp)
                         ) {
                             Icon(
-                                imageVector = androidx.compose.material.icons.Icons.Default.PlayArrow,
+                                imageVector = Icons.Default.PlayArrow,
                                 contentDescription = null,
                                 tint = BackgroundCharcoal,
                                 modifier = Modifier.size(14.dp)
@@ -469,7 +517,6 @@ fun HomeScreen(viewModel: ScanViewModel) {
                             Button(
                                 onClick = {
                                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                    viewModel.simulateScan(med.brand_name)
                                     viewModel.navigateToTab(MedVoiceTab.SCANNER)
                                 },
                                 colors = ButtonDefaults.buttonColors(containerColor = SafeGreen),
@@ -491,63 +538,80 @@ fun HomeScreen(viewModel: ScanViewModel) {
 
         Spacer(modifier = Modifier.height(14.dp))
 
-        // 5. Caregiver Emergency SOS Status Card
+        // 5. Caregiver Emergency SOS Status Card with Live SMS Permission Check
         Card(
             modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(containerColor = SurfaceCardDark),
             shape = RoundedCornerShape(12.dp)
         ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
+            Column(modifier = Modifier.padding(12.dp)) {
                 Row(
-                    modifier = Modifier.weight(1f),
-                    verticalAlignment = Alignment.CenterVertically
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Phone,
-                        contentDescription = "Caregiver",
-                        tint = SafeGreen,
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Spacer(modifier = Modifier.width(10.dp))
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = if (locale == "hi") "केयरगिवर आपातकालीन SOS" else "Caregiver Emergency SOS",
-                            style = MaterialTheme.typography.titleSmall.copy(
-                                color = TextWhite,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 13.sp
-                            )
+                    Row(
+                        modifier = Modifier.weight(1f),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Phone,
+                            contentDescription = "Caregiver",
+                            tint = SafeGreen,
+                            modifier = Modifier.size(20.dp)
                         )
-                        Text(
-                            text = caregiverPhone,
-                            style = MaterialTheme.typography.bodySmall.copy(
-                                color = TextMuted,
-                                fontSize = 12.sp
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = if (locale == "hi") "केयरगिवर आपातकालीन SOS" else "Caregiver Emergency SOS",
+                                style = MaterialTheme.typography.titleSmall.copy(
+                                    color = TextWhite,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 13.sp
+                                )
                             )
+                            Text(
+                                text = caregiverPhone,
+                                style = MaterialTheme.typography.bodySmall.copy(
+                                    color = TextMuted,
+                                    fontSize = 12.sp
+                                )
+                            )
+                        }
+                    }
+
+                    Button(
+                        onClick = {
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            if (!hasSmsPermission) {
+                                smsPermissionLauncher.launch(Manifest.permission.SEND_SMS)
+                            } else {
+                                viewModel.testEmergencySms()
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = SurfaceCardElevated),
+                        shape = RoundedCornerShape(8.dp),
+                        modifier = Modifier.height(34.dp)
+                    ) {
+                        Text(
+                            text = if (!hasSmsPermission) {
+                                if (locale == "hi") "अनुमति दें" else "Grant SMS"
+                            } else {
+                                if (locale == "hi") "परीक्षण SOS" else "Test SOS"
+                            },
+                            color = if (!hasSmsPermission) AlertRed else TextWhite,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold
                         )
                     }
                 }
 
-                Button(
-                    onClick = {
-                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                        viewModel.testEmergencySms()
-                    },
-                    colors = ButtonDefaults.buttonColors(containerColor = SurfaceCardElevated),
-                    shape = RoundedCornerShape(8.dp),
-                    modifier = Modifier.height(34.dp)
-                ) {
+                if (!hasSmsPermission) {
+                    Spacer(modifier = Modifier.height(6.dp))
                     Text(
-                        text = if (locale == "hi") "परीक्षण SOS" else "Test SOS",
-                        color = TextWhite,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold
+                        text = if (locale == "hi") "⚠️ आपातकालीन संदेश भेजने के लिए SMS अनुमति आवश्यक है।" else "⚠️ Cellular SMS permission required for emergency dispatch.",
+                        color = AlertRed,
+                        fontSize = 11.sp
                     )
                 }
             }

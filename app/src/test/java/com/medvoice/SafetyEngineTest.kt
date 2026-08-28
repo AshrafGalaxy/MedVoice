@@ -148,6 +148,12 @@ class FakeMedicineDao : MedicineDao {
         logs.clear()
     }
 
+    override suspend fun insertMedicine(medicine: com.medvoice.core.data.local.entity.MedicineEntity): Long = 1L
+
+    override suspend fun insertSalt(salt: com.medvoice.core.data.local.entity.ActiveSaltEntity): Long = 1L
+
+    override suspend fun insertTimingRule(rule: com.medvoice.core.data.local.entity.FoodRuleEntity): Long = 1L
+
     override suspend fun getAllMedicines(): List<MedicineQueryResult> = sampleMedicines
 }
 

@@ -72,4 +72,25 @@ class UniversalOcrParsingTest {
         assertEquals("GEL", safe.medicine.dosage_form)
         assertTrue(safe.vernacularInstructionHi.contains("मलहम") || safe.vernacularInstructionHi.contains("जेल"))
     }
+
+    @Test
+    fun testAutoPersistDiscoveredMedicineInDao() = runBlocking {
+        val fakeDao = FakeMedicineDao()
+        val eyeDropMed = com.medvoice.core.data.local.entity.MedicineEntity(
+            id = 5001L,
+            brandName = "Maritima Euphrasia Eye Drops",
+            manufacturer = "SBL Pvt Ltd",
+            dosageForm = "EYE_DROPS",
+            strengthMg = 10.0,
+            primarySaltId = 5001L,
+            secondarySaltId = null,
+            timingRuleId = 2L,
+            isHighRisk = false,
+            vernacularUsageEn = "Ophthalmic Eye Care Drops",
+            vernacularUsageHi = "नेत्र औषधि",
+            vernacularUsageMr = "डोळ्यांचे औषध"
+        )
+        val insertedId = fakeDao.insertMedicine(eyeDropMed)
+        assertEquals(1L, insertedId)
+    }
 }

@@ -4,7 +4,10 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import com.medvoice.core.data.local.entity.ActiveSaltEntity
+import com.medvoice.core.data.local.entity.FoodRuleEntity
 import com.medvoice.core.data.local.entity.MedicationLogEntity
+import com.medvoice.core.data.local.entity.MedicineEntity
 
 data class MedicineQueryResult(
     val id: Long,
@@ -98,6 +101,15 @@ interface MedicineDao {
 
     @Query("DELETE FROM medication_logs")
     suspend fun clearAllLogs()
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertMedicine(medicine: MedicineEntity): Long
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertSalt(salt: ActiveSaltEntity): Long
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertTimingRule(rule: FoodRuleEntity): Long
 
     @Query("""
         SELECT m.id, m.brand_name, m.dosage_form, m.strength_mg, m.primary_salt_id, 
