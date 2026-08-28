@@ -21,6 +21,25 @@ data class ScheduledReminder(
 class MedicationAlarmScheduler(private val context: Context) {
 
     private val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as? AlarmManager
+    private val prefs = context.getSharedPreferences("medvoice_prefs", Context.MODE_PRIVATE)
+
+    private fun getPatientPrefixEn(): String {
+        val name = prefs.getString("patient_name", "")?.trim() ?: ""
+        return if (name.isNotBlank() && !name.contains("Dadi", ignoreCase = true) && name != "Senior Patient") {
+            "$name, "
+        } else {
+            ""
+        }
+    }
+
+    private fun getPatientPrefixHi(): String {
+        val name = prefs.getString("patient_name", "")?.trim() ?: ""
+        return if (name.isNotBlank() && !name.contains("Dadi", ignoreCase = true) && name != "Senior Patient") {
+            "$name जी, "
+        } else {
+            ""
+        }
+    }
 
     /**
      * Default Senior Daily Prescriptions Schedule:
@@ -30,6 +49,8 @@ class MedicationAlarmScheduler(private val context: Context) {
      * - Night (08:30 PM): Pan 40 (Before Dinner)
      */
     fun getDefaultPrescriptionReminders(): List<ScheduledReminder> {
+        val pfxEn = getPatientPrefixEn()
+        val pfxHi = getPatientPrefixHi()
         return listOf(
             ScheduledReminder(
                 id = 101,
@@ -37,8 +58,8 @@ class MedicationAlarmScheduler(private val context: Context) {
                 hour = 7,
                 minute = 0,
                 timingRule = "STRICT_EMPTY_STOMACH",
-                vernacularEn = "Dadi, it is 7:00 AM. Please take Thyronorm 50mcg on an empty stomach with half glass water, 30 minutes before morning tea.",
-                vernacularHi = "दादीजी, सुबह के 7 बज गए हैं। कृपया थायरोनॉर्म 50mcg खाली पेट आधे गिलास पानी के साथ लें, चाय से 30 मिनट पहले।"
+                vernacularEn = "${pfxEn}it is 7:00 AM. Please take Thyronorm 50mcg on an empty stomach with half glass water, 30 minutes before morning tea.",
+                vernacularHi = "${pfxHi}सुबह के 7 बज गए हैं। कृपया थायरोनॉर्म 50mcg खाली पेट आधे गिलास पानी के साथ लें, चाय से 30 मिनट पहले।"
             ),
             ScheduledReminder(
                 id = 102,
@@ -46,8 +67,8 @@ class MedicationAlarmScheduler(private val context: Context) {
                 hour = 8,
                 minute = 30,
                 timingRule = "AFTER_MEAL",
-                vernacularEn = "Dadi, it is time for breakfast medicine. Please take Glycomet 500mg immediately after your breakfast.",
-                vernacularHi = "दादीजी, नाश्ते के बाद की दवा का समय हो गया है। कृपया नाश्ता करने के तुरंत बाद ग्लाइकोमेट 500mg लें।"
+                vernacularEn = "${pfxEn}it is time for breakfast medicine. Please take Glycomet 500mg immediately after your breakfast.",
+                vernacularHi = "${pfxHi}नाश्ते के बाद की दवा का समय हो गया है। कृपया नाश्ता करने के तुरंत बाद ग्लाइकोमेट 500mg लें।"
             ),
             ScheduledReminder(
                 id = 103,
@@ -55,8 +76,8 @@ class MedicationAlarmScheduler(private val context: Context) {
                 hour = 13,
                 minute = 30,
                 timingRule = "AFTER_MEAL",
-                vernacularEn = "Dadi, afternoon medicine time. Please take Shelcal Calcium after lunch.",
-                vernacularHi = "दादीजी, दोपहर की दवा का समय। कृपया दोपहर के भोजन के बाद शेलकल कैल्शियम की गोली लें।"
+                vernacularEn = "${pfxEn}afternoon medicine time. Please take Shelcal Calcium after lunch.",
+                vernacularHi = "${pfxHi}दोपहर की दवा का समय। कृपया दोपहर के भोजन के बाद शेलकल कैल्शियम की गोली लें।"
             ),
             ScheduledReminder(
                 id = 104,
@@ -64,8 +85,8 @@ class MedicationAlarmScheduler(private val context: Context) {
                 hour = 20,
                 minute = 0,
                 timingRule = "BEFORE_MEAL",
-                vernacularEn = "Dadi, night medicine time. Please take Pan 40 antacid 20 minutes before dinner.",
-                vernacularHi = "दादीजी, रात की दवा का समय। कृपया रात के खाने से 20 मिनट पहले पैन 40 लें।"
+                vernacularEn = "${pfxEn}night medicine time. Please take Pan 40 antacid 20 minutes before dinner.",
+                vernacularHi = "${pfxHi}रात की दवा का समय। कृपया रात के खाने से 20 मिनट पहले पैन 40 लें।"
             )
         )
     }
@@ -144,29 +165,32 @@ class MedicationAlarmScheduler(private val context: Context) {
             return
         }
 
+        val pfxEn = getPatientPrefixEn()
+        val pfxHi = getPatientPrefixHi()
+
         medicines.take(4).forEachIndexed { index, med ->
             val (hour, minute, timing, enPhrase, hiPhrase) = when (index) {
                 0 -> {
                     val isThyroid = med.brandName.contains("Thyro", ignoreCase = true) || med.rawComposition.contains("Levothyroxine", ignoreCase = true)
                     if (isThyroid) {
                         Tuple5(7, 0, "STRICT_EMPTY_STOMACH",
-                            "Dadi, it is 7:00 AM. Please take ${med.brandName} on an empty stomach with half glass water.",
-                            "दादीजी, सुबह के 7 बज गए हैं। कृपया ${med.brandName} खाली पेट आधे गिलास पानी के साथ लें।")
+                            "${pfxEn}it is 7:00 AM. Please take ${med.brandName} on an empty stomach with half glass water.",
+                            "${pfxHi}सुबह के 7 बज गए हैं। कृपया ${med.brandName} खाली पेट आधे गिलास पानी के साथ लें।")
                     } else {
                         Tuple5(8, 30, "AFTER_MEAL",
-                            "Dadi, morning medicine time. Please take ${med.brandName} after breakfast.",
-                            "दादीजी, सुबह नाश्ते के बाद का समय। कृपया ${med.brandName} लें।")
+                            "${pfxEn}morning medicine time. Please take ${med.brandName} after breakfast.",
+                            "${pfxHi}सुबह नाश्ते के बाद का समय। कृपया ${med.brandName} लें।")
                     }
                 }
                 1 -> Tuple5(13, 30, "AFTER_MEAL",
-                    "Dadi, afternoon medicine time. Please take ${med.brandName} after lunch.",
-                    "दादीजी, दोपहर की दवा का समय। कृपया ${med.brandName} भोजन के बाद लें।")
+                    "${pfxEn}afternoon medicine time. Please take ${med.brandName} after lunch.",
+                    "${pfxHi}दोपहर की दवा का समय। कृपया ${med.brandName} भोजन के बाद लें।")
                 2 -> Tuple5(20, 0, "BEFORE_MEAL",
-                    "Dadi, night medicine time. Please take ${med.brandName} before dinner.",
-                    "दादीजी, रात की दवा का समय। कृपया ${med.brandName} रात के खाने से पहले लें।")
+                    "${pfxEn}night medicine time. Please take ${med.brandName} before dinner.",
+                    "${pfxHi}रात की दवा का समय। कृपया ${med.brandName} रात के खाने से पहले लें।")
                 else -> Tuple5(21, 30, "BEDTIME",
-                    "Dadi, bedtime medicine time. Please take ${med.brandName} before sleeping.",
-                    "दादीजी, सोने से पहले की दवा का समय। कृपया ${med.brandName} लें।")
+                    "${pfxEn}bedtime medicine time. Please take ${med.brandName} before sleeping.",
+                    "${pfxHi}सोने से पहले की दवा का समय। कृपया ${med.brandName} लें।")
             }
 
             val reminder = ScheduledReminder(
@@ -196,14 +220,17 @@ class MedicationAlarmScheduler(private val context: Context) {
      * Trigger instant test alarm (fires in 2 seconds for live demo/testing)
      */
     fun triggerInstantTestAlarm() {
+        val pfxEn = getPatientPrefixEn()
+        val pfxHi = getPatientPrefixHi()
+
         val testReminder = ScheduledReminder(
             id = 999,
             medicineName = "Glycomet-SR 500 (Live Test)",
             hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY),
             minute = Calendar.getInstance().get(Calendar.MINUTE),
             timingRule = "AFTER_MEAL",
-            vernacularEn = "Dadi, this is a test medication reminder. Please take Glycomet 500mg after food.",
-            vernacularHi = "दादीजी, यह दवा याद दिलाने का परीक्षण अलार्म है। कृपया भोजन के बाद ग्लाइकोमेट 500mg लें।"
+            vernacularEn = "${pfxEn}this is a test medication reminder. Please take Glycomet 500mg after food.",
+            vernacularHi = "${pfxHi}यह दवा याद दिलाने का परीक्षण अलार्म है। कृपया भोजन के बाद ग्लाइकोमेट 500mg लें।"
         )
 
         val intent = Intent(context, MedicationAlarmReceiver::class.java).apply {

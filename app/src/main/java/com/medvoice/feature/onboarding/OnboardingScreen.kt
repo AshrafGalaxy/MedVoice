@@ -75,8 +75,12 @@ fun OnboardingScreen(
     val haptic = LocalHapticFeedback.current
 
     var currentStep by remember { mutableIntStateOf(1) }
-    var patientNameInput by remember { mutableStateOf("Dadi") }
-    var phoneInput by remember { mutableStateOf("+919876543210") }
+    var patientNameInput by remember {
+        mutableStateOf(
+            viewModel.patientName.value.takeIf { !it.contains("Dadi", ignoreCase = true) && it != "Senior Patient" } ?: ""
+        )
+    }
+    var phoneInput by remember { mutableStateOf(viewModel.caregiverPhone.value.ifBlank { "+919876543210" }) }
 
     val selectedConditions = remember { mutableStateListOf("Type-2 Diabetes", "Hypertension (BP)") }
 
@@ -382,11 +386,31 @@ fun OnboardingScreen(
 
                     Spacer(modifier = Modifier.height(14.dp))
 
+                    // Patient Name Input Field
+                    OutlinedTextField(
+                        value = patientNameInput,
+                        onValueChange = { patientNameInput = it },
+                        label = { Text(if (locale == "hi") "रोगी का नाम (Patient Name)" else "Patient Name (रोगी का नाम)", fontSize = 12.sp) },
+                        placeholder = { Text("e.g. Ramesh Kumar / Anita Sharma", color = TextMuted, fontSize = 12.sp) },
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedTextColor = TextWhite,
+                            unfocusedTextColor = TextWhite,
+                            focusedBorderColor = SafeGreen,
+                            unfocusedBorderColor = AccentBorder,
+                            focusedContainerColor = SurfaceCardDark,
+                            unfocusedContainerColor = SurfaceCardDark
+                        ),
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
                     // Caregiver Phone Field
                     OutlinedTextField(
                         value = phoneInput,
                         onValueChange = { phoneInput = it },
-                        label = { Text("Caregiver Mobile Number (केयरगिवर फोन)", fontSize = 12.sp) },
+                        label = { Text(if (locale == "hi") "केयरगिवर फोन नंबर (Caregiver Mobile)" else "Caregiver Mobile Number (केयरगिवर फोन)", fontSize = 12.sp) },
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedTextColor = TextWhite,
                             unfocusedTextColor = TextWhite,

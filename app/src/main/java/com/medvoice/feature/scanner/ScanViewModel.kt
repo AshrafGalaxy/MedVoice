@@ -107,7 +107,9 @@ class ScanViewModel(application: Application) : AndroidViewModel(application) {
     private val _caregiverPhone = MutableStateFlow(prefs.getString("caregiver_phone", "+919876543210") ?: "+919876543210")
     val caregiverPhone: StateFlow<String> = _caregiverPhone.asStateFlow()
 
-    private val _patientName = MutableStateFlow(prefs.getString("patient_name", "Dadi (आजी)") ?: "Dadi (आजी)")
+    private val _patientName = MutableStateFlow(
+        prefs.getString("patient_name", "")?.takeIf { it.isNotBlank() && !it.contains("Dadi", ignoreCase = true) } ?: "Senior Patient"
+    )
     val patientName: StateFlow<String> = _patientName.asStateFlow()
 
     private val _medicationLogs = MutableStateFlow<List<MedicationLogEntity>>(emptyList())
@@ -207,13 +209,14 @@ class ScanViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun updateCaregiverInfo(name: String, phone: String) {
-        _patientName.value = name
+        val sanitizedName = name.trim().ifBlank { "Senior Patient" }
+        _patientName.value = sanitizedName
         _caregiverPhone.value = phone
         prefs.edit {
-            putString("patient_name", name)
+            putString("patient_name", sanitizedName)
             putString("caregiver_phone", phone)
         }
-        val confirmation = if (_selectedLocale.value == "hi") "केयरगिवर का विवरण सहेज लिया गया है।" else "Caregiver details saved successfully."
+        val confirmation = if (_selectedLocale.value == "hi") "केयरगिवर और रोगी का विवरण सहेज लिया गया है।" else "Patient and caregiver details saved successfully."
         ttsManager.speak(confirmation, _selectedLocale.value)
     }
 
@@ -239,10 +242,21 @@ class ScanViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun testVoicePreview() {
+        val currentName = _patientName.value.trim().takeIf {
+            it.isNotBlank() && !it.contains("Dadi", ignoreCase = true) && it != "Senior Patient"
+        }
         val sampleText = if (_selectedLocale.value == "hi") {
-            "नमस्ते दादीजी! मेडवॉयस आपकी सभी दवाएं समय पर और सुरक्षित रूप से लेने में मदद करेगा।"
+            if (currentName != null) {
+                "नमस्ते $currentName जी! मेडवॉयस आपकी सभी दवाएं समय पर और सुरक्षित रूप से लेने में मदद करेगा।"
+            } else {
+                "नमस्ते! मेडवॉयस आपकी सभी दवाएं समय पर और सुरक्षित रूप से लेने में मदद करेगा।"
+            }
         } else {
-            "Hello Dadi! MedVoice will ensure all your medications are taken safely on schedule."
+            if (currentName != null) {
+                "Hello $currentName! MedVoice will ensure all your medications are taken safely on schedule."
+            } else {
+                "Hello! MedVoice will ensure all your medications are taken safely on schedule."
+            }
         }
         ttsManager.speak(sampleText, _selectedLocale.value)
     }
