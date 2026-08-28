@@ -111,86 +111,10 @@ fun ScanScreen(viewModel: ScanViewModel) {
         modifier = Modifier.fillMaxSize(),
         color = BackgroundCharcoal
     ) {
-        Column(modifier = Modifier.fillMaxSize()) {
-
-            // 1. Header Bar with Language Switcher & Torch Button
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 14.dp, vertical = 8.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Row(
-                    modifier = Modifier.weight(1f),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(38.dp)
-                            .background(SafeGreen.copy(alpha = 0.15f), RoundedCornerShape(10.dp)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.CameraAlt,
-                            contentDescription = "Scanner",
-                            tint = SafeGreen,
-                            modifier = Modifier.size(22.dp)
-                        )
-                    }
-                    Spacer(modifier = Modifier.width(10.dp))
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = if (locale == "hi") "यूनिवर्सल मेडिसिन स्कैनर" else "Universal Medicine Scanner",
-                            style = MaterialTheme.typography.titleMedium.copy(
-                                color = TextWhite,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 15.sp
-                            ),
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                        Text(
-                            text = if (locale == "hi") "100% ऑन-डिवाइस क्लिनिकल एआई" else "100% On-Device Clinical AI",
-                            style = MaterialTheme.typography.bodySmall.copy(
-                                color = SafeGreen,
-                                fontWeight = FontWeight.SemiBold,
-                                fontSize = 11.sp
-                            )
-                        )
-                    }
-                }
-
-                // Flash Torch Toggle
-                Box(
-                    modifier = Modifier
-                        .size(40.dp)
-                        .background(
-                            if (isTorchOn) SafeGreen.copy(alpha = 0.25f) else SurfaceCardElevated,
-                            RoundedCornerShape(10.dp)
-                        )
-                        .clickable {
-                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                            viewModel.toggleTorch()
-                        },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = if (isTorchOn) Icons.Default.FlashOn else Icons.Default.FlashOff,
-                        contentDescription = "Torch Toggle",
-                        tint = if (isTorchOn) SafeGreen else TextMuted,
-                        modifier = Modifier.size(22.dp)
-                    )
-                }
-            }
-
-            // 2. Camera Viewport & Dynamic Reticle (or Permission Denial Recovery View)
+        Box(modifier = Modifier.fillMaxSize()) {
+            // 1. Camera Viewport Layer (Full Screen behind UI)
             Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f)
-                    .padding(horizontal = 12.dp, vertical = 4.dp)
-                    .border(1.5.dp, AccentBorder, RoundedCornerShape(18.dp))
+                modifier = Modifier.fillMaxSize()
             ) {
                 if (hasCameraPermission) {
                     AndroidView(
@@ -343,13 +267,91 @@ fun ScanScreen(viewModel: ScanViewModel) {
                 }
             }
 
-            // 3. Bottom Accessible Action Area (Senior 80dp Touch Targets)
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 12.dp, vertical = 6.dp)
-            ) {
-                when (val state = uiState) {
+            }
+
+            // 2. UI Overlay Layer (Header at top, Action Panel at bottom)
+            Column(modifier = Modifier.fillMaxSize()) {
+                // Header Bar (Transparent background to let camera show through)
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(Color(0x99000000)) // Semi-transparent top bar
+                        .padding(horizontal = 14.dp, vertical = 12.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(
+                        modifier = Modifier.weight(1f),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(38.dp)
+                                .background(SafeGreen.copy(alpha = 0.15f), RoundedCornerShape(10.dp)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.CameraAlt,
+                                contentDescription = "Scanner",
+                                tint = SafeGreen,
+                                modifier = Modifier.size(22.dp)
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = if (locale == "hi") "यूनिवर्सल मेडिसिन स्कैनर" else "Universal Medicine Scanner",
+                                style = MaterialTheme.typography.titleMedium.copy(
+                                    color = TextWhite,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 15.sp
+                                ),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            Text(
+                                text = if (locale == "hi") "100% ऑन-डिवाइस क्लिनिकल एआई" else "100% On-Device Clinical AI",
+                                style = MaterialTheme.typography.bodySmall.copy(
+                                    color = SafeGreen,
+                                    fontWeight = FontWeight.SemiBold,
+                                    fontSize = 11.sp
+                                )
+                            )
+                        }
+                    }
+
+                    // Flash Torch Toggle
+                    Box(
+                        modifier = Modifier
+                            .size(40.dp)
+                            .background(
+                                if (isTorchOn) SafeGreen.copy(alpha = 0.25f) else Color(0x66FFFFFF),
+                                RoundedCornerShape(10.dp)
+                            )
+                            .clickable {
+                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                viewModel.toggleTorch()
+                            },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = if (isTorchOn) Icons.Default.FlashOn else Icons.Default.FlashOff,
+                            contentDescription = "Torch Toggle",
+                            tint = if (isTorchOn) SafeGreen else TextWhite,
+                            modifier = Modifier.size(22.dp)
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.weight(1f))
+
+                // Bottom Accessible Action Area (Senior 80dp Touch Targets)
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 12.dp, vertical = 12.dp)
+                ) {
+                    when (val state = uiState) {
                     is ScanUiState.Scanning -> {
                         Card(
                             modifier = Modifier

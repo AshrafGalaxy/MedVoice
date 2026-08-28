@@ -43,52 +43,10 @@ class MedicationAlarmScheduler(private val context: Context) {
 
     /**
      * Default Senior Daily Prescriptions Schedule:
-     * - Morning (08:00 AM): Glycomet-SR 500 (After Breakfast)
-     * - Morning (07:00 AM): Thyronorm 50mcg (Strict Empty Stomach)
-     * - Afternoon (01:30 PM): Shelcal 500 (After Lunch)
-     * - Night (08:30 PM): Pan 40 (Before Dinner)
+     * Now strictly dynamic - returns empty by default so new accounts have no mock alarms.
      */
     fun getDefaultPrescriptionReminders(): List<ScheduledReminder> {
-        val pfxEn = getPatientPrefixEn()
-        val pfxHi = getPatientPrefixHi()
-        return listOf(
-            ScheduledReminder(
-                id = 101,
-                medicineName = "Thyronorm 50mcg",
-                hour = 7,
-                minute = 0,
-                timingRule = "STRICT_EMPTY_STOMACH",
-                vernacularEn = "${pfxEn}it is 7:00 AM. Please take Thyronorm 50mcg on an empty stomach with half glass water, 30 minutes before morning tea.",
-                vernacularHi = "${pfxHi}सुबह के 7 बज गए हैं। कृपया थायरोनॉर्म 50mcg खाली पेट आधे गिलास पानी के साथ लें, चाय से 30 मिनट पहले।"
-            ),
-            ScheduledReminder(
-                id = 102,
-                medicineName = "Glycomet-SR 500",
-                hour = 8,
-                minute = 30,
-                timingRule = "AFTER_MEAL",
-                vernacularEn = "${pfxEn}it is time for breakfast medicine. Please take Glycomet 500mg immediately after your breakfast.",
-                vernacularHi = "${pfxHi}नाश्ते के बाद की दवा का समय हो गया है। कृपया नाश्ता करने के तुरंत बाद ग्लाइकोमेट 500mg लें।"
-            ),
-            ScheduledReminder(
-                id = 103,
-                medicineName = "Shelcal 500",
-                hour = 13,
-                minute = 30,
-                timingRule = "AFTER_MEAL",
-                vernacularEn = "${pfxEn}afternoon medicine time. Please take Shelcal Calcium after lunch.",
-                vernacularHi = "${pfxHi}दोपहर की दवा का समय। कृपया दोपहर के भोजन के बाद शेलकल कैल्शियम की गोली लें।"
-            ),
-            ScheduledReminder(
-                id = 104,
-                medicineName = "Pan 40",
-                hour = 20,
-                minute = 0,
-                timingRule = "BEFORE_MEAL",
-                vernacularEn = "${pfxEn}night medicine time. Please take Pan 40 antacid 20 minutes before dinner.",
-                vernacularHi = "${pfxHi}रात की दवा का समय। कृपया रात के खाने से 20 मिनट पहले पैन 40 लें।"
-            )
-        )
+        return emptyList()
     }
 
     /**
