@@ -161,68 +161,26 @@ fun ScanScreen(viewModel: ScanViewModel) {
                     }
                 }
 
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    // Flash Torch Toggle
-                    Box(
-                        modifier = Modifier
-                            .size(38.dp)
-                            .background(
-                                if (isTorchOn) SafeGreen.copy(alpha = 0.25f) else SurfaceCardElevated,
-                                RoundedCornerShape(10.dp)
-                            )
-                            .clickable {
-                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                viewModel.toggleTorch()
-                            },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = if (isTorchOn) Icons.Default.FlashOn else Icons.Default.FlashOff,
-                            contentDescription = "Torch Toggle",
-                            tint = if (isTorchOn) SafeGreen else TextMuted,
-                            modifier = Modifier.size(20.dp)
+                // Flash Torch Toggle
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .background(
+                            if (isTorchOn) SafeGreen.copy(alpha = 0.25f) else SurfaceCardElevated,
+                            RoundedCornerShape(10.dp)
                         )
-                    }
-
-                    Spacer(modifier = Modifier.width(8.dp))
-
-                    // Language Quick Toggle Pill
-                    Surface(
-                        color = SurfaceCardElevated,
-                        shape = RoundedCornerShape(8.dp),
-                        modifier = Modifier.height(34.dp)
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Box(
-                                modifier = Modifier
-                                    .background(
-                                        if (locale == "en") SafeGreen else Color.Transparent,
-                                        RoundedCornerShape(8.dp)
-                                    )
-                                    .clickable {
-                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                        viewModel.setLocale("en")
-                                    }
-                                    .padding(horizontal = 8.dp, vertical = 4.dp)
-                            ) {
-                                Text("EN", color = TextWhite, fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                            }
-                            Box(
-                                modifier = Modifier
-                                    .background(
-                                        if (locale == "hi") SafeGreen else Color.Transparent,
-                                        RoundedCornerShape(8.dp)
-                                    )
-                                    .clickable {
-                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                        viewModel.setLocale("hi")
-                                    }
-                                    .padding(horizontal = 8.dp, vertical = 4.dp)
-                            ) {
-                                Text("हिंदी", color = TextWhite, fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                            }
-                        }
-                    }
+                        .clickable {
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            viewModel.toggleTorch()
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = if (isTorchOn) Icons.Default.FlashOn else Icons.Default.FlashOff,
+                        contentDescription = "Torch Toggle",
+                        tint = if (isTorchOn) SafeGreen else TextMuted,
+                        modifier = Modifier.size(22.dp)
+                    )
                 }
             }
 

@@ -108,82 +108,38 @@ fun HomeScreen(viewModel: ScanViewModel) {
             .verticalScroll(rememberScrollState())
             .padding(14.dp)
     ) {
-        // 1. Responsive Top Bar: Logo, Greeting, Patient Name & Language Switcher
+        // 1. Responsive Top Bar: Logo, Greeting, and Patient Name
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(
-                modifier = Modifier.weight(1f),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                MedVoiceLogo(size = 40)
-                Spacer(modifier = Modifier.width(10.dp))
-                Column(modifier = Modifier.weight(1f)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        TimeOfDayIcon(hour = currentHour)
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(
-                            text = greetingText,
-                            style = MaterialTheme.typography.titleSmall.copy(
-                                color = ReticleCyan,
-                                fontWeight = FontWeight.SemiBold,
-                                fontSize = 13.sp
-                            ),
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
+            MedVoiceLogo(size = 42)
+            Spacer(modifier = Modifier.width(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    TimeOfDayIcon(hour = currentHour)
+                    Spacer(modifier = Modifier.width(5.dp))
                     Text(
-                        text = patientName,
-                        style = MaterialTheme.typography.titleLarge.copy(
-                            color = TextWhite,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 19.sp
+                        text = greetingText,
+                        style = MaterialTheme.typography.titleSmall.copy(
+                            color = ReticleCyan,
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 13.sp
                         ),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
                 }
-            }
-
-            // Language Switcher Pills
-            Row(
-                modifier = Modifier
-                    .background(SurfaceCardElevated, RoundedCornerShape(10.dp))
-                    .padding(3.dp),
-                horizontalArrangement = Arrangement.spacedBy(2.dp)
-            ) {
-                Box(
-                    modifier = Modifier
-                        .background(
-                            if (locale == "en") SafeGreen else BackgroundCharcoal.copy(alpha = 0f),
-                            RoundedCornerShape(8.dp)
-                        )
-                        .clickable {
-                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                            viewModel.setLocale("en")
-                        }
-                        .padding(horizontal = 8.dp, vertical = 5.dp)
-                ) {
-                    Text("EN", color = TextWhite, fontWeight = FontWeight.Bold, fontSize = 11.sp)
-                }
-
-                Box(
-                    modifier = Modifier
-                        .background(
-                            if (locale == "hi") SafeGreen else BackgroundCharcoal.copy(alpha = 0f),
-                            RoundedCornerShape(8.dp)
-                        )
-                        .clickable {
-                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                            viewModel.setLocale("hi")
-                        }
-                        .padding(horizontal = 8.dp, vertical = 5.dp)
-                ) {
-                    Text("हिंदी", color = TextWhite, fontWeight = FontWeight.Bold, fontSize = 11.sp)
-                }
+                Text(
+                    text = patientName,
+                    style = MaterialTheme.typography.titleLarge.copy(
+                        color = TextWhite,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 20.sp
+                    ),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
             }
         }
 
