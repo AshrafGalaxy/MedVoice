@@ -16,6 +16,10 @@ class TextAnalyzer(
     private val recognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
     private var lastAnalyzedTimestamp = 0L
 
+    // Temporal Stabilization Queue
+    private val frameBuffer = mutableListOf<List<String>>()
+    private val requiredStableFrames = 2
+
     @OptIn(ExperimentalGetImage::class)
     override fun analyze(imageProxy: ImageProxy) {
         val currentTimestamp = System.currentTimeMillis()
@@ -32,11 +36,23 @@ class TextAnalyzer(
             recognizer.process(image)
                 .addOnSuccessListener { visionText ->
                     val lines = visionText.textBlocks.flatMap { block ->
-                        block.lines.map { it.text.trim() }
+                        block.lines.map { it.text.trim().uppercase() }
                     }.filter { it.isNotBlank() && it.length >= 3 }
 
                     if (lines.isNotEmpty()) {
-                        onTextDetected(lines)
+                        frameBuffer.add(lines)
+                        if (frameBuffer.size > requiredStableFrames + 1) {
+                            frameBuffer.removeAt(0)
+                        }
+
+                        if (frameBuffer.size == requiredStableFrames + 1) {
+                            if (checkStability(frameBuffer)) {
+                                onTextDetected(lines)
+                                frameBuffer.clear()
+                            }
+                        }
+                    } else {
+                        frameBuffer.clear()
                     }
                 }
                 .addOnFailureListener { error ->
@@ -49,5 +65,20 @@ class TextAnalyzer(
         } else {
             imageProxy.close()
         }
+    }
+
+    private fun checkStability(buffer: List<List<String>>): Boolean {
+        val firstFrameText = buffer.first().joinToString(" ")
+        val lastFrameText = buffer.last().joinToString(" ")
+        
+        val firstWords = firstFrameText.split(Regex("\\s+")).toSet()
+        val lastWords = lastFrameText.split(Regex("\\s+")).toSet()
+
+        if (firstWords.isEmpty() || lastWords.isEmpty()) return false
+
+        val intersection = firstWords.intersect(lastWords)
+        val similarity = intersection.size.toFloat() / maxOf(firstWords.size, lastWords.size).toFloat()
+        
+        return similarity >= 0.4f
     }
 }
