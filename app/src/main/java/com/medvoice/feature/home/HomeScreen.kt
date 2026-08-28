@@ -20,6 +20,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Phone
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material3.Button
@@ -252,6 +253,109 @@ fun HomeScreen(viewModel: ScanViewModel) {
                             fontSize = 11.sp
                         )
                     )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        // 3.5 Daily Voice Alarms & Reminder Card (AlarmManager)
+        val isRemindersEnabled by viewModel.isDailyRemindersEnabled.collectAsState()
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = SurfaceCardDark),
+            shape = RoundedCornerShape(14.dp)
+        ) {
+            Column(modifier = Modifier.padding(14.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(
+                        modifier = Modifier.weight(1f),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(34.dp)
+                                .background(ReticleCyan.copy(alpha = 0.15f), RoundedCornerShape(8.dp)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Schedule,
+                                contentDescription = null,
+                                tint = ReticleCyan,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = if (locale == "hi") "दैनिक आवाज अलार्म (अलर्ट)" else "Daily Spoken Voice Alarms",
+                                style = MaterialTheme.typography.titleSmall.copy(
+                                    color = TextWhite,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 14.sp
+                                )
+                            )
+                            Text(
+                                text = if (locale == "hi") "समय पर बोलकर दवा याद दिलाएगा (7 AM, 8:30 AM, 1:30 PM, 8 PM)" else "Auto-announces prescription times aloud",
+                                style = MaterialTheme.typography.bodySmall.copy(
+                                    color = TextMuted,
+                                    fontSize = 11.sp
+                                )
+                            )
+                        }
+                    }
+
+                    androidx.compose.material3.Switch(
+                        checked = isRemindersEnabled,
+                        onCheckedChange = { viewModel.toggleDailyReminders(it) },
+                        colors = androidx.compose.material3.SwitchDefaults.colors(
+                            checkedThumbColor = TextWhite,
+                            checkedTrackColor = SafeGreen
+                        )
+                    )
+                }
+
+                if (isRemindersEnabled) {
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = if (locale == "hi") "अलार्म परीक्षण (2 सेकंड में बोलेगा):" else "Test Alarm (Plays in 2s):",
+                            color = TextMuted,
+                            fontSize = 11.sp
+                        )
+                        Button(
+                            onClick = {
+                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                viewModel.triggerTestAlarm()
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = ReticleCyan),
+                            shape = RoundedCornerShape(8.dp),
+                            contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                            modifier = Modifier.height(32.dp)
+                        ) {
+                            Icon(
+                                imageVector = androidx.compose.material.icons.Icons.Default.PlayArrow,
+                                contentDescription = null,
+                                tint = BackgroundCharcoal,
+                                modifier = Modifier.size(14.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = if (locale == "hi") "परीक्षण अलार्म" else "Test Alarm",
+                                color = BackgroundCharcoal,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 11.sp
+                            )
+                        }
+                    }
                 }
             }
         }

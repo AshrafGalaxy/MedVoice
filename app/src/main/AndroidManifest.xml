@@ -11,6 +11,10 @@
     <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.SEND_SMS" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
     <application
         android:name=".MedVoiceApp"
@@ -31,6 +35,24 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- Background Medication Alarm & Voice Broadcast Receivers -->
+        <receiver
+            android:name=".core.scheduler.MedicationAlarmReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.medvoice.ACTION_MEDICATION_REMINDER" />
+            </intent-filter>
+        </receiver>
+
+        <receiver
+            android:name=".core.scheduler.MedicationBootReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.QUICKBOOT_POWERON" />
+            </intent-filter>
+        </receiver>
     </application>
 
 </manifest>

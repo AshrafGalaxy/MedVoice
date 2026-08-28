@@ -52,7 +52,11 @@ class ScanViewModel(application: Application) : AndroidViewModel(application) {
     private val safetyEngine = SafetyEvaluationEngine(db.medicineDao())
     val ttsManager = VernacularTtsManager(application)
     val aiEngine = com.medvoice.core.ai.AiPharmacologyEngine(application)
+    val alarmScheduler = com.medvoice.core.scheduler.MedicationAlarmScheduler(application)
     private val prefs = application.getSharedPreferences("medvoice_prefs", android.content.Context.MODE_PRIVATE)
+
+    private val _isDailyRemindersEnabled = MutableStateFlow(prefs.getBoolean("daily_reminders_enabled", true))
+    val isDailyRemindersEnabled: StateFlow<Boolean> = _isDailyRemindersEnabled.asStateFlow()
 
     private val _allMedicines = MutableStateFlow<List<com.medvoice.core.data.local.dao.MedicineQueryResult>>(emptyList())
     val allMedicines: StateFlow<List<com.medvoice.core.data.local.dao.MedicineQueryResult>> = _allMedicines.asStateFlow()
@@ -338,6 +342,20 @@ class ScanViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch(Dispatchers.IO) {
             db.medicineDao().clearAllLogs()
             refreshLogs()
+        }
+    }
+
+    fun triggerTestAlarm() {
+        alarmScheduler.triggerInstantTestAlarm()
+    }
+
+    fun toggleDailyReminders(enabled: Boolean) {
+        prefs.edit().putBoolean("daily_reminders_enabled", enabled).apply()
+        _isDailyRemindersEnabled.value = enabled
+        if (enabled) {
+            alarmScheduler.scheduleAllReminders()
+        } else {
+            listOf(101, 102, 103, 104).forEach { alarmScheduler.cancelReminder(it) }
         }
     }
 
