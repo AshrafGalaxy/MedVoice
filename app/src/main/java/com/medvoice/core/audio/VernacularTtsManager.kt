@@ -73,8 +73,80 @@ class VernacularTtsManager(
             return
         }
 
+        if (engineMode == VoiceEngineMode.HYBRID_ELEVENLABS && elevenLabsApiKey.isNotBlank()) {
+            speakViaElevenLabs(text, onDone, fallback = {
+                speakOffline(text, languageCode, onDone)
+            })
+            return
+        }
+
         // 2. Default to 100% Offline Tuned On-Device Engine
         speakOffline(text, languageCode, onDone)
+    }
+
+    private fun speakViaElevenLabs(text: String, onDone: () -> Unit, fallback: () -> Unit) {
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                // ElevenLabs Multilingual v2 Indian English / Hindi voice ID
+                val voiceId = if (selectedGender == VoiceGender.FEMALE) "21m00Tcm4TlvDq8ikWAM" else "pNInz6obpgDQGcFmaJgB"
+                val url = URL("https://api.elevenlabs.io/v1/text-to-speech/$voiceId")
+                val conn = url.openConnection() as HttpURLConnection
+                conn.requestMethod = "POST"
+                conn.setRequestProperty("Content-Type", "application/json")
+                conn.setRequestProperty("xi-api-key", elevenLabsApiKey)
+                conn.doOutput = true
+                conn.connectTimeout = 3000
+                conn.readTimeout = 5000
+
+                val payload = """
+                    {
+                        "text": "${text.replace("\"", "\\\"")}",
+                        "model_id": "eleven_multilingual_v2",
+                        "voice_settings": {
+                            "stability": 0.5,
+                            "similarity_boost": 0.75
+                        }
+                    }
+                """.trimIndent()
+
+                conn.outputStream.use { it.write(payload.toByteArray()) }
+
+                if (conn.responseCode == 200) {
+                    val tempFile = File(context.cacheDir, "elevenlabs_${System.currentTimeMillis()}.mp3")
+                    conn.inputStream.use { input ->
+                        FileOutputStream(tempFile).use { output ->
+                            input.copyTo(output)
+                        }
+                    }
+                    withContext(Dispatchers.Main) {
+                        playAudioFile(tempFile, onDone)
+                    }
+                    return@launch
+                }
+                withContext(Dispatchers.Main) { fallback() }
+            } catch (e: Exception) {
+                Log.w("VernacularTtsManager", "ElevenLabs failed, using fallback", e)
+                withContext(Dispatchers.Main) { fallback() }
+            }
+        }
+    }
+
+    fun openTtsSystemSettings(ctx: Context) {
+        try {
+            val intent = android.content.Intent("com.android.settings.TTS_SETTINGS").apply {
+                flags = android.content.Intent.FLAG_ACTIVITY_NEW_TASK
+            }
+            ctx.startActivity(intent)
+        } catch (_: Exception) {
+            try {
+                val intent = android.content.Intent(android.provider.Settings.ACTION_SETTINGS).apply {
+                    flags = android.content.Intent.FLAG_ACTIVITY_NEW_TASK
+                }
+                ctx.startActivity(intent)
+            } catch (e: Exception) {
+                Log.e("VernacularTtsManager", "Could not open system settings", e)
+            }
+        }
     }
 
     private fun speakOffline(text: String, languageCode: String, onDone: () -> Unit) {
