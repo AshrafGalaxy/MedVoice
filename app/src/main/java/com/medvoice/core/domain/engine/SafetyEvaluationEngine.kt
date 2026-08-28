@@ -8,6 +8,7 @@ import com.medvoice.core.data.local.entity.MedicationLogEntity
 sealed class SafetyEvaluationResult {
     data class SafeToTake(
         val medicine: MedicineQueryResult,
+        val vernacularInstructionEn: String,
         val vernacularInstructionHi: String,
         val vernacularInstructionMr: String
     ) : SafetyEvaluationResult()
@@ -15,6 +16,7 @@ sealed class SafetyEvaluationResult {
     data class DuplicateDoseBlocked(
         val medicine: MedicineQueryResult,
         val recentLog: MedicationLogEntity,
+        val spokenAlertEn: String,
         val spokenAlertHi: String,
         val spokenAlertMr: String
     ) : SafetyEvaluationResult()
@@ -69,12 +71,14 @@ class SafetyEvaluationEngine(
         if (recentDose != null) {
             val saltName = matchedMedicine.salt_name
             val previousBrand = recentDose.scannedBrandName
+            val spokenAlertEn = "Warning! Stop! You already took $previousBrand ($saltName). Do not take this medicine again."
             val spokenAlertHi = "सावधान! रुकिए! आप $previousBrand ($saltName) पहले ही ले चुके हैं। इसे दोबारा न लें।"
             val spokenAlertMr = "सावधान! थांबा! तुम्ही आधीच $previousBrand ($saltName) घेतले आहे. हे औषध पुन्हा घेऊ नका."
 
             return SafetyEvaluationResult.DuplicateDoseBlocked(
                 medicine = matchedMedicine,
                 recentLog = recentDose,
+                spokenAlertEn = spokenAlertEn,
                 spokenAlertHi = spokenAlertHi,
                 spokenAlertMr = spokenAlertMr
             )
@@ -90,11 +94,13 @@ class SafetyEvaluationEngine(
         }
 
         // Step 4: Formulate Validated Safe Guidance
+        val instructionEn = "${matchedMedicine.vernacular_usage_en} ${matchedMedicine.vernacular_instruction_en}".trim()
         val instructionHi = "${matchedMedicine.vernacular_usage_hi} ${matchedMedicine.vernacular_instruction_hi}".trim()
         val instructionMr = "${matchedMedicine.vernacular_usage_mr} ${matchedMedicine.vernacular_instruction_mr}".trim()
 
         return SafetyEvaluationResult.SafeToTake(
             medicine = matchedMedicine,
+            vernacularInstructionEn = instructionEn,
             vernacularInstructionHi = instructionHi,
             vernacularInstructionMr = instructionMr
         )

@@ -22,16 +22,19 @@ class FakeMedicineDao : MedicineDao {
             strength_mg = 500.0,
             primary_salt_id = 1,
             is_high_risk = false,
+            vernacular_usage_en = "This is your diabetes blood sugar tablet.",
             vernacular_usage_hi = "यह आपकी शुगर की गोली है।",
             vernacular_usage_mr = "हे तुमचे साखरेचे औषध आहे.",
             salt_name = "Metformin Hydrochloride",
             therapeutic_class = "ANTIDIABETIC",
             max_daily_dose_mg = 2000.0,
             active_window_hours = 10.0,
+            vernacular_salt_desc_en = "Diabetes blood sugar control medicine",
             vernacular_salt_desc_hi = "शुगर नियंत्रित करने की दवा",
             vernacular_salt_desc_mr = "रक्तातील साखर नियंत्रित करणारे औषध",
             rule_code = "AFTER_MEAL",
             food_relation = "AFTER_FOOD",
+            vernacular_instruction_en = "Take 1 tablet with water after your meal.",
             vernacular_instruction_hi = "खाना खाने के बाद एक गोली पानी के साथ लें।",
             vernacular_instruction_mr = "जेवणानंतर एक गोळी पाण्यासोबत घ्या."
         ),
@@ -42,16 +45,19 @@ class FakeMedicineDao : MedicineDao {
             strength_mg = 500.0,
             primary_salt_id = 1, // Same active salt: Metformin!
             is_high_risk = false,
+            vernacular_usage_en = "This is your diabetes blood sugar tablet.",
             vernacular_usage_hi = "यह आपकी शुगर की गोली है।",
             vernacular_usage_mr = "हे तुमचे साखरेचे औषध आहे.",
             salt_name = "Metformin Hydrochloride",
             therapeutic_class = "ANTIDIABETIC",
             max_daily_dose_mg = 2000.0,
             active_window_hours = 10.0,
+            vernacular_salt_desc_en = "Diabetes blood sugar control medicine",
             vernacular_salt_desc_hi = "शुगर नियंत्रित करने की दवा",
             vernacular_salt_desc_mr = "रक्तातील साखर नियंत्रित करणारे औषध",
             rule_code = "AFTER_MEAL",
             food_relation = "AFTER_FOOD",
+            vernacular_instruction_en = "Take 1 tablet with water after your meal.",
             vernacular_instruction_hi = "खाना खाने के बाद एक गोली पानी के साथ लें।",
             vernacular_instruction_mr = "जेवणानंतर एक गोळी पाण्यासोबत घ्या."
         ),
@@ -62,16 +68,19 @@ class FakeMedicineDao : MedicineDao {
             strength_mg = 400.0,
             primary_salt_id = 7, // Ibuprofen
             is_high_risk = false,
+            vernacular_usage_en = "This is for pain and fever relief.",
             vernacular_usage_hi = "यह दर्द और बुखार की दवा है।",
             vernacular_usage_mr = "हे अंगदुखी आणि तापाचे औषध आहे.",
             salt_name = "Ibuprofen",
             therapeutic_class = "NSAID_ANALGESIC",
             max_daily_dose_mg = 2400.0,
             active_window_hours = 8.0,
+            vernacular_salt_desc_en = "Pain and anti-inflammatory relief",
             vernacular_salt_desc_hi = "दर्द और सूजन की दवा",
             vernacular_salt_desc_mr = "वेदना आणि सूज कमी करणारे औषध",
             rule_code = "AFTER_MEAL",
             food_relation = "AFTER_FOOD",
+            vernacular_instruction_en = "Take strictly after food.",
             vernacular_instruction_hi = "खाना खाने के बाद लें।",
             vernacular_instruction_mr = "जेवण झाल्यावरच घ्या."
         ),
@@ -82,16 +91,19 @@ class FakeMedicineDao : MedicineDao {
             strength_mg = 75.0,
             primary_salt_id = 8, // Aspirin
             is_high_risk = false,
+            vernacular_usage_en = "This is your blood thinner aspirin tablet.",
             vernacular_usage_hi = "यह खून पतला करने की गोली है।",
             vernacular_usage_mr = "हे रक्त पातळ करण्याचे औषध आहे.",
             salt_name = "Aspirin",
             therapeutic_class = "ANTIPLATELET",
             max_daily_dose_mg = 325.0,
             active_window_hours = 24.0,
+            vernacular_salt_desc_en = "Blood thinner antiplatelet agent",
             vernacular_salt_desc_hi = "खून पतला करने की दवा",
             vernacular_salt_desc_mr = "रक्त पातळ करणारे औषध",
             rule_code = "AFTER_MEAL",
             food_relation = "AFTER_FOOD",
+            vernacular_instruction_en = "Take after food.",
             vernacular_instruction_hi = "खाना खाने के बाद लें।",
             vernacular_instruction_mr = "जेवण झाल्यावरच घ्या."
         )
@@ -116,6 +128,7 @@ class FakeMedicineDao : MedicineDao {
                 return ContraindicationResult(
                     severity_level = "CRITICAL",
                     clinical_risk_mechanism = "Aspirin + Ibuprofen induces severe gastrointestinal ulceration",
+                    spoken_warning_en = "Warning! Taking Aspirin and Combiflam together creates a severe risk of internal stomach bleeding.",
                     spoken_warning_hi = "सावधान! एस्पिरिन और कॉम्बीफ्लेम साथ में लेने से पेट में ब्लीडिंग का खतरा है।",
                     spoken_warning_mr = "सावधान! एस्पिरिन आणि कॉम्बीफ्लेम एकत्र घेतल्यास पोटात अंतर्गत रक्तस्त्रावाचा मोठा धोका आहे."
                 )
@@ -148,7 +161,8 @@ class SafetyEngineTest {
         assertTrue("First scan of Glycomet must be safe", result is SafetyEvaluationResult.SafeToTake)
         val safeResult = result as SafetyEvaluationResult.SafeToTake
         assertEquals("Glycomet-SR 500", safeResult.medicine.brand_name)
-        assertTrue(safeResult.vernacularInstructionMr.contains("साखरेचे औषध"))
+        assertTrue(safeResult.vernacularInstructionEn.contains("diabetes blood sugar"))
+        assertTrue(safeResult.vernacularInstructionHi.contains("शुगर की गोली"))
     }
 
     @Test
@@ -173,7 +187,8 @@ class SafetyEngineTest {
         assertTrue("Gluconorm must be blocked due to duplicate Metformin active window", result is SafetyEvaluationResult.DuplicateDoseBlocked)
         val duplicateAlert = result as SafetyEvaluationResult.DuplicateDoseBlocked
         assertEquals("Gluconorm-SR 500", duplicateAlert.medicine.brand_name)
-        assertTrue(duplicateAlert.spokenAlertMr.contains("आधीच Glycomet-SR 500"))
+        assertTrue(duplicateAlert.spokenAlertEn.contains("already took Glycomet-SR 500"))
+        assertTrue(duplicateAlert.spokenAlertHi.contains("पहले ही ले चुके हैं"))
     }
 
     @Test
@@ -198,6 +213,6 @@ class SafetyEngineTest {
         assertTrue("Combiflam + Aspirin must trigger Critical Interaction Blocked", result is SafetyEvaluationResult.CriticalInteractionBlocked)
         val conflictAlert = result as SafetyEvaluationResult.CriticalInteractionBlocked
         assertEquals("CRITICAL", conflictAlert.conflict.severity_level)
-        assertTrue(conflictAlert.conflict.spoken_warning_mr.contains("रक्तस्त्रावाचा मोठा धोका"))
+        assertTrue(conflictAlert.conflict.spoken_warning_en.contains("internal stomach bleeding"))
     }
 }
