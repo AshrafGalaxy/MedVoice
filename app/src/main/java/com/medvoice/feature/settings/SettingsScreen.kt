@@ -489,121 +489,24 @@ fun SettingsScreen(viewModel: ScanViewModel) {
                             fontSize = 15.sp
                         )
                     }
-                    IconButton(
-                        onClick = {
-                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                            viewModel.refreshHardwareAudit()
-                        },
-                        modifier = Modifier.size(28.dp)
-                    ) {
-                        Icon(Icons.Default.Refresh, contentDescription = "Refresh Hardware Audit", tint = TextMuted, modifier = Modifier.size(16.dp))
+                    if (activeAiTier != AiEngineTier.CLOUD_MEDGEMMA_HOSTED) {
+                        IconButton(
+                            onClick = {
+                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                viewModel.refreshHardwareAudit()
+                            },
+                            modifier = Modifier.size(28.dp)
+                        ) {
+                            Icon(Icons.Default.Refresh, contentDescription = "Refresh Hardware Audit", tint = TextMuted, modifier = Modifier.size(16.dp))
+                        }
                     }
                 }
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = if (locale == "hi") "हार्डवेयर स्पेक्स और एआई इंजन चयन" else "Physical device audit and active reasoning engine",
+                    text = if (locale == "hi") "एआई इंजन चयन और सेटिंग्स" else "Select active reasoning engine and runtime settings",
                     color = TextMuted,
                     fontSize = 12.sp
                 )
-                Spacer(modifier = Modifier.height(10.dp))
-
-                // Live Hardware Diagnostics Card
-                Surface(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
-                    color = SurfaceCardElevated,
-                    border = BorderStroke(1.dp, AccentBorder)
-                ) {
-                    Column(modifier = Modifier.padding(12.dp)) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(Icons.Default.Memory, contentDescription = null, tint = SafeGreen, modifier = Modifier.size(16.dp))
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text(
-                                    text = if (locale == "hi") "हार्डवेयर स्पेक्स" else "Hardware Diagnostics",
-                                    color = TextWhite,
-                                    fontSize = 13.sp,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            }
-                            Surface(
-                                color = if (hardwareReport.eligibilityStatus == OnDeviceEligibilityStatus.FULLY_ELIGIBLE) SafeGreen.copy(alpha = 0.15f) else AlertRed.copy(alpha = 0.15f),
-                                shape = RoundedCornerShape(6.dp)
-                            ) {
-                                Text(
-                                    text = if (hardwareReport.eligibilityStatus == OnDeviceEligibilityStatus.FULLY_ELIGIBLE) "✓ 6GB+ ELIGIBLE" else "AUDIT CHECK",
-                                    color = if (hardwareReport.eligibilityStatus == OnDeviceEligibilityStatus.FULLY_ELIGIBLE) SafeGreen else AlertRed,
-                                    fontSize = 10.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.5.dp),
-                                    maxLines = 1
-                                )
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.height(10.dp))
-
-                        // Clean 2-column tiles with no text wrapping
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            // Left Tile: Device Model & CPU
-                            Surface(
-                                modifier = Modifier.weight(1f),
-                                shape = RoundedCornerShape(8.dp),
-                                color = SurfaceCardDark.copy(alpha = 0.6f)
-                            ) {
-                                Column(modifier = Modifier.padding(8.dp)) {
-                                    Text(
-                                        text = "📱 ${hardwareReport.deviceModel}",
-                                        color = TextWhite,
-                                        fontSize = 11.5.sp,
-                                        fontWeight = FontWeight.SemiBold,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
-                                    Spacer(modifier = Modifier.height(2.dp))
-                                    Text(
-                                        text = "⚡ CPU: ${hardwareReport.cpuCores} Cores (${if (hardwareReport.is64Bit) "64-bit" else "32-bit"})",
-                                        color = TextMuted,
-                                        fontSize = 10.5.sp,
-                                        maxLines = 1
-                                    )
-                                }
-                            }
-
-                            // Right Tile: RAM & Battery
-                            Surface(
-                                modifier = Modifier.weight(1f),
-                                shape = RoundedCornerShape(8.dp),
-                                color = SurfaceCardDark.copy(alpha = 0.6f)
-                            ) {
-                                Column(modifier = Modifier.padding(8.dp)) {
-                                    Text(
-                                        text = "💾 RAM: ${hardwareReport.totalRamGb} GB",
-                                        color = if (hardwareReport.isRamEligible) SafeGreen else WarningAmber,
-                                        fontSize = 11.5.sp,
-                                        fontWeight = FontWeight.SemiBold,
-                                        maxLines = 1
-                                    )
-                                    Spacer(modifier = Modifier.height(2.dp))
-                                    Text(
-                                        text = "🔋 ${hardwareReport.batteryPct}% Battery • ${hardwareReport.batteryTempCelsius}°C",
-                                        color = if (hardwareReport.isThermalSafe) SafeGreen else WarningAmber,
-                                        fontSize = 10.5.sp,
-                                        maxLines = 1
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-
                 Spacer(modifier = Modifier.height(12.dp))
 
                 // Reactive AI Tier Selector Buttons
@@ -667,6 +570,107 @@ fun SettingsScreen(viewModel: ScanViewModel) {
                 }
 
                 Spacer(modifier = Modifier.height(10.dp))
+
+                // Live Hardware Diagnostics Card (ONLY rendered when On-Device AI is selected)
+                if (activeAiTier != AiEngineTier.CLOUD_MEDGEMMA_HOSTED) {
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        color = SurfaceCardElevated,
+                        border = BorderStroke(1.dp, AccentBorder)
+                    ) {
+                        Column(modifier = Modifier.padding(12.dp)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(Icons.Default.Memory, contentDescription = null, tint = SafeGreen, modifier = Modifier.size(16.dp))
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(
+                                        text = if (locale == "hi") "हार्डवेयर स्पेक्स" else "Hardware Diagnostics",
+                                        color = TextWhite,
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                                Surface(
+                                    color = if (hardwareReport.eligibilityStatus == OnDeviceEligibilityStatus.FULLY_ELIGIBLE) SafeGreen.copy(alpha = 0.15f) else AlertRed.copy(alpha = 0.15f),
+                                    shape = RoundedCornerShape(6.dp)
+                                ) {
+                                    Text(
+                                        text = if (hardwareReport.eligibilityStatus == OnDeviceEligibilityStatus.FULLY_ELIGIBLE) "✓ 6GB+ ELIGIBLE" else "AUDIT CHECK",
+                                        color = if (hardwareReport.eligibilityStatus == OnDeviceEligibilityStatus.FULLY_ELIGIBLE) SafeGreen else AlertRed,
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.5.dp),
+                                        maxLines = 1
+                                    )
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(10.dp))
+
+                            // Clean 2-column tiles with no text wrapping
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                // Left Tile: Device Model & CPU
+                                Surface(
+                                    modifier = Modifier.weight(1f),
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = SurfaceCardDark.copy(alpha = 0.6f)
+                                ) {
+                                    Column(modifier = Modifier.padding(8.dp)) {
+                                        Text(
+                                            text = "📱 ${hardwareReport.deviceModel}",
+                                            color = TextWhite,
+                                            fontSize = 11.5.sp,
+                                            fontWeight = FontWeight.SemiBold,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                        Spacer(modifier = Modifier.height(2.dp))
+                                        Text(
+                                            text = "⚡ CPU: ${hardwareReport.cpuCores} Cores (${if (hardwareReport.is64Bit) "64-bit" else "32-bit"})",
+                                            color = TextMuted,
+                                            fontSize = 10.5.sp,
+                                            maxLines = 1
+                                        )
+                                    }
+                                }
+
+                                // Right Tile: RAM & Battery
+                                Surface(
+                                    modifier = Modifier.weight(1f),
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = SurfaceCardDark.copy(alpha = 0.6f)
+                                ) {
+                                    Column(modifier = Modifier.padding(8.dp)) {
+                                        Text(
+                                            text = "💾 RAM: ${hardwareReport.totalRamGb} GB",
+                                            color = if (hardwareReport.isRamEligible) SafeGreen else WarningAmber,
+                                            fontSize = 11.5.sp,
+                                            fontWeight = FontWeight.SemiBold,
+                                            maxLines = 1
+                                        )
+                                        Spacer(modifier = Modifier.height(2.dp))
+                                        Text(
+                                            text = "🔋 ${hardwareReport.batteryPct}% Battery • ${hardwareReport.batteryTempCelsius}°C",
+                                            color = if (hardwareReport.isThermalSafe) SafeGreen else WarningAmber,
+                                            fontSize = 10.5.sp,
+                                            maxLines = 1
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(10.dp))
+                }
 
                 // Honest Live Runtime Status Badge
                 Surface(
