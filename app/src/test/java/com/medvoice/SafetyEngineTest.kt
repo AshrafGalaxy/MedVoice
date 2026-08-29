@@ -500,4 +500,34 @@ class SafetyEngineTest {
         val nonDrugResult = (result as SafetyEvaluationResult.UnidentifiedMedicineBlocked).safetyResult
         assertEquals("COSMETIC_NON_DRUG", nonDrugResult.therapeuticClass)
     }
+
+    @Test
+    fun testExpiryParser_RelativeShelfLifeFromMfgDate() {
+        val ocrSample = "DOLO 650 TABLETS\nMFG DATE: 01/2024\nBEST BEFORE 36 MONTHS FROM DATE OF MFG\nBATCH NO: BT-8891"
+        val parsed = com.medvoice.core.domain.engine.ExpiryParser.parse(ocrSample)
+
+        assertEquals("01/2027", parsed.expiryDateString)
+        assertEquals(false, parsed.isExpired)
+        assertEquals("BT-8891", parsed.batchNumber)
+    }
+
+    @Test
+    fun testExpiryParser_RelativeYearsFromPackagingDate() {
+        val ocrSample = "AUGMENTIN 625 DUO\nPKD: 06/2025\nEXPIRY: 2 YEARS FROM PACKAGING\nB.NO: AG-102"
+        val parsed = com.medvoice.core.domain.engine.ExpiryParser.parse(ocrSample)
+
+        assertEquals("06/2027", parsed.expiryDateString)
+        assertEquals(false, parsed.isExpired)
+        assertEquals("AG-102", parsed.batchNumber)
+    }
+
+    @Test
+    fun testExpiryParser_DirectPastExpiryDate() {
+        val ocrSample = "PARACETAMOL 500\nMFG: 01/2020\nEXP: 01/2022\nBATCH: BX-44"
+        val parsed = com.medvoice.core.domain.engine.ExpiryParser.parse(ocrSample)
+
+        assertEquals("01/2022", parsed.expiryDateString)
+        assertEquals(true, parsed.isExpired)
+        assertEquals("BX-44", parsed.batchNumber)
+    }
 }

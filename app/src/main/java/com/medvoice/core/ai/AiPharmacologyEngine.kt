@@ -150,10 +150,10 @@ class AiPharmacologyEngine(private val context: Context? = null) {
 
     private val noisePatterns = listOf(
         Regex("""(?i)\b(?:store in a cool|dry place|protected from light|keep out of reach of children)\b.*"""),
-        Regex("""(?i)\b(?:mfg\.? lic|mfd\.? by|marketed by|batch no|exp\.? date|mrp|pkd|mfg date|inclusive of all taxes)\b.*"""),
-        Regex("""(?i)\b(?:for external use only|ophthalmic use|sterile|homoeopathic medicine|ayurvedic medicine|schedule h)\b.*"""),
-        Regex("""(?i)\b(?:net vol|net wt|dosage|direction for use|composition|each ml contains|each tablet contains)\b.*"""),
-        Regex("""(?i)\b(?:ip|bp|usp|ph\.? eur|ltd|pvt|pharmaceuticals|laboratories|healthcare)\b""")
+        Regex("""(?i)\b(?:mfg\.?\s*lic|mfd\.?\s*by|marketed\s*by|manufactured\s*by|packed\s*by|imported\s*by|batch\s*no|exp\.?\s*date|mrp|pkd|mfg\s*date|inclusive\s*of\s*all\s*taxes)\b.*"""),
+        Regex("""(?i)\b(?:for\s*external\s*use\s*only|ophthalmic\s*use|sterile|homoeopathic\s*medicine|ayurvedic\s*medicine|schedule\s+[hghx]|schedule\s+h1)\b.*"""),
+        Regex("""(?i)\b(?:net\s*vol|net\s*wt|net\s*qty|pack\s*of|quantity|quality\s*assured|dosage|direction\s*for\s*use|composition|each\s*ml\s*contains|each\s*tablet\s*contains|each\s*capsule\s*contains|each\s*film\s*coated|each\s*uncoated)\b.*"""),
+        Regex("""(?i)\b(?:ip|bp|usp|ph\.?\s*eur|ltd\.?|pvt\.?|pharmaceuticals|laboratories|healthcare|remedies)\b""")
     )
 
     fun containsPharmaceuticalMarkers(text: String): Boolean {
@@ -302,7 +302,7 @@ class AiPharmacologyEngine(private val context: Context? = null) {
                             if (brand.isNotBlank() && saltsList.isNotEmpty()) {
                                 val dosageForm = json.optString("dosage_form", "TABLET").uppercase(Locale.US)
                                 val route = json.optString("route_of_administration", "ORAL").uppercase(Locale.US)
-                                val instructions = generateVernacularGuidance(brand, dosageForm)
+                                val instructions = generateVernacularGuidance(dosageForm)
 
                                 Log.d("AiPharmacologyEngine", "Groq Visual AI successfully recognized: $brand ($dosageForm / $route)")
                                 return@withContext ExtractedMedicineComposition(
@@ -423,7 +423,7 @@ class AiPharmacologyEngine(private val context: Context? = null) {
 
             val dosageForm = json.optString("dosage_form", "TABLET").uppercase(Locale.US)
             val route = json.optString("route_of_administration", "ORAL").uppercase(Locale.US)
-            val instructions = generateVernacularGuidance(brand, dosageForm)
+            val instructions = generateVernacularGuidance(dosageForm)
 
             ExtractedMedicineComposition(
                 brandName = brand,
@@ -551,12 +551,14 @@ class AiPharmacologyEngine(private val context: Context? = null) {
             return null
         }
 
-        // 4. Extract Clean Brand Name
+        // 4. Extract Clean Brand Name with Prefix Stripping
         val cleanCandidateLines = rawLines.map { line ->
             var cleaned = line
             for (noise in noisePatterns) {
                 cleaned = noise.replace(cleaned, "").trim()
             }
+            // Strip leading quantities, packaging numbers, "10x10", "Pack of 10", "Net Qty: 10 Tablets", etc.
+            cleaned = cleaned.replace(Regex("""^(?:\d+\s*x\s*\d+|\d+\s*tablets?|\d+\s*capsules?|\d+\s*ml|\d+\s*gm|net\s*qty[:.]?|qty[:.]?|pack\s*of\s*\d+|quality\s*assured)\s*""", RegexOption.IGNORE_CASE), "").trim()
             cleaned
         }.filter { it.length >= 3 && !it.startsWith("₹") && !it.matches(Regex("""^\d+$""")) }
 
@@ -564,11 +566,11 @@ class AiPharmacologyEngine(private val context: Context? = null) {
         val brandWords = firstCleanLine.split(Regex("""[\s,/\-]+""")).filter { it.length >= 2 }
         val brandName = brandWords.take(4).joinToString(" ")
 
-        val finalBrand = if (brandName.isNotBlank() && brandName != "Composition") {
+        val finalBrand = if (brandName.isNotBlank() && !brandName.equals("Composition", ignoreCase = true) && !brandName.equals("Tablets", ignoreCase = true)) {
             brandName
         } else (detectedSalts.firstOrNull() ?: "Scanned Medicine")
 
-        val instructions = generateVernacularGuidance(finalBrand, detectedForm)
+        val instructions = generateVernacularGuidance(detectedForm)
 
         return ExtractedMedicineComposition(
             brandName = finalBrand,
@@ -584,43 +586,43 @@ class AiPharmacologyEngine(private val context: Context? = null) {
         )
     }
 
-    fun generateVernacularGuidance(brand: String, dosageForm: String): Pair<String, String> {
+    fun generateVernacularGuidance(dosageForm: String): Pair<String, String> {
         return when (dosageForm) {
             "TOPICAL_LOTION", "SHAMPOO", "SCALP_SOLUTION" -> Pair(
-                "This is a topical hair/scalp lotion ($brand). Apply gently to the scalp. For external application only. Do not swallow or drink.",
-                "यह सिर और त्वचा पर लगाने की दवा ($brand) है। सिर पर हल्के हाथों से लगाएँ। यह केवल बाहरी उपयोग के लिए है, इसे पिएँ नहीं।"
+                "Apply lotion gently to the affected area. For external application only. Do not swallow or drink.",
+                "प्रभावित स्थान पर लोशन हल्के हाथों से लगाएँ। यह केवल बाहरी उपयोग के लिए है, इसे पिएँ नहीं।"
             )
             "EYE_DROPS", "DROPS" -> Pair(
-                "This is an ophthalmic eye drop ($brand). Instill 1 to 2 drops into the eye as prescribed.",
-                "यह आँखों की दवाई (आई ड्रॉप्स: $brand) है। डॉक्टर के निर्देशानुसार आँखों में 1 से 2 बूँद डालें।"
+                "Instill 1 to 2 eye drops into the eye as prescribed. Keep eyes closed for 1 minute.",
+                "डॉक्टर के निर्देशानुसार आँखों में 1 से 2 बूँद आई ड्रॉप्स डालें और 1 मिनट के लिए आँखें बंद रखें।"
             )
             "EAR_DROPS" -> Pair(
-                "This is an ear drop ($brand). Instill 2 to 3 drops into the ear canal.",
-                "यह कान की दवाई ($brand) है। कान में 2 से 3 बूँद डालें।"
+                "Instill 2 to 3 ear drops into the ear canal as directed.",
+                "निर्देशानुसार कान में 2 से 3 बूँद डालें।"
             )
             "NASAL_SPRAY" -> Pair(
-                "This is a nasal spray ($brand). Spray 1 to 2 puffs into each nostril as needed.",
-                "यह नेजल स्प्रे ($brand) है। प्रत्येक नथुने में 1 से 2 स्प्रे करें।"
+                "Spray 1 to 2 puffs of nasal spray into each nostril as needed.",
+                "प्रत्येक नथुने में 1 से 2 नेजल स्प्रे करें।"
             )
             "SYRUP", "TONIC" -> Pair(
-                "This is an oral syrup or health tonic ($brand). Shake well and take measured 5ml to 10ml after food.",
-                "यह पीने का सिरप/टॉनिक ($brand) है। बोतल हिलाकर नाप के 5ml से 10ml भोजन के बाद लें।"
+                "Shake well and take measured syrup dose after food.",
+                "बोतल अच्छी तरह हिलाकर पीने का सिरप नाप के अनुसार भोजन के बाद लें।"
             )
             "OINTMENT", "GEL" -> Pair(
-                "This is a topical pain relief gel/ointment ($brand). Apply a thin layer to the affected area. For external use only.",
-                "यह लगाने की मलहम/जेल ($brand) है। प्रभावित स्थान पर हल्के हाथों से लगाएँ। केवल बाहरी उपयोग के लिए।"
+                "Apply a thin layer of gel/ointment to the affected area. For external use only.",
+                "प्रभावित स्थान पर मलहम या जेल की पतली परत लगाएँ। केवल बाहरी उपयोग के लिए।"
             )
             "INHALER" -> Pair(
-                "This is a respiratory inhaler ($brand). Inhale deeply for 1 to 2 puffs as directed.",
-                "यह इनहेलर ($brand) है। गहरी साँस लेते हुए 1 से 2 पफ लें।"
+                "Inhale deeply for 1 to 2 inhaler puffs as directed.",
+                "गहरी साँस लेते हुए 1 से 2 पफ लें।"
             )
             "CAPSULE" -> Pair(
-                "This is an oral capsule ($brand). Swallow whole with water after meals.",
-                "यह कैप्सूल ($brand) है। खाना खाने के बाद पानी के साथ पूरा निगल लें।"
+                "Take 1 capsule with water after food.",
+                "खाना खाने के बाद 1 कैप्सूल पानी के साथ लें।"
             )
             else -> Pair(
-                "This is your prescribed medicine ($brand). Take with water after your meal.",
-                "यह आपकी दवा ($brand) है। खाना खाने के बाद पानी के साथ लें।"
+                "Take 1 tablet with a glass of water after food.",
+                "खाना खाने के बाद 1 गोली पानी के साथ लें।"
             )
         }
     }
