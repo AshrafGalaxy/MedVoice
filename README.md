@@ -124,34 +124,27 @@ MedVoice/
 └── AGENTS.md                                   # Autonomous agent system rules & directives
 ```
 
-## 📱 Step-by-Step User & Evaluator Guide
+## 📱 Step-by-Step User Guide
 
-```
-+---------------------------------------------------------------------------------------------------------+
-|                                      2-MINUTE EVALUATION WORKFLOW                                        |
-+---------------------------------------------------------------------------------------------------------+
-| STEP 1: SCAN A MEDICINE                                                                                  |
-|   • Open the Scan tab. Align the camera viewfinder over any medicine blister pack, bottle, or syrup.     |
-|   • Tap the shutter button. The multimodal visual engine instantly parses the active chemical salt,      |
-|     brand name, dosage form, and food/temporal intake rules.                                             |
-|                                                                                                         |
-| STEP 2: LISTEN TO VERNACULAR SPOKEN INSTRUCTIONS                                                         |
-|   • Natural Indian voice (Hindi / Marathi / English) announces instructions aloud.                       |
-|   • Tap "Confirm Dose Taken" (or confirm hands-free via voice: "Yes" / "हाँ ले ली").                     |
-|                                                                                                         |
-| STEP 3: TEST THE ACTIVE DUPLICATE SAFETY TRAP                                                           |
-|   • Scan the same medicine again immediately.                                                            |
-|   • 🚨 DUPLICATE DOSE BLOCKED: Screen triggers a high-contrast red warning, announces the risk aloud,   |
-|     and dispatches an emergency cellular SMS alert to the caregiver.                                    |
-|                                                                                                         |
-| STEP 4: MONITOR ADHERENCE IN CAREGIVER AUDIT TRAIL                                                       |
-|   • Switch to the Caregiver tab to review daily compliance timelines, trapped duplicate warnings, and   |
-|     export a 1-tap clinical report for doctors.                                                          |
-|                                                                                                         |
-| STEP 5: DIGITAL TEST PACK                                                                               |
-|   • Point your phone at the digital sample cards in DEMO_TEST_PACK.md directly from your laptop screen!  |
-+---------------------------------------------------------------------------------------------------------+
-```
+### 1️⃣ Scan Any Medicine Packaging
+* Navigate to the **Scan** tab.
+* Align your camera over any blister pack, syrup bottle, eye drop container, or ointment tube.
+* Tap the **Capture** button. MedVoice instantly analyzes the packaging, extracting the **Brand Name**, **Active Chemical Salts**, **Dosage Form**, and **Food/Timing Rules**.
+
+### 2️⃣ Listen to Vernacular Spoken Guidance
+* The app automatically announces the medicine details and dosage instructions aloud in your selected language (**Hindi**, **Marathi**, or **English**).
+* Confirm your dose with a single tap on **"Confirm Dose Taken"** or hands-free via voice (*"हाँ ले ली"* / *"Yes taken"*).
+
+### 3️⃣ Active Duplicate Dosage Protection
+* If a patient attempts to scan and take the same active molecule again within the safety window:
+  * 🚨 **Immediate Critical Alert**: The screen triggers a high-contrast red warning banner.
+  * 🔊 **Audio Warning**: The voice announces aloud that the dose was already taken.
+  * 📲 **Caregiver SOS Alert**: An automated emergency cellular SMS is immediately dispatched to the caregiver.
+
+### 4️⃣ Review Daily Adherence in Caregiver Audit Log
+* Open the **Caregiver** tab to view the complete chronological timeline of taken medicines.
+* Monitor blocked overdose attempts, taken timestamps, and adherence scores.
+* Tap **"Share with Doctor"** to generate an instant clinical summary for healthcare consultations.
 
 ---
 
