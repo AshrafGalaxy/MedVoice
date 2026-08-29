@@ -167,8 +167,8 @@ class ScanViewModel(application: Application) : AndroidViewModel(application) {
 
     init {
         // Hydrate audio & MedGemma persistent configuration
-        ttsManager.selectedGender = _selectedGender.value
-        aiEngine.cloudMedGemmaApiKey = prefs.getString("cloud_medgemma_api_key", "") ?: ""
+        aiEngine.cloudMedGemmaApiKey = prefs.getString("cloud_medgemma_api_key", aiEngine.cloudMedGemmaApiKey) ?: aiEngine.cloudMedGemmaApiKey
+        aiEngine.cloudModelName = prefs.getString("cloud_model_name", "qwen/qwen3.8-27b") ?: "qwen/qwen3.8-27b"
         aiEngine.allowCloudPrivacyEgress = prefs.getBoolean("cloud_privacy_egress", true)
         try {
             val tier = AiEngineTier.valueOf(prefs.getString("ai_tier", "ON_DEVICE_MEDGEMMA_INT4") ?: "ON_DEVICE_MEDGEMMA_INT4")

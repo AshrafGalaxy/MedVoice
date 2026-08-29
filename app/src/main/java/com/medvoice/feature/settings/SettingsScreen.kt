@@ -347,7 +347,7 @@ fun SettingsScreen(viewModel: ScanViewModel) {
                     Icon(imageVector = Icons.Default.Security, contentDescription = null, tint = SafeGreen, modifier = Modifier.size(18.dp))
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "MedGemma Medical AI Model",
+                        text = if (locale == "hi") "मेडिकल एआई मॉडल (Medical AI)" else "Medical AI Engine (SLM / Cloud)",
                         color = TextWhite,
                         fontWeight = FontWeight.Bold,
                         fontSize = 15.sp
@@ -355,7 +355,7 @@ fun SettingsScreen(viewModel: ScanViewModel) {
                 }
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = "Dedicated medical SLM for pharmaceutical chemical extraction",
+                    text = if (locale == "hi") "ऑन-डिवाइस MedGemma INT4 और Groq Qwen 3.8 27B मॉडल" else "On-Device MedGemma INT4 & Groq Qwen 3.8 27B LPU",
                     color = TextMuted,
                     fontSize = 12.sp
                 )
@@ -394,7 +394,7 @@ fun SettingsScreen(viewModel: ScanViewModel) {
                     ) {
                         Icon(imageVector = Icons.Default.Cloud, contentDescription = null, tint = TextWhite, modifier = Modifier.size(14.dp))
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text("Cloud MedGemma", fontSize = 11.sp, color = TextWhite, fontWeight = FontWeight.Bold)
+                        Text("Cloud Qwen 27B", fontSize = 11.sp, color = TextWhite, fontWeight = FontWeight.Bold)
                     }
                 }
 
@@ -425,6 +425,104 @@ fun SettingsScreen(viewModel: ScanViewModel) {
                             checkedTrackColor = SafeGreen
                         )
                     )
+                }
+
+                if (allowCloudPrivacy || viewModel.aiEngine.activeTier == AiEngineTier.CLOUD_MEDGEMMA_HOSTED) {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text(
+                        text = "Groq Model: qwen/qwen3.8-27b (27B Parameters)",
+                        color = ReticleCyan,
+                        fontSize = 11.5.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text(
+                        text = "Groq API Key",
+                        color = TextWhite,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Surface(
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(44.dp),
+                            shape = RoundedCornerShape(10.dp),
+                            color = SurfaceCardElevated,
+                            border = BorderStroke(1.dp, if (medGemmaKeyInput.isNotBlank()) SafeGreen else AccentBorder)
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(horizontal = 10.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Cloud,
+                                    contentDescription = null,
+                                    tint = if (medGemmaKeyInput.isNotBlank()) SafeGreen else TextMuted,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Box(
+                                    modifier = Modifier.weight(1f),
+                                    contentAlignment = Alignment.CenterStart
+                                ) {
+                                    if (medGemmaKeyInput.isEmpty()) {
+                                        Text(
+                                            text = "Enter Groq API Key (gsk_...)",
+                                            color = TextMuted.copy(alpha = 0.6f),
+                                            fontSize = 12.sp
+                                        )
+                                    }
+                                    BasicTextField(
+                                        value = medGemmaKeyInput,
+                                        onValueChange = {
+                                            medGemmaKeyInput = it
+                                        },
+                                        singleLine = true,
+                                        textStyle = MaterialTheme.typography.bodyMedium.copy(
+                                            color = TextWhite,
+                                            fontSize = 12.sp,
+                                            fontWeight = FontWeight.Medium
+                                        ),
+                                        cursorBrush = SolidColor(SafeGreen),
+                                        modifier = Modifier.fillMaxWidth()
+                                    )
+                                }
+                            }
+                        }
+
+                        Button(
+                            onClick = {
+                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                viewModel.setCloudMedGemmaApiKey(medGemmaKeyInput.trim())
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = SafeGreen),
+                            shape = RoundedCornerShape(10.dp),
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+                            modifier = Modifier.height(44.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Check,
+                                contentDescription = "Save",
+                                tint = TextWhite,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = "Save",
+                                color = TextWhite,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
                 }
             }
         }

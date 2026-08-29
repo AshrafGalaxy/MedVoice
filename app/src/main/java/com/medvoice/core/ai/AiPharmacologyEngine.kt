@@ -32,7 +32,7 @@ class AiPharmacologyEngine(private val context: Context? = null) {
 
     var activeTier: AiEngineTier = AiEngineTier.ON_DEVICE_MEDGEMMA_INT4
     var cloudMedGemmaApiKey: String = ""
-    var cloudModelName: String = "gemini-1.5-flash"
+    var cloudModelName: String = "qwen/qwen3.8-27b"
     var allowCloudPrivacyEgress: Boolean = true
 
     init {
@@ -226,40 +226,77 @@ class AiPharmacologyEngine(private val context: Context? = null) {
         }
     }
 
-    private suspend fun runCloudMedGemma(text: String): ExtractedMedicineComposition? {
-        return try {
+    private suspend fun runCloudMedGemma(text: String): ExtractedMedicineComposition? = withContext(Dispatchers.IO) {
+        try {
             val systemPrompt = """
                 You are a strict clinical pharmacology verification and parsing system.
-                Analyze the provided scanned OCR text.
+                Analyze the provided scanned OCR text from medicine packaging.
                 First, determine if the text is genuinely from a pharmaceutical medicine packaging, blister pack, syrup bottle, drops, ointment, or medical prescription.
                 If the text is ordinary text (e.g. from a book, keyboard, laptop, newspaper, non-medical document, or random object) or does not contain authentic pharmaceutical compounds:
-                Return STRICTLY: {"is_medicine": false, "confidence_score": 0.0}
+                Return STRICTLY valid JSON: {"is_medicine": false, "confidence_score": 0.0}
 
                 If and ONLY IF the text is authentic medication packaging:
-                Return JSON format:
+                Return STRICTLY valid JSON:
                 {
                   "is_medicine": true,
-                  "confidence_score": 0.95,
+                  "confidence_score": 0.96,
                   "brand_name": "Exact Brand Name",
                   "active_salts": ["Active Salt 1", "Active Salt 2"],
                   "strength_mg": 500.0,
-                  "dosage_form": "TABLET/CAPSULE/SYRUP/EYE_DROPS/GEL/INHALER/OINTMENT",
+                  "dosage_form": "TABLET",
                   "therapeutic_class": "Therapeutic Class"
                 }
             """.trimIndent()
 
-            val generativeModel = com.google.ai.client.generativeai.GenerativeModel(
-                modelName = cloudModelName,
-                apiKey = cloudMedGemmaApiKey,
-                generationConfig = com.google.ai.client.generativeai.type.generationConfig {
-                    temperature = 0.0f
-                    responseMimeType = "application/json"
-                },
-                systemInstruction = com.google.ai.client.generativeai.type.content { text(systemPrompt) }
-            )
+            val requestJson = JSONObject().apply {
+                put("model", cloudModelName.ifBlank { "qwen/qwen3.8-27b" })
+                put("temperature", 0.0)
+                put("response_format", JSONObject().put("type", "json_object"))
+                val messages = JSONArray().apply {
+                    put(JSONObject().apply {
+                        put("role", "system")
+                        put("content", systemPrompt)
+                    })
+                    put(JSONObject().apply {
+                        put("role", "user")
+                        put("content", "Extract authentic pharmaceutical details from this scanned packaging OCR text:\n$text")
+                    })
+                }
+                put("messages", messages)
+            }
 
-            val response = generativeModel.generateContent("Analyze and extract drug details from OCR text:\n$text")
-            val content = response.text ?: ""
+            val url = URL("https://api.groq.com/openai/v1/chat/completions")
+            val connection = (url.openConnection() as HttpURLConnection).apply {
+                requestMethod = "POST"
+                connectTimeout = 6000
+                readTimeout = 9000
+                doOutput = true
+                setRequestProperty("Content-Type", "application/json")
+                setRequestProperty("Authorization", "Bearer ${cloudMedGemmaApiKey.trim()}")
+                setRequestProperty("User-Agent", "MedVoice-EdgeAI/1.0")
+            }
+
+            connection.outputStream.use { os ->
+                val input = requestJson.toString().toByteArray(Charsets.UTF_8)
+                os.write(input, 0, input.size)
+            }
+
+            val responseCode = connection.responseCode
+            val responseBody = if (responseCode in 200..299) {
+                connection.inputStream.bufferedReader(Charsets.UTF_8).use { it.readText() }
+            } else {
+                val err = connection.errorStream?.bufferedReader(Charsets.UTF_8)?.use { it.readText() } ?: "HTTP $responseCode"
+                Log.w("AiPharmacologyEngine", "Groq Qwen API error ($responseCode): $err")
+                return@withContext null
+            }
+
+            val groqResp = JSONObject(responseBody)
+            val choices = groqResp.optJSONArray("choices")
+            if (choices == null || choices.length() == 0) return@withContext null
+
+            val message = choices.getJSONObject(0).optJSONObject("message")
+            val content = message?.optString("content", "") ?: ""
+            if (content.isBlank()) return@withContext null
 
             val cleanJsonStr = if (content.contains("{")) {
                 content.substring(content.indexOf("{"), content.lastIndexOf("}") + 1)
@@ -270,8 +307,8 @@ class AiPharmacologyEngine(private val context: Context? = null) {
             val confidence = json.optDouble("confidence_score", 0.0).toFloat()
 
             if (!isMedicine || confidence < 0.80f) {
-                Log.d("AiPharmacologyEngine", "Cloud verification rejected input as non-medicine (isMedicine=$isMedicine, conf=$confidence)")
-                return null
+                Log.d("AiPharmacologyEngine", "Groq Qwen 3.8 27B rejected non-medicine input (isMedicine=$isMedicine, conf=$confidence)")
+                return@withContext null
             }
 
             val brand = json.optString("brand_name", "").trim()
@@ -285,7 +322,7 @@ class AiPharmacologyEngine(private val context: Context? = null) {
             }
 
             if (brand.isBlank() || saltsList.isEmpty()) {
-                return null
+                return@withContext null
             }
 
             val dosageForm = json.optString("dosage_form", "TABLET").uppercase(Locale.US)
@@ -303,7 +340,7 @@ class AiPharmacologyEngine(private val context: Context? = null) {
                 vernacularInstructionHi = instructions.second
             )
         } catch (e: Exception) {
-            Log.w("AiPharmacologyEngine", "Cloud MedGemma verification failed or fallback", e)
+            Log.w("AiPharmacologyEngine", "Groq Qwen 3.8 27B verification exception: ${e.message}", e)
             null
         }
     }
