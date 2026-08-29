@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -74,7 +75,7 @@ enum class MedVoiceTab(
 ) {
     HOME("Home", "होम", Icons.Outlined.Home, Icons.Filled.Home),
     CABINET("Cabinet", "दवा पेटी", Icons.Outlined.Medication, Icons.Filled.Medication),
-    SCANNER("Scanner", "स्कैनर", Icons.Filled.CenterFocusStrong, Icons.Filled.CenterFocusStrong),
+    SCANNER("Scan", "स्कैन", Icons.Filled.CenterFocusStrong, Icons.Filled.CenterFocusStrong),
     CAREGIVER("Caregiver", "केयरगिवर", Icons.Outlined.Shield, Icons.Filled.Shield),
     SETTINGS("Settings", "सेटिंग्स", Icons.Outlined.Settings, Icons.Filled.Settings)
 }
@@ -97,7 +98,7 @@ fun MedVoiceNavHost(viewModel: ScanViewModel) {
         modifier = Modifier.fillMaxSize(),
         containerColor = BackgroundCharcoal,
         bottomBar = {
-            FloatingCapsuleNavigationBar(
+            ModernSleekNavigationBar(
                 currentTab = currentTab,
                 onTabSelected = { viewModel.navigateToTab(it) },
                 locale = locale
@@ -125,15 +126,15 @@ fun MedVoiceNavHost(viewModel: ScanViewModel) {
 }
 
 /**
- * Ultra-Sleek Floating Glassmorphic Capsule Navigation Bar
+ * Modern High-Contrast Edge-to-Edge Navigation Bar
  * Features:
- * - Floating rounded dock hovering above the gesture bar
- * - Prominent elevated Center Hero Scanner action with vibrant emerald gradient
- * - Dual-state outline/filled icons with spring scale micro-animations
- * - Hardware haptic feedback on tab selection
+ * - 5 mathematically balanced, equally weighted columns (weight = 1f)
+ * - Micro-pill active indicator container with smooth alpha transition
+ * - Animated icon scaling and dynamic high-contrast color transitions
+ * - Crisp typography and haptic feedback on tab selection
  */
 @Composable
-private fun FloatingCapsuleNavigationBar(
+private fun ModernSleekNavigationBar(
     currentTab: MedVoiceTab,
     onTabSelected: (MedVoiceTab) -> Unit,
     locale: String,
@@ -141,192 +142,99 @@ private fun FloatingCapsuleNavigationBar(
 ) {
     val haptic = LocalHapticFeedback.current
 
-    Box(
+    Surface(
         modifier = modifier
             .fillMaxWidth()
-            .navigationBarsPadding()
-            .padding(horizontal = 16.dp, vertical = 10.dp),
-        contentAlignment = Alignment.Center
+            .navigationBarsPadding(),
+        color = SurfaceCardDark.copy(alpha = 0.98f),
+        border = BorderStroke(1.dp, AccentBorder.copy(alpha = 0.6f)),
+        shadowElevation = 10.dp
     ) {
-        Surface(
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(68.dp)
-                .shadow(
-                    elevation = 16.dp,
-                    shape = RoundedCornerShape(34.dp),
-                    spotColor = Color.Black.copy(alpha = 0.5f),
-                    ambientColor = Color.Black.copy(alpha = 0.3f)
-                ),
-            shape = RoundedCornerShape(34.dp),
-            color = SurfaceCardDark.copy(alpha = 0.95f),
-            border = BorderStroke(1.dp, AccentBorder.copy(alpha = 0.8f))
+                .height(64.dp)
+                .padding(horizontal = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceEvenly
         ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceAround
-            ) {
-                MedVoiceTab.entries.forEach { tab ->
-                    val isSelected = currentTab == tab
-                    val label = if (locale == "hi") tab.titleHi else tab.titleEn
+            MedVoiceTab.entries.forEach { tab ->
+                val isSelected = currentTab == tab
+                val label = if (locale == "hi") tab.titleHi else tab.titleEn
 
-                    if (tab == MedVoiceTab.SCANNER) {
-                        // Elevated Center Hero Scanner Button
-                        HeroScannerButton(
-                            isSelected = isSelected,
-                            label = label,
-                            onClick = {
-                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                onTabSelected(tab)
-                            }
-                        )
-                    } else {
-                        // Sleek Minimalist Side Tab
-                        MinimalistNavItem(
-                            tab = tab,
-                            isSelected = isSelected,
-                            label = label,
-                            onClick = {
-                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                onTabSelected(tab)
-                            }
+                val iconScale by animateFloatAsState(
+                    targetValue = if (isSelected) 1.08f else 1.0f,
+                    animationSpec = spring(
+                        dampingRatio = Spring.DampingRatioMediumBouncy,
+                        stiffness = Spring.StiffnessMedium
+                    ),
+                    label = "iconScale"
+                )
+
+                val iconColor by animateColorAsState(
+                    targetValue = if (isSelected) SafeGreen else TextMuted,
+                    label = "iconColor"
+                )
+
+                val textColor by animateColorAsState(
+                    targetValue = if (isSelected) SafeGreen else TextMuted,
+                    label = "textColor"
+                )
+
+                val pillAlpha by animateFloatAsState(
+                    targetValue = if (isSelected) 0.18f else 0.0f,
+                    label = "pillAlpha"
+                )
+
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight()
+                        .clip(RoundedCornerShape(12.dp))
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null
+                        ) {
+                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            onTabSelected(tab)
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        // Subtle Active Micro-Pill behind the active icon
+                        Box(
+                            modifier = Modifier
+                                .size(width = 46.dp, height = 28.dp)
+                                .clip(RoundedCornerShape(14.dp))
+                                .background(SafeGreen.copy(alpha = pillAlpha)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = if (isSelected) tab.iconFilled else tab.iconOutlined,
+                                contentDescription = label,
+                                tint = iconColor,
+                                modifier = Modifier
+                                    .scale(iconScale)
+                                    .size(22.dp)
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(2.dp))
+
+                        Text(
+                            text = label,
+                            color = textColor,
+                            fontSize = 11.sp,
+                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                            maxLines = 1
                         )
                     }
                 }
             }
         }
-    }
-}
-
-/**
- * Center Hero Scanner Button with Emerald Gradient & Subtle Pulse Glow
- */
-@Composable
-private fun HeroScannerButton(
-    isSelected: Boolean,
-    label: String,
-    onClick: () -> Unit
-) {
-    val scale by animateFloatAsState(
-        targetValue = if (isSelected) 1.08f else 1.0f,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessMedium
-        ),
-        label = "heroScale"
-    )
-
-    val gradientBrush = Brush.linearGradient(
-        colors = if (isSelected) {
-            listOf(Color(0xFF10B981), Color(0xFF047857))
-        } else {
-            listOf(Color(0xFF059669), Color(0xFF065F46))
-        }
-    )
-
-    Box(
-        modifier = Modifier
-            .scale(scale)
-            .size(52.dp)
-            .shadow(
-                elevation = if (isSelected) 12.dp else 6.dp,
-                shape = CircleShape,
-                spotColor = SafeGreen.copy(alpha = if (isSelected) 0.8f else 0.4f)
-            )
-            .clip(CircleShape)
-            .background(gradientBrush)
-            .border(
-                width = if (isSelected) 2.dp else 1.5.dp,
-                color = if (isSelected) Color(0xFF6EE7B7) else Color(0xFF34D399).copy(alpha = 0.4f),
-                shape = CircleShape
-            )
-            .clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null,
-                onClick = onClick
-            ),
-        contentAlignment = Alignment.Center
-    ) {
-        Icon(
-            imageVector = Icons.Filled.CenterFocusStrong,
-            contentDescription = label,
-            tint = TextWhite,
-            modifier = Modifier.size(26.dp)
-        )
-    }
-}
-
-/**
- * Sleek Minimalist Tab Item with Smooth Spring Scale & Active Glow Dot
- */
-@Composable
-private fun MinimalistNavItem(
-    tab: MedVoiceTab,
-    isSelected: Boolean,
-    label: String,
-    onClick: () -> Unit
-) {
-    val scale by animateFloatAsState(
-        targetValue = if (isSelected) 1.12f else 1.0f,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessMedium
-        ),
-        label = "tabScale"
-    )
-
-    val iconColor by animateColorAsState(
-        targetValue = if (isSelected) SafeGreen else TextMuted,
-        label = "iconColor"
-    )
-
-    val textColor by animateColorAsState(
-        targetValue = if (isSelected) TextWhite else TextMuted.copy(alpha = 0.8f),
-        label = "textColor"
-    )
-
-    Column(
-        modifier = Modifier
-            .scale(scale)
-            .clip(RoundedCornerShape(12.dp))
-            .clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null,
-                onClick = onClick
-            )
-            .padding(horizontal = 10.dp, vertical = 6.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        Icon(
-            imageVector = if (isSelected) tab.iconFilled else tab.iconOutlined,
-            contentDescription = label,
-            tint = iconColor,
-            modifier = Modifier.size(23.dp)
-        )
-        
-        Spacer(modifier = Modifier.height(3.dp))
-        
-        Text(
-            text = label,
-            color = textColor,
-            fontSize = 10.sp,
-            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-            maxLines = 1
-        )
-
-        Spacer(modifier = Modifier.height(2.dp))
-
-        // Active Emerald Micro-Dot Indicator
-        Box(
-            modifier = Modifier
-                .size(width = if (isSelected) 12.dp else 0.dp, height = 2.dp)
-                .clip(CircleShape)
-                .background(if (isSelected) SafeGreen else Color.Transparent)
-        )
     }
 }
 

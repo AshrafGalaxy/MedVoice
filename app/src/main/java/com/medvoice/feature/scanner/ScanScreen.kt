@@ -336,18 +336,6 @@ fun ScanScreen(
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis
                                 )
-                                Text(
-                                    text = if (activeAiTier == AiEngineTier.CLOUD_MEDGEMMA_HOSTED) {
-                                        if (locale == "hi") "☁️ क्लाउड विजन एआई • Qwen 27B" else "☁️ Cloud Vision AI • Qwen 27B"
-                                    } else {
-                                        if (locale == "hi") "⚡ 100% ऑन-डिवाइस क्लिनिकल इंजन" else "⚡ On-Device Clinical Safety"
-                                    },
-                                    style = MaterialTheme.typography.bodySmall.copy(
-                                        color = if (activeAiTier == AiEngineTier.CLOUD_MEDGEMMA_HOSTED) SafeGreen else ReticleCyan,
-                                        fontWeight = FontWeight.SemiBold,
-                                        fontSize = 11.sp
-                                    )
-                                )
                             }
                         }
 
