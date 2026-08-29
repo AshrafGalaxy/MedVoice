@@ -11,6 +11,7 @@ import com.medvoice.core.audio.VernacularTtsManager
 import com.medvoice.core.audio.VoiceConfirmationListener
 import com.medvoice.core.audio.VoiceGender
 import com.medvoice.core.data.local.AppDatabase
+import com.medvoice.core.data.local.entity.CabinetPrescriptionEntity
 import com.medvoice.core.data.local.entity.MedicationLogEntity
 import com.medvoice.core.data.local.entity.MedicineEntity
 import com.medvoice.core.domain.engine.SafetyEvaluationEngine
@@ -67,8 +68,8 @@ sealed class ScanUiState {
 class ScanViewModel(application: Application) : AndroidViewModel(application) {
 
     private val db = AppDatabase.getInstance(application)
-    val medGemmaOrchestrator = MedGemmaOrchestrator(application)
     val aiEngine = com.medvoice.core.ai.AiPharmacologyEngine(application)
+    val medGemmaOrchestrator = MedGemmaOrchestrator(application, aiEngine)
     private val safetyEngine = SafetyEvaluationEngine(db.medicineDao(), medGemmaOrchestrator)
     val ttsManager = VernacularTtsManager(application)
     val alarmScheduler = com.medvoice.core.scheduler.MedicationAlarmScheduler(application)
@@ -82,6 +83,9 @@ class ScanViewModel(application: Application) : AndroidViewModel(application) {
 
     private val _cabinetMedicines = MutableStateFlow<List<MedicineEntity>>(emptyList())
     val cabinetMedicines: StateFlow<List<MedicineEntity>> = _cabinetMedicines.asStateFlow()
+
+    private val _cabinetPrescriptions = MutableStateFlow<List<CabinetPrescriptionEntity>>(emptyList())
+    val cabinetPrescriptions: StateFlow<List<CabinetPrescriptionEntity>> = _cabinetPrescriptions.asStateFlow()
 
     private val _isOnboardingCompleted = MutableStateFlow(prefs.getBoolean("onboarding_done", true))
     val isOnboardingCompleted: StateFlow<Boolean> = _isOnboardingCompleted.asStateFlow()
@@ -104,12 +108,10 @@ class ScanViewModel(application: Application) : AndroidViewModel(application) {
     )
     val selectedGender: StateFlow<VoiceGender> = _selectedGender.asStateFlow()
 
-    private val _caregiverPhone = MutableStateFlow(prefs.getString("caregiver_phone", "+919876543210") ?: "+919876543210")
+    private val _caregiverPhone = MutableStateFlow(prefs.getString("caregiver_phone", "") ?: "")
     val caregiverPhone: StateFlow<String> = _caregiverPhone.asStateFlow()
 
-    private val _patientName = MutableStateFlow(
-        prefs.getString("patient_name", "")?.takeIf { it.isNotBlank() } ?: "User"
-    )
+    private val _patientName = MutableStateFlow(prefs.getString("patient_name", "") ?: "")
     val patientName: StateFlow<String> = _patientName.asStateFlow()
 
     private val _medicationLogs = MutableStateFlow<List<MedicationLogEntity>>(emptyList())
@@ -123,6 +125,30 @@ class ScanViewModel(application: Application) : AndroidViewModel(application) {
 
     private val _showSettingsDialog = MutableStateFlow(false)
     val showSettingsDialog: StateFlow<Boolean> = _showSettingsDialog.asStateFlow()
+
+    private val _prescriptionTimeSlots = MutableStateFlow(alarmScheduler.getSlotConfigs())
+    val prescriptionTimeSlots: StateFlow<List<com.medvoice.core.scheduler.PrescriptionSlotConfig>> = _prescriptionTimeSlots.asStateFlow()
+
+    fun updateSlotTime(slotId: String, hour: Int, minute: Int) {
+        prefs.edit {
+            putInt("alarm_slot_${slotId}_hour", hour)
+            putInt("alarm_slot_${slotId}_minute", minute)
+        }
+        _prescriptionTimeSlots.value = alarmScheduler.getSlotConfigs()
+        if (_isDailyRemindersEnabled.value) {
+            alarmScheduler.scheduleRemindersForMedicines(_cabinetMedicines.value)
+        }
+    }
+
+    fun toggleSlotEnabled(slotId: String, enabled: Boolean) {
+        prefs.edit {
+            putBoolean("alarm_slot_${slotId}_enabled", enabled)
+        }
+        _prescriptionTimeSlots.value = alarmScheduler.getSlotConfigs()
+        if (_isDailyRemindersEnabled.value) {
+            alarmScheduler.scheduleRemindersForMedicines(_cabinetMedicines.value)
+        }
+    }
 
     private var isProcessingEvaluation = false
 
@@ -143,7 +169,7 @@ class ScanViewModel(application: Application) : AndroidViewModel(application) {
         // Hydrate audio & MedGemma persistent configuration
         ttsManager.selectedGender = _selectedGender.value
         aiEngine.cloudMedGemmaApiKey = prefs.getString("cloud_medgemma_api_key", "") ?: ""
-        aiEngine.allowCloudPrivacyEgress = prefs.getBoolean("cloud_privacy_egress", false)
+        aiEngine.allowCloudPrivacyEgress = prefs.getBoolean("cloud_privacy_egress", true)
         try {
             val tier = AiEngineTier.valueOf(prefs.getString("ai_tier", "ON_DEVICE_MEDGEMMA_INT4") ?: "ON_DEVICE_MEDGEMMA_INT4")
             medGemmaOrchestrator.activeTier = tier
@@ -154,25 +180,118 @@ class ScanViewModel(application: Application) : AndroidViewModel(application) {
         }
 
         refreshLogs()
-        loadCabinetMedicines()
+        loadCabinetPrescriptions()
+    }
+
+    fun loadCabinetPrescriptions() {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val prescriptions = db.medicineDao().getAllCabinetPrescriptions()
+                _cabinetPrescriptions.value = prescriptions
+
+                // Also map to MedicineEntity for legacy alarm schedulers
+                val mapped = prescriptions.map {
+                    MedicineEntity(
+                        id = it.id,
+                        brandName = it.brandName,
+                        rawComposition = it.rawComposition,
+                        manufacturer = it.foodTimingRule,
+                        dosageForm = it.dosageForm
+                    )
+                }
+                val legacy = db.medicineDao().getCabinetMedicines()
+                _cabinetMedicines.value = (mapped + legacy).distinctBy { it.brandName.lowercase(Locale.ROOT) }
+            } catch (e: Exception) {
+                Log.e("MedVoice_ScanVM", "Error loading cabinet prescriptions", e)
+            }
+        }
+    }
+
+    fun addScannedMedicineToCabinet(
+        brandName: String,
+        rawComposition: String,
+        dosageForm: String,
+        foodTimingRule: String = "AFTER_FOOD"
+    ) {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val item = CabinetPrescriptionEntity(
+                    brandName = brandName.trim(),
+                    rawComposition = rawComposition.trim().ifBlank { "Active Formulation" },
+                    dosageForm = dosageForm,
+                    foodTimingRule = foodTimingRule
+                )
+                db.medicineDao().insertCabinetPrescription(item)
+                loadCabinetPrescriptions()
+                val successMsg = if (_selectedLocale.value == "hi") "$brandName दवा पेटी में जोड़ दी गई है।" else "$brandName added to your active prescription cabinet."
+                ttsManager.speak(successMsg, _selectedLocale.value)
+            } catch (e: Exception) {
+                Log.e("MedVoice_ScanVM", "Error adding scanned medicine to cabinet", e)
+            }
+        }
+    }
+
+    fun addManualMedicineToCabinet(
+        brandName: String,
+        rawComposition: String,
+        dosageForm: String,
+        foodTimingRule: String
+    ) {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val item = CabinetPrescriptionEntity(
+                    brandName = brandName.trim(),
+                    rawComposition = rawComposition.trim().ifBlank { "Active Formulation" },
+                    dosageForm = dosageForm,
+                    foodTimingRule = foodTimingRule
+                )
+                db.medicineDao().insertCabinetPrescription(item)
+                loadCabinetPrescriptions()
+                val successMsg = if (_selectedLocale.value == "hi") "$brandName दवा पेटी में जोड़ दी गई है।" else "$brandName added to your active prescription cabinet."
+                ttsManager.speak(successMsg, _selectedLocale.value)
+            } catch (e: Exception) {
+                Log.e("MedVoice_ScanVM", "Error adding manual medicine to cabinet", e)
+            }
+        }
+    }
+
+    fun removeCabinetPrescription(id: Long) {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                db.medicineDao().deleteCabinetPrescription(id)
+                loadCabinetPrescriptions()
+            } catch (e: Exception) {
+                Log.e("MedVoice_ScanVM", "Error deleting cabinet prescription", e)
+            }
+        }
+    }
+
+    fun speakCabinetInstruction(item: CabinetPrescriptionEntity) {
+        val timingText = when (item.foodTimingRule) {
+            "BEFORE_FOOD" -> if (_selectedLocale.value == "hi") "भोजन से पहले लें" else "take before food"
+            "EMPTY_STOMACH" -> if (_selectedLocale.value == "hi") "सुबह खाली पेट लें" else "take on empty stomach in the morning"
+            "BEDTIME" -> if (_selectedLocale.value == "hi") "रात को सोने से पहले लें" else "take before bedtime"
+            else -> if (_selectedLocale.value == "hi") "भोजन के बाद पानी के साथ लें" else "take after food with water"
+        }
+        val msg = if (_selectedLocale.value == "hi") {
+            "${item.brandName}। घटक: ${item.rawComposition}। कृपया इसे $timingText।"
+        } else {
+            "${item.brandName}. Active salts: ${item.rawComposition}. Please $timingText."
+        }
+        ttsManager.speak(msg, _selectedLocale.value)
     }
 
     fun loadCabinetMedicines() {
-        viewModelScope.launch(Dispatchers.IO) {
-            try {
-                _cabinetMedicines.value = db.medicineDao().getCabinetMedicines()
-            } catch (e: Exception) {
-                Log.e("MedVoice_ScanVM", "Error loading master medicines", e)
-            }
-        }
+        loadCabinetPrescriptions()
     }
 
     fun deleteMedicineFromCabinet(medicineId: Long) {
         viewModelScope.launch(Dispatchers.IO) {
             try {
+                db.medicineDao().deleteCabinetPrescription(medicineId)
                 db.medicineDao().deleteLogsForMedicine(medicineId)
                 refreshLogs()
-                loadCabinetMedicines()
+                loadCabinetPrescriptions()
             } catch (e: Exception) {
                 Log.e("MedVoice_ScanVM", "Error deleting medicine logs", e)
             }
@@ -509,9 +628,9 @@ class ScanViewModel(application: Application) : AndroidViewModel(application) {
         prefs.edit { putBoolean("daily_reminders_enabled", enabled) }
         _isDailyRemindersEnabled.value = enabled
         if (enabled) {
-            alarmScheduler.scheduleAllReminders()
+            alarmScheduler.scheduleRemindersForMedicines(_cabinetMedicines.value)
         } else {
-            listOf(101, 102, 103, 104).forEach { alarmScheduler.cancelReminder(it) }
+            listOf(101, 102, 103, 104, 201, 202, 203, 204).forEach { alarmScheduler.cancelReminder(it) }
         }
     }
 
