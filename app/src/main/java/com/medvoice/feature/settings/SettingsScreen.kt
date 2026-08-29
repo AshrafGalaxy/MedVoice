@@ -46,6 +46,7 @@ import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.LockOpen
+import androidx.compose.material.icons.filled.Memory
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.PlayArrow
@@ -54,6 +55,9 @@ import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Speed
+import androidx.compose.material.icons.filled.Thermostat
+import androidx.compose.material.icons.filled.Warning
+import com.medvoice.core.ai.OnDeviceEligibilityStatus
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -102,6 +106,7 @@ import com.medvoice.ui.theme.SurfaceCardDark
 import com.medvoice.ui.theme.SurfaceCardElevated
 import com.medvoice.ui.theme.TextMuted
 import com.medvoice.ui.theme.TextWhite
+import com.medvoice.ui.theme.WarningAmber
 import kotlinx.coroutines.launch
 
 @Composable
@@ -121,6 +126,8 @@ fun SettingsScreen(viewModel: ScanViewModel) {
     var isSavedRecently by remember { mutableStateOf(false) }
 
     val isCloudApiKeyConfigured by viewModel.isCloudApiKeyConfigured.collectAsState()
+    val activeAiTier by viewModel.activeAiTier.collectAsState()
+    val hardwareReport by viewModel.hardwareReport.collectAsState()
     var apiKeyInput by remember { mutableStateOf("") }
     var isApiKeySavedRecently by remember { mutableStateOf(false) }
     var isEditingApiKey by remember { mutableStateOf(false) }
@@ -359,58 +366,224 @@ fun SettingsScreen(viewModel: ScanViewModel) {
             shape = RoundedCornerShape(14.dp)
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(imageVector = Icons.Default.Security, contentDescription = null, tint = SafeGreen, modifier = Modifier.size(18.dp))
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = if (locale == "hi") "मेडिकल एआई मॉडल (Medical AI)" else "Medical AI Engine",
-                        color = TextWhite,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 15.sp
-                    )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(imageVector = Icons.Default.Security, contentDescription = null, tint = SafeGreen, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = if (locale == "hi") "मेडिकल एआई मॉडल (Medical AI)" else "Medical AI Engine",
+                            color = TextWhite,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 15.sp
+                        )
+                    }
+                    IconButton(
+                        onClick = {
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            viewModel.refreshHardwareAudit()
+                        },
+                        modifier = Modifier.size(28.dp)
+                    ) {
+                        Icon(Icons.Default.Refresh, contentDescription = "Refresh Hardware Audit", tint = TextMuted, modifier = Modifier.size(16.dp))
+                    }
                 }
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = if (locale == "hi") "दवा सुरक्षा और रासायनिक संरचना विश्लेषण" else "Clinical pharmaceutical safety and formulation analysis",
+                    text = if (locale == "hi") "हार्डवेयर स्पेक्स और एआई इंजन चयन" else "Physical device audit and active reasoning engine",
                     color = TextMuted,
                     fontSize = 12.sp
                 )
                 Spacer(modifier = Modifier.height(10.dp))
 
+                // Live Hardware Diagnostics Card
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(10.dp),
+                    color = SurfaceCardElevated,
+                    border = BorderStroke(1.dp, AccentBorder)
+                ) {
+                    Column(modifier = Modifier.padding(12.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Default.Memory, contentDescription = null, tint = SafeGreen, modifier = Modifier.size(14.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = "Device Hardware Specs",
+                                    color = TextWhite,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                            Surface(
+                                color = if (hardwareReport.eligibilityStatus == OnDeviceEligibilityStatus.FULLY_ELIGIBLE) SafeGreen.copy(alpha = 0.15f) else AlertRed.copy(alpha = 0.15f),
+                                shape = RoundedCornerShape(4.dp)
+                            ) {
+                                Text(
+                                    text = if (hardwareReport.eligibilityStatus == OnDeviceEligibilityStatus.FULLY_ELIGIBLE) "6GB+ RAM AUDIT: PASSED" else "AUDIT: CHECK",
+                                    color = if (hardwareReport.eligibilityStatus == OnDeviceEligibilityStatus.FULLY_ELIGIBLE) SafeGreen else AlertRed,
+                                    fontSize = 9.5.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp)
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text("Device: ${hardwareReport.deviceModel}", color = TextWhite, fontSize = 11.5.sp, fontWeight = FontWeight.Medium)
+                                Text("RAM: ${hardwareReport.totalRamGb} GB (${hardwareReport.availableRamGb} GB Free)", color = if (hardwareReport.isRamEligible) SafeGreen else AlertRed, fontSize = 11.sp)
+                            }
+                            Column(modifier = Modifier.weight(1f), horizontalAlignment = Alignment.End) {
+                                Text("CPU: ${hardwareReport.cpuCores} Cores (${if (hardwareReport.is64Bit) "64-bit" else "32-bit"})", color = TextWhite, fontSize = 11.5.sp, fontWeight = FontWeight.Medium)
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(Icons.Default.Thermostat, contentDescription = null, tint = if (hardwareReport.isThermalSafe) SafeGreen else WarningAmber, modifier = Modifier.size(12.dp))
+                                    Spacer(modifier = Modifier.width(2.dp))
+                                    Text("${hardwareReport.batteryTempCelsius}°C • ${hardwareReport.batteryPct}% Batt", color = if (hardwareReport.isThermalSafe) SafeGreen else WarningAmber, fontSize = 11.sp)
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // Reactive AI Tier Selector Buttons
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Button(
                         onClick = {
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                             viewModel.setAiTier(AiEngineTier.ON_DEVICE_MEDGEMMA_INT4)
                         },
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = if (viewModel.aiEngine.activeTier == AiEngineTier.ON_DEVICE_MEDGEMMA_INT4) SafeGreen else SurfaceCardElevated
+                            containerColor = if (activeAiTier == AiEngineTier.ON_DEVICE_MEDGEMMA_INT4) SafeGreen else SurfaceCardElevated
                         ),
                         shape = RoundedCornerShape(8.dp),
                         contentPadding = PaddingValues(horizontal = 6.dp, vertical = 6.dp),
                         modifier = Modifier.weight(1f).heightIn(min = 44.dp)
                     ) {
-                        Icon(imageVector = Icons.Default.FlashOn, contentDescription = null, tint = TextWhite, modifier = Modifier.size(14.dp))
+                        Icon(
+                            imageVector = Icons.Default.FlashOn,
+                            contentDescription = null,
+                            tint = if (activeAiTier == AiEngineTier.ON_DEVICE_MEDGEMMA_INT4) BackgroundCharcoal else TextWhite,
+                            modifier = Modifier.size(14.dp)
+                        )
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text(if (locale == "hi") "ऑन-डिवाइस एआई" else "On-Device AI", fontSize = 11.5.sp, color = TextWhite, fontWeight = FontWeight.Bold)
+                        Text(
+                            text = if (locale == "hi") "ऑन-डिवाइस एआई" else "On-Device AI",
+                            fontSize = 11.5.sp,
+                            color = if (activeAiTier == AiEngineTier.ON_DEVICE_MEDGEMMA_INT4) BackgroundCharcoal else TextWhite,
+                            fontWeight = FontWeight.Bold
+                        )
                     }
 
                     Button(
                         onClick = {
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                             viewModel.setAiTier(AiEngineTier.CLOUD_MEDGEMMA_HOSTED)
                         },
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = if (viewModel.aiEngine.activeTier == AiEngineTier.CLOUD_MEDGEMMA_HOSTED) SafeGreen else SurfaceCardElevated
+                            containerColor = if (activeAiTier == AiEngineTier.CLOUD_MEDGEMMA_HOSTED) SafeGreen else SurfaceCardElevated
                         ),
                         shape = RoundedCornerShape(8.dp),
                         contentPadding = PaddingValues(horizontal = 6.dp, vertical = 6.dp),
                         modifier = Modifier.weight(1f).heightIn(min = 44.dp)
                     ) {
-                        Icon(imageVector = Icons.Default.Cloud, contentDescription = null, tint = TextWhite, modifier = Modifier.size(14.dp))
+                        Icon(
+                            imageVector = Icons.Default.Cloud,
+                            contentDescription = null,
+                            tint = if (activeAiTier == AiEngineTier.CLOUD_MEDGEMMA_HOSTED) BackgroundCharcoal else TextWhite,
+                            modifier = Modifier.size(14.dp)
+                        )
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text(if (locale == "hi") "क्लाउड एआई" else "Cloud AI", fontSize = 11.5.sp, color = TextWhite, fontWeight = FontWeight.Bold)
+                        Text(
+                            text = if (locale == "hi") "क्लाउड एआई" else "Cloud AI",
+                            fontSize = 11.5.sp,
+                            color = if (activeAiTier == AiEngineTier.CLOUD_MEDGEMMA_HOSTED) BackgroundCharcoal else TextWhite,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                // Honest Live Runtime Status Badge
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(8.dp),
+                    color = if (activeAiTier == AiEngineTier.CLOUD_MEDGEMMA_HOSTED && isCloudApiKeyConfigured) SafeGreen.copy(alpha = 0.12f) else SurfaceCardElevated,
+                    border = BorderStroke(1.dp, if (activeAiTier == AiEngineTier.CLOUD_MEDGEMMA_HOSTED && isCloudApiKeyConfigured) SafeGreen.copy(alpha = 0.4f) else AccentBorder)
+                ) {
+                    Column(modifier = Modifier.padding(10.dp)) {
+                        if (activeAiTier == AiEngineTier.CLOUD_MEDGEMMA_HOSTED) {
+                            if (isCloudApiKeyConfigured) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(Icons.Default.CheckCircle, contentDescription = null, tint = SafeGreen, modifier = Modifier.size(14.dp))
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(
+                                        text = "🟢 Active: Cloud AI (Qwen 3.8 27B on Groq LPU)",
+                                        color = SafeGreen,
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                                Spacer(modifier = Modifier.height(3.dp))
+                                Text(
+                                    text = "• Ultra-fast neural inference (<400ms)\n• Zero phone heating & battery load on ${hardwareReport.deviceModel}",
+                                    color = TextMuted,
+                                    fontSize = 10.5.sp,
+                                    lineHeight = 15.sp
+                                )
+                            } else {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(Icons.Default.Warning, contentDescription = null, tint = WarningAmber, modifier = Modifier.size(14.dp))
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(
+                                        text = "⚠️ API Key Required for Cloud AI",
+                                        color = WarningAmber,
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                                Spacer(modifier = Modifier.height(3.dp))
+                                Text(
+                                    text = "Paste your Groq API key below to activate Qwen 27B. Currently using built-in local database.",
+                                    color = TextMuted,
+                                    fontSize = 10.5.sp
+                                )
+                            }
+                        } else {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Default.FlashOn, contentDescription = null, tint = ReticleCyan, modifier = Modifier.size(14.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = "⚡ Active: On-Device Engine (100% Edge Privacy)",
+                                    color = ReticleCyan,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(3.dp))
+                            Text(
+                                text = "• 100% Offline (No Data Egress) • Local SQLite FTS5 & Pharmacopeia\n• Thermal Note: Tensor operations utilize on-device CPU. Keep device ventilated.",
+                                color = TextMuted,
+                                fontSize = 10.5.sp,
+                                lineHeight = 15.sp
+                            )
+                        }
                     }
                 }
 
@@ -443,7 +616,7 @@ fun SettingsScreen(viewModel: ScanViewModel) {
                     )
                 }
 
-                if (allowCloudPrivacy || viewModel.aiEngine.activeTier == AiEngineTier.CLOUD_MEDGEMMA_HOSTED) {
+                if (allowCloudPrivacy || activeAiTier == AiEngineTier.CLOUD_MEDGEMMA_HOSTED) {
                     Spacer(modifier = Modifier.height(12.dp))
                     Text(
                         text = if (locale == "hi") "क्लाउड एपीआई कुंजी (Cloud API Key)" else "Cloud API Key",

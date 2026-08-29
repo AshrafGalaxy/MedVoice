@@ -18,6 +18,7 @@ sealed class SafetyEvaluationResult {
         val instructionText: String get() = safetyResult.spokenVernacularText
         val displayTitle: String get() = safetyResult.displayTitle
         val dosageForm: String get() = safetyResult.dosageForm
+        val sourceTier: com.medvoice.core.ai.AiEngineTier get() = safetyResult.sourceTier
     }
 
     data class DuplicateDoseBlocked(

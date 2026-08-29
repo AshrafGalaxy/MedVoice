@@ -41,7 +41,8 @@ sealed class ScanUiState {
         val saltId: Long = 0L,
         val timingRuleCode: String = "AFTER_FOOD",
         val dosageForm: String = "TABLET",
-        val rawComposition: String = ""
+        val rawComposition: String = "",
+        val sourceTier: com.medvoice.core.ai.AiEngineTier = com.medvoice.core.ai.AiEngineTier.CLOUD_MEDGEMMA_HOSTED
     ) : ScanUiState()
 
     data class DuplicateAlert(
@@ -104,6 +105,12 @@ class ScanViewModel(application: Application) : AndroidViewModel(application) {
 
     private val _isCloudApiKeyConfigured = MutableStateFlow(aiEngine.cloudMedGemmaApiKey.isNotBlank())
     val isCloudApiKeyConfigured: StateFlow<Boolean> = _isCloudApiKeyConfigured.asStateFlow()
+
+    private val _activeAiTier = MutableStateFlow(aiEngine.activeTier)
+    val activeAiTier: StateFlow<com.medvoice.core.ai.AiEngineTier> = _activeAiTier.asStateFlow()
+
+    private val _hardwareReport = MutableStateFlow(com.medvoice.core.ai.DeviceHardwareDetector.evaluateHardware(application))
+    val hardwareReport: StateFlow<com.medvoice.core.ai.HardwareEligibilityReport> = _hardwareReport.asStateFlow()
 
     private val _selectedLocale = MutableStateFlow(prefs.getString("selected_locale", "en") ?: "en")
     val selectedLocale: StateFlow<String> = _selectedLocale.asStateFlow()
@@ -179,17 +186,23 @@ class ScanViewModel(application: Application) : AndroidViewModel(application) {
         aiEngine.cloudMedGemmaApiKey = prefs.getString("cloud_medgemma_api_key", aiEngine.cloudMedGemmaApiKey) ?: aiEngine.cloudMedGemmaApiKey
         aiEngine.cloudModelName = prefs.getString("cloud_model_name", "qwen/qwen3.8-27b") ?: "qwen/qwen3.8-27b"
         aiEngine.allowCloudPrivacyEgress = prefs.getBoolean("cloud_privacy_egress", true)
-        try {
-            val tier = AiEngineTier.valueOf(prefs.getString("ai_tier", "ON_DEVICE_MEDGEMMA_INT4") ?: "ON_DEVICE_MEDGEMMA_INT4")
-            medGemmaOrchestrator.activeTier = tier
-            aiEngine.activeTier = tier
-        } catch (_: Exception) {
-            medGemmaOrchestrator.activeTier = AiEngineTier.ON_DEVICE_MEDGEMMA_INT4
-            aiEngine.activeTier = AiEngineTier.ON_DEVICE_MEDGEMMA_INT4
+        
+        val initialTier = if (aiEngine.cloudMedGemmaApiKey.isNotBlank() && aiEngine.allowCloudPrivacyEgress) {
+            com.medvoice.core.ai.AiEngineTier.CLOUD_MEDGEMMA_HOSTED
+        } else {
+            try {
+                com.medvoice.core.ai.AiEngineTier.valueOf(prefs.getString("ai_tier", "CLOUD_MEDGEMMA_HOSTED") ?: "CLOUD_MEDGEMMA_HOSTED")
+            } catch (_: Exception) {
+                com.medvoice.core.ai.AiEngineTier.CLOUD_MEDGEMMA_HOSTED
+            }
         }
+        _activeAiTier.value = initialTier
+        medGemmaOrchestrator.activeTier = initialTier
+        aiEngine.activeTier = initialTier
 
         refreshLogs()
         loadCabinetPrescriptions()
+        refreshHardwareAudit()
     }
 
     fun loadCabinetPrescriptions() {
@@ -337,12 +350,16 @@ class ScanViewModel(application: Application) : AndroidViewModel(application) {
         aiEngine.cloudMedGemmaApiKey = clean
         prefs.edit { putString("cloud_medgemma_api_key", clean) }
         _isCloudApiKeyConfigured.value = clean.isNotBlank()
+        if (clean.isNotBlank()) {
+            setAiTier(com.medvoice.core.ai.AiEngineTier.CLOUD_MEDGEMMA_HOSTED)
+        }
     }
 
     fun clearCloudMedGemmaApiKey() {
         aiEngine.cloudMedGemmaApiKey = ""
         prefs.edit { putString("cloud_medgemma_api_key", "") }
         _isCloudApiKeyConfigured.value = false
+        setAiTier(com.medvoice.core.ai.AiEngineTier.ON_DEVICE_MEDGEMMA_INT4)
     }
 
     fun setCloudPrivacyEgress(allow: Boolean) {
@@ -350,10 +367,16 @@ class ScanViewModel(application: Application) : AndroidViewModel(application) {
         prefs.edit { putBoolean("cloud_privacy_egress", allow) }
     }
 
-    fun setAiTier(tier: AiEngineTier) {
+    fun setAiTier(tier: com.medvoice.core.ai.AiEngineTier) {
         medGemmaOrchestrator.activeTier = tier
         aiEngine.activeTier = tier
+        _activeAiTier.value = tier
         prefs.edit { putString("ai_tier", tier.name) }
+        android.util.Log.d("ScanViewModel", "AI Engine Tier set to: $tier")
+    }
+
+    fun refreshHardwareAudit() {
+        _hardwareReport.value = com.medvoice.core.ai.DeviceHardwareDetector.evaluateHardware(getApplication())
     }
 
     fun updateCaregiverInfo(name: String, phone: String) {
@@ -522,7 +545,8 @@ class ScanViewModel(application: Application) : AndroidViewModel(application) {
                     saltId = result.matchedMedicine?.id ?: 0L,
                     timingRuleCode = result.safetyResult.foodTimingRule.name,
                     dosageForm = result.dosageForm,
-                    rawComposition = result.matchedMedicine?.rawComposition ?: result.saltName
+                    rawComposition = result.matchedMedicine?.rawComposition ?: result.saltName,
+                    sourceTier = result.sourceTier
                 )
 
                 // Speak vernacular dosage instruction aloud, then start hands-free voice listener

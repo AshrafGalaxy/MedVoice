@@ -21,6 +21,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import com.medvoice.core.ai.AiEngineTier
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -485,19 +486,40 @@ fun ScanScreen(viewModel: ScanViewModel) {
                                     horizontalArrangement = Arrangement.SpaceBetween,
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Surface(
-                                        color = Color.White.copy(alpha = 0.2f),
-                                        shape = RoundedCornerShape(8.dp)
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp)
                                     ) {
-                                        Text(
-                                            text = dosageBadgeText,
-                                            style = MaterialTheme.typography.bodySmall.copy(
-                                                color = TextWhite,
-                                                fontWeight = FontWeight.Bold,
-                                                fontSize = 11.5.sp
-                                            ),
-                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
-                                        )
+                                        Surface(
+                                            color = Color.White.copy(alpha = 0.2f),
+                                            shape = RoundedCornerShape(8.dp)
+                                        ) {
+                                            Text(
+                                                text = dosageBadgeText,
+                                                style = MaterialTheme.typography.bodySmall.copy(
+                                                    color = TextWhite,
+                                                    fontWeight = FontWeight.Bold,
+                                                    fontSize = 11.5.sp
+                                                ),
+                                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                                            )
+                                        }
+
+                                        Surface(
+                                            color = if (state.sourceTier == AiEngineTier.CLOUD_MEDGEMMA_HOSTED) Color(0xD90D2818) else Color(0xD9121E2B),
+                                            shape = RoundedCornerShape(8.dp),
+                                            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.3f))
+                                        ) {
+                                            Text(
+                                                text = if (state.sourceTier == AiEngineTier.CLOUD_MEDGEMMA_HOSTED) "☁️ Qwen 27B" else "⚡ On-Device",
+                                                style = MaterialTheme.typography.bodySmall.copy(
+                                                    color = TextWhite,
+                                                    fontWeight = FontWeight.Bold,
+                                                    fontSize = 10.5.sp
+                                                ),
+                                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp)
+                                            )
+                                        }
                                     }
 
                                     IconButton(

@@ -34,7 +34,8 @@ data class MedGemmaSafetyResult(
     val spokenVernacularText: String,
     val displayTitle: String,
     val dosageForm: String = "TABLET",
-    val confidenceScore: Float = 1.0f
+    val confidenceScore: Float = 1.0f,
+    val sourceTier: AiEngineTier = AiEngineTier.CLOUD_MEDGEMMA_HOSTED
 )
 
 class MedGemmaOrchestrator(
@@ -306,7 +307,8 @@ class MedGemmaOrchestrator(
             spokenVernacularText = spokenText,
             displayTitle = displayTitle,
             dosageForm = dosageForm,
-            confidenceScore = 0.95f
+            confidenceScore = 0.95f,
+            sourceTier = extractedComposition?.sourceTier ?: activeTier
         )
     }
 
