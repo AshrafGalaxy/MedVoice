@@ -157,11 +157,12 @@ object DeviceHardwareDetector {
 
     private fun checkModelBinaryPresence(context: Context): Boolean {
         return try {
-            val internalFile = File(context.filesDir, "models/qwen2.5_1.5b_int4.bin")
-            if (internalFile.exists() && internalFile.length() > 10_000_000L) return true
+            val file1 = File(context.filesDir, "models/qwen2.5_1.5b_instruct_int4.bin")
+            val file2 = File(context.filesDir, "models/qwen2.5_1.5b_int4.bin")
+            if ((file1.exists() && file1.length() > 5_000_000L) || (file2.exists() && file2.length() > 5_000_000L)) return true
 
             val assetList = context.assets.list("models") ?: emptyArray()
-            assetList.any { it.endsWith(".bin") || it.endsWith(".tflite") || it.endsWith(".onnx") }
+            assetList.any { it.endsWith(".bin") || it.endsWith(".tflite") || it.endsWith(".onnx") || it.endsWith(".gguf") }
         } catch (e: Exception) {
             false
         }

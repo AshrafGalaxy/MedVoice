@@ -39,6 +39,8 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Cloud
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.FlashOn
 import androidx.compose.material.icons.filled.GraphicEq
@@ -59,12 +61,14 @@ import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.filled.Thermostat
 import androidx.compose.material.icons.filled.Warning
 import com.medvoice.core.ai.OnDeviceEligibilityStatus
+import com.medvoice.core.ai.ModelDownloadStatus
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -683,6 +687,234 @@ fun SettingsScreen(viewModel: ScanViewModel) {
                                             fontSize = 10.5.sp,
                                             maxLines = 1
                                         )
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    // 1B Instruct Neural Model Management (ONLY in On-Device AI Mode)
+                    val modelStatus by viewModel.modelDownloadStatus.collectAsState()
+
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        color = SurfaceCardElevated,
+                        border = BorderStroke(1.dp, if (modelStatus is ModelDownloadStatus.Ready) SafeGreen.copy(alpha = 0.5f) else AccentBorder)
+                    ) {
+                        Column(modifier = Modifier.padding(12.dp)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        imageVector = Icons.Default.Memory,
+                                        contentDescription = null,
+                                        tint = if (modelStatus is ModelDownloadStatus.Ready) SafeGreen else ReticleCyan,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(
+                                        text = if (locale == "hi") "1B इंस्ट्रक्ट ऑन-डिवाइस मॉडल" else "1B Instruct Neural Model",
+                                        color = TextWhite,
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+
+                                Surface(
+                                    color = when (modelStatus) {
+                                        is ModelDownloadStatus.Ready -> SafeGreen.copy(alpha = 0.15f)
+                                        is ModelDownloadStatus.Downloading -> ReticleCyan.copy(alpha = 0.15f)
+                                        is ModelDownloadStatus.Error -> AlertRed.copy(alpha = 0.15f)
+                                        else -> SurfaceCardDark
+                                    },
+                                    shape = RoundedCornerShape(6.dp)
+                                ) {
+                                    Text(
+                                        text = when (modelStatus) {
+                                            is ModelDownloadStatus.Ready -> "✓ READY (LOCAL INT4)"
+                                            is ModelDownloadStatus.Downloading -> "DOWNLOADING"
+                                            is ModelDownloadStatus.Error -> "FAILED"
+                                            else -> "NOT INSTALLED"
+                                        },
+                                        color = when (modelStatus) {
+                                            is ModelDownloadStatus.Ready -> SafeGreen
+                                            is ModelDownloadStatus.Downloading -> ReticleCyan
+                                            is ModelDownloadStatus.Error -> AlertRed
+                                            else -> TextMuted
+                                        },
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.5.dp)
+                                    )
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(6.dp))
+
+                            Text(
+                                text = if (locale == "hi") {
+                                    "Qwen 2.5 1.5B (INT4) मॉडल डाउनलोड करें ताकि इंटरनेट के बिना फोन पर ही न्यूरल रीजनिंग और जटिल फॉर्मूलेशन विश्लेषण हो सके।"
+                                } else {
+                                    "Download Qwen 2.5 1.5B (INT4 Quantized) to run full neural chemical reasoning directly on-device with zero internet."
+                                },
+                                color = TextMuted,
+                                fontSize = 11.sp,
+                                lineHeight = 15.sp
+                            )
+
+                            Spacer(modifier = Modifier.height(10.dp))
+
+                            when (val status = modelStatus) {
+                                is ModelDownloadStatus.NotDownloaded -> {
+                                    val isEligible = hardwareReport.totalRamMb >= 3500L
+                                    Column {
+                                        Button(
+                                            onClick = {
+                                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                                viewModel.startModelDownload()
+                                            },
+                                            enabled = isEligible,
+                                            colors = ButtonDefaults.buttonColors(
+                                                containerColor = SafeGreen,
+                                                disabledContainerColor = SurfaceCardDark
+                                            ),
+                                            shape = RoundedCornerShape(8.dp),
+                                            modifier = Modifier.fillMaxWidth().height(42.dp)
+                                        ) {
+                                            Icon(Icons.Default.Download, contentDescription = null, tint = if (isEligible) TextWhite else TextMuted, modifier = Modifier.size(16.dp))
+                                            Spacer(modifier = Modifier.width(6.dp))
+                                            Text(
+                                                text = if (locale == "hi") "1B मॉडल डाउनलोड करें (~380 MB)" else "Download 1B Instruct Model (~380 MB)",
+                                                color = if (isEligible) TextWhite else TextMuted,
+                                                fontSize = 12.5.sp,
+                                                fontWeight = FontWeight.Bold
+                                            )
+                                        }
+
+                                        if (!isEligible) {
+                                            Spacer(modifier = Modifier.height(4.dp))
+                                            Text(
+                                                text = "⚠️ Device has ${hardwareReport.totalRamGb}GB RAM. 1B neural inference requires 4GB+ RAM. Standard on-device SQLite engine active.",
+                                                color = WarningAmber,
+                                                fontSize = 10.5.sp
+                                            )
+                                        }
+                                    }
+                                }
+
+                                is ModelDownloadStatus.Downloading -> {
+                                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Text(
+                                                text = "Downloading: ${(status.progress * 100).toInt()}% (${status.downloadedBytes / (1024 * 1024)}MB / ${status.totalBytes / (1024 * 1024)}MB)",
+                                                color = TextWhite,
+                                                fontSize = 11.5.sp,
+                                                fontWeight = FontWeight.SemiBold
+                                            )
+                                            if (status.formattedSpeed.isNotBlank()) {
+                                                Text(
+                                                    text = status.formattedSpeed,
+                                                    color = ReticleCyan,
+                                                    fontSize = 11.sp
+                                                )
+                                            }
+                                        }
+
+                                        LinearProgressIndicator(
+                                            progress = { status.progress },
+                                            modifier = Modifier.fillMaxWidth().height(6.dp),
+                                            color = SafeGreen,
+                                            trackColor = SurfaceCardDark
+                                        )
+
+                                        Spacer(modifier = Modifier.height(4.dp))
+
+                                        Button(
+                                            onClick = {
+                                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                                viewModel.cancelModelDownload()
+                                            },
+                                            colors = ButtonDefaults.buttonColors(containerColor = AlertRed.copy(alpha = 0.2f)),
+                                            border = BorderStroke(1.dp, AlertRed.copy(alpha = 0.5f)),
+                                            shape = RoundedCornerShape(8.dp),
+                                            modifier = Modifier.fillMaxWidth().height(36.dp)
+                                        ) {
+                                            Text(
+                                                text = if (locale == "hi") "डाउनलोड रद्द करें" else "Cancel Download",
+                                                color = AlertRed,
+                                                fontSize = 12.sp,
+                                                fontWeight = FontWeight.Bold
+                                            )
+                                        }
+                                    }
+                                }
+
+                                is ModelDownloadStatus.Ready -> {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            Text(
+                                                text = "📦 Model Size: ${String.format(java.util.Locale.US, "%.1f", status.sizeMb)} MB",
+                                                color = TextWhite,
+                                                fontSize = 11.5.sp,
+                                                fontWeight = FontWeight.SemiBold
+                                            )
+                                            Text(
+                                                text = "• Stored locally in sandbox • Zero network required",
+                                                color = SafeGreen,
+                                                fontSize = 10.5.sp
+                                            )
+                                        }
+
+                                        Button(
+                                            onClick = {
+                                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                                viewModel.deleteDownloadedModel()
+                                            },
+                                            colors = ButtonDefaults.buttonColors(containerColor = AlertRed.copy(alpha = 0.15f)),
+                                            border = BorderStroke(1.dp, AlertRed.copy(alpha = 0.4f)),
+                                            shape = RoundedCornerShape(8.dp),
+                                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                                            modifier = Modifier.height(34.dp)
+                                        ) {
+                                            Icon(Icons.Default.Delete, contentDescription = null, tint = AlertRed, modifier = Modifier.size(14.dp))
+                                            Spacer(modifier = Modifier.width(4.dp))
+                                            Text("Delete", color = AlertRed, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                        }
+                                    }
+                                }
+
+                                is ModelDownloadStatus.Error -> {
+                                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                        Text(
+                                            text = status.message,
+                                            color = AlertRed,
+                                            fontSize = 11.sp
+                                        )
+                                        Button(
+                                            onClick = {
+                                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                                viewModel.startModelDownload()
+                                            },
+                                            colors = ButtonDefaults.buttonColors(containerColor = SafeGreen),
+                                            shape = RoundedCornerShape(8.dp),
+                                            modifier = Modifier.fillMaxWidth().height(38.dp)
+                                        ) {
+                                            Text("Retry Download", color = TextWhite, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                        }
                                     }
                                 }
                             }

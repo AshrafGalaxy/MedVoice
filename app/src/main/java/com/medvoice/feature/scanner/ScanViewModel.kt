@@ -80,14 +80,33 @@ sealed class ScanUiState {
 
 class ScanViewModel(application: Application) : AndroidViewModel(application) {
 
-    private val db = AppDatabase.getInstance(application)
+    val db = AppDatabase.getInstance(application)
     val dualSideOcrManager = com.medvoice.core.vision.DualSideOcrManager()
     val aiEngine = com.medvoice.core.ai.AiPharmacologyEngine(application)
+    val onDeviceModelManager = com.medvoice.core.ai.OnDeviceModelManager(application)
+    val modelDownloadStatus = onDeviceModelManager.downloadStatus
     val clinicalOrchestrator = com.medvoice.core.ai.ClinicalSafetyOrchestrator(application, aiEngine)
     private val safetyEngine = SafetyEvaluationEngine(db.medicineDao(), clinicalOrchestrator)
     val ttsManager = VernacularTtsManager(application)
     val alarmScheduler = com.medvoice.core.scheduler.MedicationAlarmScheduler(application)
     private val prefs = application.getSharedPreferences("medvoice_prefs", android.content.Context.MODE_PRIVATE)
+
+    fun startModelDownload() {
+        onDeviceModelManager.startDownload {
+            refreshHardwareAudit()
+        }
+    }
+
+    fun cancelModelDownload() {
+        onDeviceModelManager.cancelDownload()
+    }
+
+    fun deleteDownloadedModel() {
+        viewModelScope.launch(Dispatchers.IO) {
+            onDeviceModelManager.deleteModel()
+            refreshHardwareAudit()
+        }
+    }
 
     private val _liveOcrSnippet = MutableStateFlow("")
     val liveOcrSnippet: StateFlow<String> = _liveOcrSnippet.asStateFlow()
