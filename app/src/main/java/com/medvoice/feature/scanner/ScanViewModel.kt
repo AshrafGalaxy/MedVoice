@@ -242,7 +242,40 @@ class ScanViewModel(application: Application) : AndroidViewModel(application) {
     fun loadCabinetPrescriptions() {
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                val prescriptions = db.medicineDao().getAllCabinetPrescriptions()
+                var prescriptions = db.medicineDao().getAllCabinetPrescriptions()
+                
+                // Seed standard senior prescription schedule on initial load if database table is empty
+                if (prescriptions.isEmpty()) {
+                    val starterMedications = listOf(
+                        CabinetPrescriptionEntity(
+                            brandName = "Augmentin 625 Duo",
+                            rawComposition = "Amoxicillin 500mg + Clavulanic Acid 125mg",
+                            dosageForm = "TABLET",
+                            foodTimingRule = "AFTER_BREAKFAST"
+                        ),
+                        CabinetPrescriptionEntity(
+                            brandName = "Dolo-650",
+                            rawComposition = "Paracetamol 650mg",
+                            dosageForm = "TABLET",
+                            foodTimingRule = "AFTER_LUNCH"
+                        ),
+                        CabinetPrescriptionEntity(
+                            brandName = "Glycomet 500 SR",
+                            rawComposition = "Metformin Hydrochloride 500mg",
+                            dosageForm = "TABLET",
+                            foodTimingRule = "BEFORE_DINNER"
+                        ),
+                        CabinetPrescriptionEntity(
+                            brandName = "Amlong 5mg",
+                            rawComposition = "Amlodipine 5mg",
+                            dosageForm = "TABLET",
+                            foodTimingRule = "BEDTIME"
+                        )
+                    )
+                    starterMedications.forEach { db.medicineDao().insertCabinetPrescription(it) }
+                    prescriptions = db.medicineDao().getAllCabinetPrescriptions()
+                }
+
                 _cabinetPrescriptions.value = prescriptions
 
                 // Also map to MedicineEntity for legacy alarm schedulers

@@ -33,11 +33,13 @@ import androidx.compose.material.icons.filled.CenterFocusStrong
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.LightMode
+import androidx.compose.material.icons.filled.MedicalServices
 import androidx.compose.material.icons.filled.NightsStay
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Shield
+import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.filled.WbSunny
 import androidx.compose.material3.Button
@@ -45,6 +47,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
@@ -66,6 +69,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -554,56 +558,137 @@ fun HomeScreen(viewModel: ScanViewModel) {
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(containerColor = SurfaceCardDark),
-                shape = RoundedCornerShape(12.dp)
+                shape = RoundedCornerShape(14.dp),
+                border = BorderStroke(1.dp, AccentBorder)
             ) {
-                Box(
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(20.dp),
-                    contentAlignment = Alignment.Center
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
+                    Box(
+                        modifier = Modifier
+                            .size(44.dp)
+                            .background(ReticleCyan.copy(alpha = 0.15f), CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.MedicalServices,
+                            contentDescription = null,
+                            tint = ReticleCyan,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(10.dp))
                     Text(
-                        text = if (locale == "hi") "दवाएं लोड हो रही हैं..." else "Loading prescriptions from master database...",
-                        color = TextMuted,
-                        fontSize = 13.sp
+                        text = if (locale == "hi") "कोई सक्रिय दवा समय-सारणी में नहीं है" else "No Active Medications in Schedule",
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            color = TextWhite,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 15.sp
+                        ),
+                        textAlign = TextAlign.Center
                     )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = if (locale == "hi") "दवा पट्टी को कैमरे से स्कैन करके अपनी दैनिक समय-सारणी में जोड़ें" else "Scan your medicine blister pack on camera to add it to your daily schedule",
+                        style = MaterialTheme.typography.bodySmall.copy(
+                            color = TextMuted,
+                            fontSize = 12.sp
+                        ),
+                        textAlign = TextAlign.Center
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Button(
+                        onClick = {
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            viewModel.navigateToTab(MedVoiceTab.SCANNER)
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = SafeGreen),
+                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier.height(42.dp)
+                    ) {
+                        Icon(Icons.Default.CameraAlt, contentDescription = null, tint = TextWhite, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = if (locale == "hi") "दवा स्कैन करें" else "Scan Medicine to Add",
+                            color = TextWhite,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 13.sp
+                        )
+                    }
                 }
             }
         } else {
-            cabinetMedicines.take(4).forEach { med ->
+            cabinetMedicines.take(4).forEachIndexed { index, med ->
                 val isTaken = logs.any { it.scannedBrandName.contains(med.brandName.split(" ").first(), ignoreCase = true) && it.status == "TAKEN" }
+                val slotTiming = when (index) {
+                    0 -> if (locale == "hi") "🌅 सुबह (08:00 AM) • भोजन के बाद" else "🌅 Morning (08:00 AM) • After Breakfast"
+                    1 -> if (locale == "hi") "☀️ दोपहर (01:30 PM) • भोजन के बाद" else "☀️ Afternoon (01:30 PM) • After Lunch"
+                    2 -> if (locale == "hi") "🌙 संध्या (08:00 PM) • भोजन से पहले" else "🌙 Evening (08:00 PM) • Before Dinner"
+                    else -> if (locale == "hi") "💤 सोते समय (09:30 PM) • पानी के साथ" else "💤 Bedtime (09:30 PM) • With Water"
+                }
+
                 val formLabel = when (med.dosageForm) {
                     "EYE_DROPS" -> if (locale == "hi") "👁️ आई ड्रॉप्स" else "👁️ Eye Drops"
                     "SYRUP" -> if (locale == "hi") "🧪 सिरप" else "🧪 Syrup"
                     "GEL" -> if (locale == "hi") "🧴 जेल" else "🧴 Gel"
-                    else -> if (locale == "hi") "💊 गोली (Tablet)" else "💊 Tablet"
+                    else -> if (locale == "hi") "💊 खाने की गोली (Tablet)" else "💊 Oral Tablet"
                 }
 
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(vertical = 4.dp),
+                        .padding(vertical = 5.dp),
                     colors = CardDefaults.cardColors(
-                        containerColor = if (isTaken) SurfaceCardElevated.copy(alpha = 0.6f) else SurfaceCardDark
+                        containerColor = if (isTaken) SurfaceCardElevated.copy(alpha = 0.5f) else SurfaceCardDark
                     ),
-                    shape = RoundedCornerShape(12.dp)
+                    shape = RoundedCornerShape(14.dp),
+                    border = BorderStroke(
+                        1.dp,
+                        if (isTaken) SafeGreen.copy(alpha = 0.4f) else AccentBorder
+                    )
                 ) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(12.dp),
+                            .padding(14.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = formLabel,
-                                style = MaterialTheme.typography.bodySmall.copy(
-                                    color = if (isTaken) SafeGreen else ReticleCyan,
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 11.sp
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                Surface(
+                                    color = if (isTaken) SafeGreen.copy(alpha = 0.15f) else ReticleCyan.copy(alpha = 0.15f),
+                                    shape = RoundedCornerShape(6.dp)
+                                ) {
+                                    Text(
+                                        text = formLabel,
+                                        style = MaterialTheme.typography.bodySmall.copy(
+                                            color = if (isTaken) SafeGreen else ReticleCyan,
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 10.5.sp
+                                        ),
+                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.5.dp)
+                                    )
+                                }
+
+                                Text(
+                                    text = slotTiming,
+                                    style = MaterialTheme.typography.bodySmall.copy(
+                                        color = TextMuted,
+                                        fontSize = 10.5.sp,
+                                        fontWeight = FontWeight.Medium
+                                    )
                                 )
-                            )
+                            }
+
+                            Spacer(modifier = Modifier.height(4.dp))
+
                             Text(
                                 text = med.brandName,
                                 style = MaterialTheme.typography.titleMedium.copy(
@@ -614,22 +699,23 @@ fun HomeScreen(viewModel: ScanViewModel) {
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
                             )
+
                             Text(
                                 text = med.rawComposition,
                                 style = MaterialTheme.typography.bodySmall.copy(
                                     color = TextMuted,
                                     fontSize = 12.sp
                                 ),
-                                maxLines = 2,
+                                maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
                             )
                         }
 
-                        Spacer(modifier = Modifier.width(8.dp))
+                        Spacer(modifier = Modifier.width(10.dp))
 
                         if (isTaken) {
                             StatusBadge(
-                                text = if (locale == "hi") "ले ली" else "Taken",
+                                text = if (locale == "hi") "ले ली गई" else "✓ TAKEN",
                                 statusType = StatusType.SAFE
                             )
                         } else {
@@ -639,9 +725,17 @@ fun HomeScreen(viewModel: ScanViewModel) {
                                     viewModel.navigateToTab(MedVoiceTab.SCANNER)
                                 },
                                 colors = ButtonDefaults.buttonColors(containerColor = SafeGreen),
-                                shape = RoundedCornerShape(8.dp),
-                                modifier = Modifier.height(36.dp)
+                                shape = RoundedCornerShape(10.dp),
+                                modifier = Modifier.height(38.dp),
+                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
                             ) {
+                                Icon(
+                                    imageVector = Icons.Default.CameraAlt,
+                                    contentDescription = null,
+                                    tint = TextWhite,
+                                    modifier = Modifier.size(14.dp)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
                                 Text(
                                     text = if (locale == "hi") "स्कैन" else "Scan",
                                     color = TextWhite,
