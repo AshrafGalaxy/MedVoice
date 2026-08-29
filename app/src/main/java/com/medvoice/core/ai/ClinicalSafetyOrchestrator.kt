@@ -37,7 +37,10 @@ data class ClinicalSafetyResult(
     val displayTitle: String,
     val dosageForm: String = "TABLET",
     val confidenceScore: Float = 1.0f,
-    val sourceTier: AiEngineTier = AiEngineTier.CLOUD_MEDGEMMA_HOSTED
+    val sourceTier: AiEngineTier = AiEngineTier.CLOUD_MEDGEMMA_HOSTED,
+    val routeOfAdministration: String = "ORAL",
+    val storageAdvice: String = "Store below 25°C in a dry place protected from sunlight.",
+    val clinicalAdvice: String = ""
 )
 
 class ClinicalSafetyOrchestrator(
@@ -350,6 +353,48 @@ class ClinicalSafetyOrchestrator(
             "Safe: $brandName"
         }
 
+        val route = when (dosageForm) {
+            "TOPICAL_LOTION", "SHAMPOO", "SCALP_SOLUTION", "OINTMENT", "GEL" -> "TOPICAL_EXTERNAL"
+            "EYE_DROPS" -> "OPHTHALMIC"
+            "EAR_DROPS" -> "OTIC"
+            "NASAL_SPRAY" -> "NASAL"
+            "INHALER" -> "RESPIRATORY_INHALATION"
+            "INJECTION" -> "INJECTABLE"
+            else -> "ORAL"
+        }
+
+        val storageAdvice = when (dosageForm) {
+            "SYRUP", "TONIC", "ORAL_DROPS" -> if (isHindi) "शीशी को सीधी और सूखी जगह पर रखें। उपयोग से पहले अच्छी तरह हिलाएं।" else "Store bottle upright in a cool, dry place. Shake well before each use."
+            "EYE_DROPS", "EAR_DROPS" -> if (isHindi) "खोलने के 1 महीने के अंदर उपयोग करें। नोक को हाथों से न छुएं।" else "Use within 1 month of opening. Do not touch dropper tip."
+            "OINTMENT", "GEL", "TOPICAL_LOTION", "SHAMPOO" -> if (isHindi) "सीधे धूप से बचाएं। 25°C से कम तापमान पर रखें।" else "Keep away from direct heat and sunlight. Store below 25°C."
+            "INHALER" -> if (isHindi) "माउथपीस को साफ रखें और अत्यधिक गर्मी से दूर रखें।" else "Keep mouthpiece clean and store away from excessive heat."
+            else -> if (isHindi) "नमी से बचाएं और ठंडी, सूखी जगह पर रखें।" else "Protect from moisture and direct sunlight. Store in a cool dry place."
+        }
+
+        val clinicalAdvice = when {
+            upperText.contains("PARACETAMOL") || upperText.contains("DOLO") || upperText.contains("CALPOL") ->
+                if (isHindi) "24 घंटे में अधिकतम 4 ग्राम से अधिक न लें। लिवर की सुरक्षा के लिए शराब से बचें।"
+                else "Do not exceed 4g in 24 hours. Avoid alcohol to protect liver."
+            upperText.contains("IBUPROFEN") || upperText.contains("DICLOFENAC") || upperText.contains("ACECLOFENAC") || upperText.contains("ASPIRIN") ->
+                if (isHindi) "पेट में जलन से बचने के लिए इसे हमेशा भोजन के बाद पानी या दूध के साथ लें।"
+                else "Take strictly with or after meals to prevent gastric irritation."
+            upperText.contains("METFORMIN") || upperText.contains("GLIMEPIRIDE") || upperText.contains("GLYCOMET") ->
+                if (isHindi) "नियमित समय पर भोजन करें। चक्कर आने या पसीना आने पर तुरंत मीठा खाएं।"
+                else "Maintain regular meal times. Treat signs of hypoglycemia promptly."
+            upperText.contains("TELMISARTAN") || upperText.contains("AMLODIPINE") || upperText.contains("LOSARTAN") ->
+                if (isHindi) "रोजाना निश्चित समय पर लें। अचानक तेजी से खड़े होने से बचें।"
+                else "Take at a fixed time daily. Rise slowly from seated position."
+            upperText.contains("PANTOPRAZOLE") || upperText.contains("RABEPRAZOLE") || upperText.contains("OMEPRAZOLE") ->
+                if (isHindi) "सुबह नाश्ते से 30 मिनट पहले एक गिलास पानी के साथ निगलें।"
+                else "Swallow whole 30 minutes before morning breakfast."
+            upperText.contains("AZITHROMYCIN") || upperText.contains("AMOXICILLIN") || upperText.contains("CEFIXIME") ->
+                if (isHindi) "संक्रमण दोबारा होने से रोकने के लिए डॉक्टर द्वारा बताया गया पूरा कोर्स समाप्त करें।"
+                else "Complete the full antibiotic course to prevent bacterial resistance."
+            else ->
+                if (isHindi) "दवा के लेबल पर दिए गए निर्देशों या डॉक्टर की सलाह अनुसार ही लें।"
+                else "Follow dosage directions as prescribed on packaging or by physician."
+        }
+
         return ClinicalSafetyResult(
             brandName = brandName,
             parsedSalts = parsedSalts,
@@ -362,7 +407,10 @@ class ClinicalSafetyOrchestrator(
             displayTitle = displayTitle,
             dosageForm = dosageForm,
             confidenceScore = 0.95f,
-            sourceTier = extractedComposition?.sourceTier ?: activeTier
+            sourceTier = extractedComposition?.sourceTier ?: activeTier,
+            routeOfAdministration = route,
+            storageAdvice = storageAdvice,
+            clinicalAdvice = clinicalAdvice
         )
     }
 

@@ -44,7 +44,12 @@ sealed class ScanUiState {
         val timingRuleCode: String = "AFTER_FOOD",
         val dosageForm: String = "TABLET",
         val rawComposition: String = "",
-        val sourceTier: com.medvoice.core.ai.AiEngineTier = com.medvoice.core.ai.AiEngineTier.CLOUD_MEDGEMMA_HOSTED
+        val sourceTier: com.medvoice.core.ai.AiEngineTier = com.medvoice.core.ai.AiEngineTier.CLOUD_MEDGEMMA_HOSTED,
+        val therapeuticCategory: String = "General Healthcare",
+        val routeOfAdministration: String = "ORAL",
+        val storageAdvice: String = "Store below 25°C in a dry place.",
+        val clinicalAdvice: String = "",
+        val confidenceScore: Float = 0.95f
     ) : ScanUiState()
 
     data class DuplicateAlert(
@@ -603,7 +608,12 @@ class ScanViewModel(application: Application) : AndroidViewModel(application) {
                     timingRuleCode = result.safetyResult.foodTimingRule.name,
                     dosageForm = result.dosageForm,
                     rawComposition = result.matchedMedicine?.rawComposition ?: result.saltName,
-                    sourceTier = result.sourceTier
+                    sourceTier = result.sourceTier,
+                    therapeuticCategory = result.safetyResult.therapeuticClass,
+                    routeOfAdministration = result.safetyResult.routeOfAdministration,
+                    storageAdvice = result.safetyResult.storageAdvice,
+                    clinicalAdvice = result.safetyResult.clinicalAdvice,
+                    confidenceScore = result.safetyResult.confidenceScore
                 )
 
                 // Speak vernacular dosage instruction aloud, then start hands-free voice listener
