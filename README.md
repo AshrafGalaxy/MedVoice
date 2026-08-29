@@ -2,6 +2,12 @@
 
 > **100% Offline, Privacy-First Edge AI System for Senior Medication Safety and Blister Pack Verification**
 
+[![GitHub Release](https://img.shields.io/badge/Release-v1.0.0-00875A?style=for-the-badge&logo=android&logoColor=white)](https://github.com/AshrafGalaxy/MedVoice/releases/tag/v1.0.0)
+[![Judge Demo Pack](https://img.shields.io/badge/🧪_Judge_Demo-Test_Pack-0052CC?style=for-the-badge)](DEMO_TEST_PACK.md)
+[![Build Status](https://img.shields.io/badge/Unit_Tests-37%2F37_Passed_(100%25)-brightgreen?style=for-the-badge)](app/src/test/java/com/medvoice/)
+
+### 📲 [⬇️ Direct Download APK (v1.0.0)](https://github.com/AshrafGalaxy/MedVoice/releases/download/v1.0.0/MedVoice-v1.0.0.apk) | [🧪 2-Minute Judge Evaluation Guide](DEMO_TEST_PACK.md)
+
 ---
 
 ## 🌟 Overview
