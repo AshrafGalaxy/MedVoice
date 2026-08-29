@@ -27,6 +27,7 @@ import java.util.Locale
 
 sealed class ScanUiState {
     data object Scanning : ScanUiState()
+    data object ScanningSide2 : ScanUiState()
 
     data class AnalyzingSnap(
         val stageMessage: String = "Capturing high-resolution photo...",
@@ -478,7 +479,8 @@ class ScanViewModel(application: Application) : AndroidViewModel(application) {
                             val result = safetyEngine.evaluateCandidateTokens(
                                 tokens = synthesizedTokens,
                                 locale = _selectedLocale.value,
-                                isExplicitSnap = true
+                                isExplicitSnap = true,
+                                bitmap = bitmap
                             )
                             handleEvaluationResult(result)
                         } catch (e: Exception) {
@@ -507,6 +509,15 @@ class ScanViewModel(application: Application) : AndroidViewModel(application) {
         voiceConfirmationListener.stopListening()
         _isVoiceListening.value = false
         _uiState.value = ScanUiState.Scanning
+    }
+
+    fun resetScanner() {
+        ttsManager.stop()
+        resetScanState()
+    }
+
+    fun prepareScanSide2() {
+        _uiState.value = ScanUiState.ScanningSide2
     }
 
     fun processOcrTokens(tokens: List<String>) {
@@ -746,13 +757,6 @@ class ScanViewModel(application: Application) : AndroidViewModel(application) {
         } else {
             listOf(101, 102, 103, 104, 201, 202, 203, 204).forEach { alarmScheduler.cancelReminder(it) }
         }
-    }
-
-    fun resetScanner() {
-        voiceConfirmationListener.stopListening()
-        _isVoiceListening.value = false
-        ttsManager.stop()
-        _uiState.value = ScanUiState.Scanning
     }
 
     override fun onCleared() {

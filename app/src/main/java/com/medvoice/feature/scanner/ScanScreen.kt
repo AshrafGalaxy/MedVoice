@@ -98,6 +98,7 @@ fun ScanScreen(viewModel: ScanViewModel) {
     val liveOcrSnippet by viewModel.liveOcrSnippet.collectAsState()
     val isTorchOn by viewModel.isTorchOn.collectAsState()
     val isVoiceListening by viewModel.isVoiceListening.collectAsState()
+    val activeAiTier by viewModel.activeAiTier.collectAsState()
     val lifecycleOwner = LocalLifecycleOwner.current
     val haptic = LocalHapticFeedback.current
     val context = LocalContext.current
@@ -105,7 +106,7 @@ fun ScanScreen(viewModel: ScanViewModel) {
 
     val imageCapture = remember {
         ImageCapture.Builder()
-            .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
+            .setCaptureMode(ImageCapture.CAPTURE_MODE_MAXIMIZE_QUALITY)
             .build()
     }
 
@@ -328,9 +329,13 @@ fun ScanScreen(viewModel: ScanViewModel) {
                                 overflow = TextOverflow.Ellipsis
                             )
                             Text(
-                                text = if (locale == "hi") "100% ऑन-डिवाइस क्लिनिकल एआई" else "100% On-Device Clinical AI",
+                                text = if (activeAiTier == AiEngineTier.CLOUD_MEDGEMMA_HOSTED) {
+                                    if (locale == "hi") "☁️ क्लाउड विजन एआई • Qwen 27B LPU" else "☁️ Cloud Vision AI • Qwen 27B"
+                                } else {
+                                    if (locale == "hi") "⚡ 100% ऑन-डिवाइस क्लिनिकल इंजन" else "⚡ On-Device Clinical Safety"
+                                },
                                 style = MaterialTheme.typography.bodySmall.copy(
-                                    color = SafeGreen,
+                                    color = if (activeAiTier == AiEngineTier.CLOUD_MEDGEMMA_HOSTED) SafeGreen else ReticleCyan,
                                     fontWeight = FontWeight.SemiBold,
                                     fontSize = 11.sp
                                 )
@@ -415,6 +420,73 @@ fun ScanScreen(viewModel: ScanViewModel) {
                             }
                         }
 
+                        is ScanUiState.ScanningSide2 -> {
+                            Column(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Surface(
+                                    color = Color(0xD9121824),
+                                    shape = RoundedCornerShape(20.dp),
+                                    border = BorderStroke(1.dp, ReticleCyan.copy(alpha = 0.6f)),
+                                    modifier = Modifier.padding(bottom = 12.dp)
+                                ) {
+                                    Text(
+                                        text = if (locale == "hi") "🔄 दूसरी तरफ (घटक/साल्ट) पर रखें और फोटो लें" else "🔄 Point at back side (Ingredients) & tap Snap",
+                                        style = MaterialTheme.typography.bodyMedium.copy(
+                                            color = TextWhite,
+                                            fontSize = 13.sp,
+                                            fontWeight = FontWeight.SemiBold
+                                        ),
+                                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)
+                                    )
+                                }
+
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                                ) {
+                                    // Cancel back to side 1
+                                    IconButton(
+                                        onClick = {
+                                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                            viewModel.resetScanner()
+                                        },
+                                        modifier = Modifier
+                                            .size(52.dp)
+                                            .background(Color.White.copy(alpha = 0.2f), CircleShape)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Close,
+                                            contentDescription = "Cancel",
+                                            tint = TextWhite,
+                                            modifier = Modifier.size(24.dp)
+                                        )
+                                    }
+
+                                    // Shutter for Side 2
+                                    Box(
+                                        modifier = Modifier
+                                            .size(76.dp)
+                                            .clip(CircleShape)
+                                            .background(ReticleCyan)
+                                            .clickable {
+                                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                                viewModel.snapPhoto(imageCapture, context, sideIndex = 2)
+                                            },
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.CameraAlt,
+                                            contentDescription = "Snap Back Side",
+                                            tint = BackgroundCharcoal,
+                                            modifier = Modifier.size(36.dp)
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
                         is ScanUiState.AnalyzingSnap -> {
                             Card(
                                 modifier = Modifier
@@ -460,6 +532,8 @@ fun ScanScreen(viewModel: ScanViewModel) {
 
                         is ScanUiState.SafeDetected -> {
                             val dosageBadgeText = when (state.dosageForm.uppercase(Locale.US)) {
+                                "TOPICAL_LOTION", "SCALP_SOLUTION" -> if (locale == "hi") "🧴 सिर/त्वचा पर लगाने की लोशन" else "🧴 Topical Scalp Lotion"
+                                "SHAMPOO" -> if (locale == "hi") "🧴 औषधीय शैम्पू (Shampoo)" else "🧴 Medicated Scalp Shampoo"
                                 "EYE_DROPS", "DROPS" -> if (locale == "hi") "👁️ आई ड्रॉप्स (Eye Drops)" else "👁️ Ophthalmic Eye Drops"
                                 "EAR_DROPS" -> if (locale == "hi") "👂 ईयर ड्रॉप्स (Ear Drops)" else "👂 Ear Drops"
                                 "NASAL_SPRAY" -> if (locale == "hi") "👃 नेजल स्प्रे (Nasal Spray)" else "👃 Nasal Spray"
@@ -671,11 +745,11 @@ fun ScanScreen(viewModel: ScanViewModel) {
                                         )
                                     }
 
-                                    // Scan Back Side (Optional Dual-Side enrichment)
+                                    // Scan Back Side (Interactive 2-stage enrichment)
                                     Button(
                                         onClick = {
                                             haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                            viewModel.snapPhoto(imageCapture, context, sideIndex = 2)
+                                            viewModel.prepareScanSide2()
                                         },
                                         modifier = Modifier
                                             .weight(1f)
@@ -1032,7 +1106,7 @@ fun ScanScreen(viewModel: ScanViewModel) {
                                 Button(
                                     onClick = {
                                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                        viewModel.snapPhoto(imageCapture, context, sideIndex = 2)
+                                        viewModel.prepareScanSide2()
                                     },
                                     modifier = Modifier
                                         .fillMaxWidth()
