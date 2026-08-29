@@ -35,6 +35,7 @@ import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.RecordVoiceOver
 import androidx.compose.material.icons.filled.Shield
+import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -47,6 +48,7 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -85,7 +87,14 @@ fun OnboardingScreen(
 ) {
     val locale by viewModel.selectedLocale.collectAsState()
     val selectedGender by viewModel.selectedGender.collectAsState()
+    val isSpeaking by viewModel.isSpeaking.collectAsState()
     val haptic = LocalHapticFeedback.current
+
+    DisposableEffect(Unit) {
+        onDispose {
+            viewModel.stopTts()
+        }
+    }
 
     var currentStep by remember { mutableIntStateOf(1) }
     var patientNameInput by remember {
@@ -309,22 +318,33 @@ fun OnboardingScreen(
 
                     Spacer(modifier = Modifier.height(12.dp))
 
-                    // Test Voice Button
+                    // Dynamic Test Voice / Stop Button
                     Button(
                         onClick = {
                             haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                            viewModel.testVoicePreview()
+                            viewModel.toggleVoicePreview()
                         },
-                        colors = ButtonDefaults.buttonColors(containerColor = ReticleCyan),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (isSpeaking) AlertRed else ReticleCyan
+                        ),
                         shape = RoundedCornerShape(10.dp),
                         contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
                         modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp)
                     ) {
-                        Icon(Icons.Default.PlayArrow, contentDescription = null, tint = BackgroundCharcoal, modifier = Modifier.size(16.dp))
+                        Icon(
+                            imageVector = if (isSpeaking) Icons.Default.Stop else Icons.Default.PlayArrow,
+                            contentDescription = null,
+                            tint = if (isSpeaking) TextWhite else BackgroundCharcoal,
+                            modifier = Modifier.size(16.dp)
+                        )
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(
-                            text = if (locale == "hi") "आवाज का नमूना सुनें (Test Voice)" else "Play Spoken Voice Sample",
-                            color = BackgroundCharcoal,
+                            text = if (isSpeaking) {
+                                if (locale == "hi") "आवाज बंद करें (Stop Audio)" else "Stop Voice Preview"
+                            } else {
+                                if (locale == "hi") "आवाज का नमूना सुनें (Test Voice)" else "Play Spoken Voice Sample"
+                            },
+                            color = if (isSpeaking) TextWhite else BackgroundCharcoal,
                             fontWeight = FontWeight.Bold,
                             fontSize = 13.sp
                         )

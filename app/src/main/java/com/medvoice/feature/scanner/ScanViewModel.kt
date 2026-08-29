@@ -145,6 +145,8 @@ class ScanViewModel(application: Application) : AndroidViewModel(application) {
     private val _isVoiceListening = MutableStateFlow(false)
     val isVoiceListening: StateFlow<Boolean> = _isVoiceListening.asStateFlow()
 
+    val isSpeaking: StateFlow<Boolean> = ttsManager.isSpeaking
+
     private val _showSettingsDialog = MutableStateFlow(false)
     val showSettingsDialog: StateFlow<Boolean> = _showSettingsDialog.asStateFlow()
 
@@ -338,18 +340,25 @@ class ScanViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun navigateToTab(tab: MedVoiceTab) {
+        stopTts()
         _currentTab.value = tab
     }
 
     fun setLocale(locale: String) {
+        stopTts()
         _selectedLocale.value = locale
         prefs.edit { putString("selected_locale", locale) }
     }
 
     fun setVoiceGender(gender: VoiceGender) {
+        stopTts()
         _selectedGender.value = gender
         ttsManager.selectedGender = gender
         prefs.edit { putString("voice_gender", gender.name) }
+    }
+
+    fun stopTts() {
+        ttsManager.stop()
     }
 
     fun setCloudMedGemmaApiKey(key: String) {
@@ -434,7 +443,16 @@ class ScanViewModel(application: Application) : AndroidViewModel(application) {
         _showSettingsDialog.value = show
     }
 
+    fun toggleVoicePreview() {
+        if (ttsManager.isSpeaking.value) {
+            stopTts()
+        } else {
+            testVoicePreview()
+        }
+    }
+
     fun testVoicePreview() {
+        stopTts()
         val currentName = _patientName.value.trim().takeIf {
             it.isNotBlank() && it != "Senior Patient"
         }
@@ -463,6 +481,7 @@ class ScanViewModel(application: Application) : AndroidViewModel(application) {
         context: android.content.Context,
         sideIndex: Int = 1
     ) {
+        stopTts()
         if (_uiState.value is ScanUiState.AnalyzingSnap) return
 
         val stageText = if (_selectedLocale.value == "hi") {

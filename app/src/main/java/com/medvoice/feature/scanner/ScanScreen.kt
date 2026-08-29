@@ -60,6 +60,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -115,6 +116,15 @@ fun ScanScreen(viewModel: ScanViewModel) {
         mutableStateOf(
             ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
         )
+    }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            viewModel.stopTts()
+            try {
+                cameraExecutor.shutdown()
+            } catch (_: Exception) {}
+        }
     }
 
     // Reactive Torch Toggle

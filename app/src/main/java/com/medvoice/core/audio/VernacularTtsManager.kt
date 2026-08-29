@@ -12,6 +12,9 @@ import android.util.Log
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import java.util.Locale
 
 enum class VoiceGender {
@@ -27,6 +30,9 @@ class VernacularTtsManager(
     private var isInitialized = false
     private val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
     private var audioFocusRequest: AudioFocusRequest? = null
+
+    private val _isSpeaking = MutableStateFlow(false)
+    val isSpeaking: StateFlow<Boolean> = _isSpeaking.asStateFlow()
 
     // Voice configuration: On-Device High-Definition Google Neural Engine
     var selectedGender: VoiceGender = VoiceGender.MALE
@@ -137,12 +143,16 @@ class VernacularTtsManager(
         requestAudioFocus()
 
         tts?.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
-            override fun onStart(utteranceId: String?) {}
+            override fun onStart(utteranceId: String?) {
+                _isSpeaking.value = true
+            }
             override fun onDone(utteranceId: String?) {
+                _isSpeaking.value = false
                 abandonAudioFocus()
                 onDone()
             }
             override fun onError(utteranceId: String?) {
+                _isSpeaking.value = false
                 abandonAudioFocus()
                 onDone()
             }
@@ -302,6 +312,7 @@ class VernacularTtsManager(
     }
 
     fun stop() {
+        _isSpeaking.value = false
         tts?.stop()
         abandonAudioFocus()
     }

@@ -55,6 +55,7 @@ import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Speed
+import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.filled.Thermostat
 import androidx.compose.material.icons.filled.Warning
 import com.medvoice.core.ai.OnDeviceEligibilityStatus
@@ -72,6 +73,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -129,10 +131,17 @@ fun SettingsScreen(viewModel: ScanViewModel) {
     val activeAiTier by viewModel.activeAiTier.collectAsState()
     val hardwareReport by viewModel.hardwareReport.collectAsState()
     val selectedConditions by viewModel.selectedConditions.collectAsState()
+    val isSpeaking by viewModel.isSpeaking.collectAsState()
     var apiKeyInput by remember { mutableStateOf("") }
     var isApiKeySavedRecently by remember { mutableStateOf(false) }
     var isEditingApiKey by remember { mutableStateOf(false) }
     var allowCloudPrivacy by remember { mutableStateOf(viewModel.aiEngine.allowCloudPrivacyEgress) }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            viewModel.stopTts()
+        }
+    }
 
     LaunchedEffect(caregiverPhone, patientName) {
         phoneInput = caregiverPhone
@@ -335,22 +344,33 @@ fun SettingsScreen(viewModel: ScanViewModel) {
 
                 Spacer(modifier = Modifier.height(10.dp))
 
-                // Test Voice Button
+                // Dynamic Test Voice / Stop Preview Button
                 Button(
                     onClick = {
                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                        viewModel.testVoicePreview()
+                        viewModel.toggleVoicePreview()
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = ReticleCyan),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (isSpeaking) AlertRed else ReticleCyan
+                    ),
                     shape = RoundedCornerShape(10.dp),
                     contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
                     modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp)
                 ) {
-                    Icon(imageVector = Icons.Default.PlayArrow, contentDescription = null, tint = BackgroundCharcoal, modifier = Modifier.size(16.dp))
+                    Icon(
+                        imageVector = if (isSpeaking) Icons.Default.Stop else Icons.Default.PlayArrow,
+                        contentDescription = null,
+                        tint = if (isSpeaking) TextWhite else BackgroundCharcoal,
+                        modifier = Modifier.size(16.dp)
+                    )
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
-                        text = if (locale == "hi") "आवाज का नमूना सुनें (Test Audio)" else "Play Spoken Voice Preview",
-                        color = BackgroundCharcoal,
+                        text = if (isSpeaking) {
+                            if (locale == "hi") "आवाज बंद करें (Stop Audio)" else "Stop Voice Preview"
+                        } else {
+                            if (locale == "hi") "आवाज का नमूना सुनें (Test Audio)" else "Play Spoken Voice Preview"
+                        },
+                        color = if (isSpeaking) TextWhite else BackgroundCharcoal,
                         fontWeight = FontWeight.Bold,
                         fontSize = 13.sp
                     )
