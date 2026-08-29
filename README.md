@@ -190,9 +190,3 @@ python scripts/compile_catalog_db.py
 .\gradlew assembleDebug
 adb install -r app/build/outputs/apk/debug/app-debug.apk
 ```
-
----
-
-## 📄 License & Open-Source Directives
-
-MedVoice is developed under the rules outlined in [`AGENTS.md`](file:///AGENTS.md) following Conventional Commits 1.0.0 and zero-cloud edge execution standards.
