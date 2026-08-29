@@ -13,6 +13,7 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -41,10 +42,12 @@ import androidx.compose.material.icons.filled.Cloud
 import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.FlashOn
 import androidx.compose.material.icons.filled.GraphicEq
+import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.LockOpen
 import androidx.compose.material.icons.filled.Phone
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.RecordVoiceOver
 import androidx.compose.material.icons.filled.Save
@@ -117,9 +120,10 @@ fun SettingsScreen(viewModel: ScanViewModel) {
     var phoneError by remember { mutableStateOf<String?>(null) }
     var isSavedRecently by remember { mutableStateOf(false) }
 
-    var apiKeyInput by remember { mutableStateOf(viewModel.aiEngine.cloudMedGemmaApiKey) }
+    val isCloudApiKeyConfigured by viewModel.isCloudApiKeyConfigured.collectAsState()
+    var apiKeyInput by remember { mutableStateOf("") }
     var isApiKeySavedRecently by remember { mutableStateOf(false) }
-    var isKeyVisible by remember { mutableStateOf(false) }
+    var isEditingApiKey by remember { mutableStateOf(false) }
     var allowCloudPrivacy by remember { mutableStateOf(viewModel.aiEngine.allowCloudPrivacyEgress) }
 
     LaunchedEffect(caregiverPhone, patientName) {
@@ -448,131 +452,225 @@ fun SettingsScreen(viewModel: ScanViewModel) {
                         fontWeight = FontWeight.SemiBold
                     )
                     Spacer(modifier = Modifier.height(4.dp))
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
+
+                    if (isCloudApiKeyConfigured && !isEditingApiKey) {
                         Surface(
-                            modifier = Modifier
-                                .weight(1f)
-                                .height(44.dp),
+                            modifier = Modifier.fillMaxWidth(),
                             shape = RoundedCornerShape(10.dp),
                             color = SurfaceCardElevated,
-                            border = BorderStroke(1.dp, if (isApiKeySavedRecently) SafeGreen else if (apiKeyInput.isNotBlank()) SafeGreen.copy(alpha = 0.6f) else AccentBorder)
+                            border = BorderStroke(1.dp, SafeGreen.copy(alpha = 0.5f))
                         ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .padding(horizontal = 10.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Cloud,
-                                    contentDescription = null,
-                                    tint = if (isApiKeySavedRecently || apiKeyInput.isNotBlank()) SafeGreen else TextMuted,
-                                    modifier = Modifier.size(16.dp)
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Box(
-                                    modifier = Modifier.weight(1f),
-                                    contentAlignment = Alignment.CenterStart
+                            Column(modifier = Modifier.padding(12.dp)) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.SpaceBetween
                                 ) {
-                                    if (apiKeyInput.isEmpty()) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Icon(
+                                            imageVector = Icons.Default.Lock,
+                                            contentDescription = "Encrypted Vault",
+                                            tint = SafeGreen,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(6.dp))
                                         Text(
-                                            text = if (locale == "hi") "एपीआई कुंजी दर्ज करें..." else "Enter Cloud API Key...",
-                                            color = TextMuted.copy(alpha = 0.6f),
-                                            fontSize = 12.sp
+                                            text = if (locale == "hi") "सक्रिय एवं सुरक्षित (Encrypted)" else "Configured & Encrypted",
+                                            color = SafeGreen,
+                                            fontSize = 12.5.sp,
+                                            fontWeight = FontWeight.Bold
                                         )
                                     }
-                                    BasicTextField(
-                                        value = apiKeyInput,
-                                        onValueChange = {
-                                            apiKeyInput = it
-                                            isApiKeySavedRecently = false
-                                        },
-                                        singleLine = true,
-                                        visualTransformation = if (isKeyVisible) VisualTransformation.None else PasswordVisualTransformation(),
-                                        textStyle = MaterialTheme.typography.bodyMedium.copy(
-                                            color = TextWhite,
-                                            fontSize = 12.sp,
-                                            fontWeight = FontWeight.Medium
-                                        ),
-                                        cursorBrush = SolidColor(SafeGreen),
-                                        modifier = Modifier.fillMaxWidth()
-                                    )
-                                }
-                                if (apiKeyInput.isNotEmpty()) {
-                                    IconButton(
-                                        onClick = {
-                                            isKeyVisible = !isKeyVisible
-                                        },
-                                        modifier = Modifier.size(24.dp)
+                                    Surface(
+                                        color = SafeGreen.copy(alpha = 0.15f),
+                                        shape = RoundedCornerShape(6.dp)
                                     ) {
-                                        Icon(
-                                            imageVector = if (isKeyVisible) Icons.Default.LockOpen else Icons.Default.Lock,
-                                            contentDescription = if (isKeyVisible) "Hide Key" else "Show Key",
-                                            tint = if (isKeyVisible) SafeGreen else TextMuted,
-                                            modifier = Modifier.size(15.dp)
+                                        Text(
+                                            text = "ACTIVE",
+                                            color = SafeGreen,
+                                            fontSize = 10.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                        )
+                                    }
+                                }
+                                Spacer(modifier = Modifier.height(6.dp))
+                                Text(
+                                    text = "••••••••••••••••••••••••••••••••",
+                                    color = TextMuted,
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    letterSpacing = 2.sp
+                                )
+                                Spacer(modifier = Modifier.height(10.dp))
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    Button(
+                                        onClick = {
+                                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                            isEditingApiKey = true
+                                            apiKeyInput = ""
+                                        },
+                                        colors = ButtonDefaults.buttonColors(containerColor = SurfaceCardDark),
+                                        shape = RoundedCornerShape(8.dp),
+                                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                                        modifier = Modifier.weight(1f).height(36.dp)
+                                    ) {
+                                        Icon(Icons.Default.Refresh, contentDescription = null, tint = TextWhite, modifier = Modifier.size(14.dp))
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text(
+                                            text = if (locale == "hi") "कुंजी बदलें" else "Update Key",
+                                            color = TextWhite,
+                                            fontSize = 11.5.sp,
+                                            fontWeight = FontWeight.SemiBold
+                                        )
+                                    }
+                                    Button(
+                                        onClick = {
+                                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                            viewModel.clearCloudMedGemmaApiKey()
+                                            apiKeyInput = ""
+                                            isEditingApiKey = false
+                                        },
+                                        colors = ButtonDefaults.buttonColors(containerColor = AlertRed.copy(alpha = 0.18f)),
+                                        shape = RoundedCornerShape(8.dp),
+                                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                                        modifier = Modifier.height(36.dp)
+                                    ) {
+                                        Icon(Icons.Default.Close, contentDescription = null, tint = AlertRed, modifier = Modifier.size(14.dp))
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text(
+                                            text = if (locale == "hi") "हटाएं" else "Remove",
+                                            color = AlertRed,
+                                            fontSize = 11.5.sp,
+                                            fontWeight = FontWeight.SemiBold
                                         )
                                     }
                                 }
                             }
                         }
+                    } else {
+                        Column(modifier = Modifier.fillMaxWidth()) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Surface(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .height(44.dp),
+                                    shape = RoundedCornerShape(10.dp),
+                                    color = SurfaceCardElevated,
+                                    border = BorderStroke(1.dp, if (apiKeyInput.isNotBlank()) SafeGreen else AccentBorder)
+                                ) {
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .padding(horizontal = 10.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Key,
+                                            contentDescription = null,
+                                            tint = if (apiKeyInput.isNotBlank()) SafeGreen else TextMuted,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Box(
+                                            modifier = Modifier.weight(1f),
+                                            contentAlignment = Alignment.CenterStart
+                                        ) {
+                                            if (apiKeyInput.isEmpty()) {
+                                                Text(
+                                                    text = if (locale == "hi") "नई एपीआई कुंजी दर्ज करें..." else "Paste new API key (Write-Only)...",
+                                                    color = TextMuted.copy(alpha = 0.6f),
+                                                    fontSize = 11.5.sp
+                                                )
+                                            }
+                                            BasicTextField(
+                                                value = apiKeyInput,
+                                                onValueChange = {
+                                                    apiKeyInput = it
+                                                },
+                                                singleLine = true,
+                                                visualTransformation = PasswordVisualTransformation('*'),
+                                                textStyle = MaterialTheme.typography.bodyMedium.copy(
+                                                    color = TextWhite,
+                                                    fontSize = 12.sp,
+                                                    fontWeight = FontWeight.Medium
+                                                ),
+                                                cursorBrush = SolidColor(SafeGreen),
+                                                modifier = Modifier.fillMaxWidth()
+                                            )
+                                        }
+                                        if (apiKeyInput.isNotEmpty()) {
+                                            IconButton(
+                                                onClick = { apiKeyInput = "" },
+                                                modifier = Modifier.size(24.dp)
+                                            ) {
+                                                Icon(
+                                                    imageVector = Icons.Default.Close,
+                                                    contentDescription = "Clear",
+                                                    tint = TextMuted,
+                                                    modifier = Modifier.size(14.dp)
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
 
-                        Button(
-                            onClick = {
-                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                viewModel.setCloudMedGemmaApiKey(apiKeyInput.trim())
-                                isApiKeySavedRecently = true
-                                coroutineScope.launch {
-                                    kotlinx.coroutines.delay(2500L)
-                                    isApiKeySavedRecently = false
+                                Button(
+                                    onClick = {
+                                        if (apiKeyInput.isNotBlank()) {
+                                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                            viewModel.setCloudMedGemmaApiKey(apiKeyInput.trim())
+                                            apiKeyInput = ""
+                                            isEditingApiKey = false
+                                            isApiKeySavedRecently = true
+                                            coroutineScope.launch {
+                                                kotlinx.coroutines.delay(2000L)
+                                                isApiKeySavedRecently = false
+                                            }
+                                        }
+                                    },
+                                    enabled = apiKeyInput.isNotBlank(),
+                                    colors = ButtonDefaults.buttonColors(containerColor = SafeGreen),
+                                    shape = RoundedCornerShape(10.dp),
+                                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+                                    modifier = Modifier.height(44.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Save,
+                                        contentDescription = "Save",
+                                        tint = TextWhite,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text(
+                                        text = if (locale == "hi") "सेव करें" else "Save",
+                                        color = TextWhite,
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
                                 }
-                            },
-                            colors = ButtonDefaults.buttonColors(containerColor = SafeGreen),
-                            shape = RoundedCornerShape(10.dp),
-                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
-                            modifier = Modifier.height(44.dp)
-                        ) {
-                            AnimatedContent(
-                                targetState = isApiKeySavedRecently,
-                                transitionSpec = { fadeIn(tween(180)) togetherWith fadeOut(tween(180)) },
-                                label = "ApiKeySaveTransition"
-                            ) { saved ->
-                                if (saved) {
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Icon(
-                                            imageVector = Icons.Default.CheckCircle,
-                                            contentDescription = "Saved",
-                                            tint = TextWhite,
-                                            modifier = Modifier.size(16.dp)
-                                        )
-                                        Spacer(modifier = Modifier.width(4.dp))
-                                        Text(
-                                            text = if (locale == "hi") "सहेजा गया!" else "Saved!",
-                                            color = TextWhite,
-                                            fontSize = 12.sp,
-                                            fontWeight = FontWeight.Bold
-                                        )
-                                    }
-                                } else {
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Icon(
-                                            imageVector = Icons.Default.Save,
-                                            contentDescription = "Save",
-                                            tint = TextWhite,
-                                            modifier = Modifier.size(16.dp)
-                                        )
-                                        Spacer(modifier = Modifier.width(4.dp))
-                                        Text(
-                                            text = if (locale == "hi") "सेव करें" else "Save",
-                                            color = TextWhite,
-                                            fontSize = 12.sp,
-                                            fontWeight = FontWeight.Bold
-                                        )
-                                    }
-                                }
+                            }
+
+                            if (isEditingApiKey && isCloudApiKeyConfigured) {
+                                Spacer(modifier = Modifier.height(6.dp))
+                                Text(
+                                    text = if (locale == "hi") "रद्द करें (Cancel)" else "Cancel editing",
+                                    color = TextMuted,
+                                    fontSize = 11.5.sp,
+                                    modifier = Modifier
+                                        .clickable {
+                                            apiKeyInput = ""
+                                            isEditingApiKey = false
+                                        }
+                                        .padding(vertical = 2.dp)
+                                )
                             }
                         }
                     }
@@ -596,8 +694,8 @@ fun SettingsScreen(viewModel: ScanViewModel) {
                             Text(
                                 text = if (locale == "hi") "क्लाउड एपीआई कुंजी सुरक्षित रूप से सहेजी गई" else "Cloud API key saved successfully",
                                 color = SafeGreen,
-                                fontSize = 11.5.sp,
-                                fontWeight = FontWeight.Medium
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.SemiBold
                             )
                         }
                     }

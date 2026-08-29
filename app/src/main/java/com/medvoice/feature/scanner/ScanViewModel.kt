@@ -102,6 +102,9 @@ class ScanViewModel(application: Application) : AndroidViewModel(application) {
     private val _uiState = MutableStateFlow<ScanUiState>(ScanUiState.Scanning)
     val uiState: StateFlow<ScanUiState> = _uiState.asStateFlow()
 
+    private val _isCloudApiKeyConfigured = MutableStateFlow(aiEngine.cloudMedGemmaApiKey.isNotBlank())
+    val isCloudApiKeyConfigured: StateFlow<Boolean> = _isCloudApiKeyConfigured.asStateFlow()
+
     private val _selectedLocale = MutableStateFlow(prefs.getString("selected_locale", "en") ?: "en")
     val selectedLocale: StateFlow<String> = _selectedLocale.asStateFlow()
 
@@ -330,8 +333,16 @@ class ScanViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun setCloudMedGemmaApiKey(key: String) {
-        aiEngine.cloudMedGemmaApiKey = key
-        prefs.edit { putString("cloud_medgemma_api_key", key) }
+        val clean = key.trim()
+        aiEngine.cloudMedGemmaApiKey = clean
+        prefs.edit { putString("cloud_medgemma_api_key", clean) }
+        _isCloudApiKeyConfigured.value = clean.isNotBlank()
+    }
+
+    fun clearCloudMedGemmaApiKey() {
+        aiEngine.cloudMedGemmaApiKey = ""
+        prefs.edit { putString("cloud_medgemma_api_key", "") }
+        _isCloudApiKeyConfigured.value = false
     }
 
     fun setCloudPrivacyEgress(allow: Boolean) {
