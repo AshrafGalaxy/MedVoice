@@ -160,7 +160,7 @@ fun CabinetScreen(viewModel: ScanViewModel) {
                 }
             }
 
-            // Sleek "+ Add Medicine" Pill Button
+            // Sleek Add Medicine Pill Button
             Button(
                 onClick = {
                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
@@ -179,7 +179,7 @@ fun CabinetScreen(viewModel: ScanViewModel) {
                 )
                 Spacer(modifier = Modifier.width(4.dp))
                 Text(
-                    text = if (locale == "hi") "नई दवा" else "+ Add",
+                    text = if (locale == "hi") "नई दवा" else "Add",
                     color = TextWhite,
                     fontSize = 12.5.sp,
                     fontWeight = FontWeight.Bold
@@ -277,7 +277,7 @@ fun CabinetScreen(viewModel: ScanViewModel) {
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = if (locale == "hi") "ऊपर '+ नई दवा' दबाएं या कैमरे से स्कैन करें।" else "Tap '+ Add' above or scan any strip with the camera.",
+                        text = if (locale == "hi") "ऊपर 'नई दवा' बटन दबाएं या कैमरे से स्कैन करें।" else "Tap 'Add' above or scan any medicine with the camera.",
                         color = TextMuted,
                         fontSize = 12.sp
                     )
