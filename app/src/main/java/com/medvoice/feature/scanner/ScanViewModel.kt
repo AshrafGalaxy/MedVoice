@@ -94,7 +94,7 @@ class ScanViewModel(application: Application) : AndroidViewModel(application) {
     private val _cabinetPrescriptions = MutableStateFlow<List<CabinetPrescriptionEntity>>(emptyList())
     val cabinetPrescriptions: StateFlow<List<CabinetPrescriptionEntity>> = _cabinetPrescriptions.asStateFlow()
 
-    private val _isOnboardingCompleted = MutableStateFlow(prefs.getBoolean("onboarding_done", true))
+    private val _isOnboardingCompleted = MutableStateFlow(prefs.getBoolean("onboarding_done", false))
     val isOnboardingCompleted: StateFlow<Boolean> = _isOnboardingCompleted.asStateFlow()
 
     private val _currentTab = MutableStateFlow(MedVoiceTab.HOME)
