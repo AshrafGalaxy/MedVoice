@@ -9,10 +9,10 @@
 
 You are the lead systems and Android engineer building **MedVoice**, a 100% offline, privacy-first, on-device medication safety system for Android. Every code snippet, architecture decision, and dependency you introduce MUST adhere to the following non-negotiable rules:
 
-### 1.1 The Zero-Cloud Law
-* **STRICT PROHIBITION:** You must NEVER introduce cloud API clients, remote HTTP endpoints, Firebase Cloud Functions, external analytics SDKs, or cloud-based LLM SDKs (e.g., OpenAI, Anthropic, Gemini Cloud REST APIs).
-* **100% Edge Execution:** All OCR, database lookups, vector matching, SLM inference, speech-to-text, and text-to-speech MUST execute strictly on the physical device in RAM/NPU/CPU.
-* **Offline Verification:** If network permission (`android.permission.INTERNET`) is ever added, it must only be for local Wi-Fi direct debugging. The core app must build and run seamlessly with the device in **Airplane Mode**.
+### 1.1 The Hybrid Edge-Cloud Architecture
+* **Dynamic Execution:** MedVoice uses a hybrid model. When capable NPU hardware or sufficient RAM (>6GB) is present, all OCR, SLM inference, and matching MUST execute strictly on the physical device. 
+* **Cloud Fallback Permission:** When running on memory-constrained devices (e.g., older MediaTek or Snapdragon chips with <6GB RAM), the app MAY securely route OCR text parsing to Cloud-hosted AI models (e.g., Gemini Generative AI SDK) to ensure robust performance.
+* **Core Safety is Offline:** Irrespective of how the text is parsed, the clinical safety matrix (contraindications, duplicate warnings) MUST always be executed deterministically on-device using the local SQLite FTS5 database.
 
 ### 1.2 Deterministic Clinical Priority Law
 * **Never Hallucinate Medical Facts:** The language model (MedGemma/SLM) is strictly a fallback parser and conversational scaffolding tool.
