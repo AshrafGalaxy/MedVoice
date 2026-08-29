@@ -4,12 +4,14 @@ import android.Manifest
 import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -19,22 +21,32 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.filled.AccessTime
+import androidx.compose.material.icons.filled.Bedtime
 import androidx.compose.material.icons.filled.CameraAlt
+import androidx.compose.material.icons.filled.CenterFocusStrong
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.LightMode
+import androidx.compose.material.icons.filled.NightsStay
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.filled.WbSunny
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
@@ -49,6 +61,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -60,6 +76,7 @@ import com.medvoice.ui.components.MedVoiceLogo
 import com.medvoice.ui.components.StatusBadge
 import com.medvoice.ui.components.StatusType
 import com.medvoice.ui.components.TimeOfDayIcon
+import com.medvoice.ui.theme.AccentBorder
 import com.medvoice.ui.theme.AlertRed
 import com.medvoice.ui.theme.BackgroundCharcoal
 import com.medvoice.ui.theme.ReticleCyan
@@ -113,18 +130,18 @@ fun HomeScreen(viewModel: ScanViewModel) {
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            MedVoiceLogo(size = 42)
+            MedVoiceLogo(size = 44)
             Spacer(modifier = Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     TimeOfDayIcon(hour = currentHour)
-                    Spacer(modifier = Modifier.width(5.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
                     Text(
                         text = greetingText,
                         style = MaterialTheme.typography.titleSmall.copy(
                             color = ReticleCyan,
                             fontWeight = FontWeight.SemiBold,
-                            fontSize = 13.sp
+                            fontSize = 12.sp
                         ),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
@@ -135,7 +152,7 @@ fun HomeScreen(viewModel: ScanViewModel) {
                     style = MaterialTheme.typography.titleLarge.copy(
                         color = TextWhite,
                         fontWeight = FontWeight.Bold,
-                        fontSize = 20.sp
+                        fontSize = 18.sp
                     ),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
@@ -146,52 +163,93 @@ fun HomeScreen(viewModel: ScanViewModel) {
         Spacer(modifier = Modifier.height(14.dp))
 
         // 2. Hero Action Card: Point & Scan Strip
-        Card(
+        Surface(
             modifier = Modifier
                 .fillMaxWidth()
-                .border(1.5.dp, SafeGreen, RoundedCornerShape(16.dp))
+                .shadow(
+                    elevation = 8.dp,
+                    shape = RoundedCornerShape(16.dp),
+                    spotColor = SafeGreen.copy(alpha = 0.2f),
+                    ambientColor = Color.Black.copy(alpha = 0.3f)
+                )
+                .clip(RoundedCornerShape(16.dp))
                 .clickable {
                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                     viewModel.navigateToTab(MedVoiceTab.SCANNER)
                 },
-            colors = CardDefaults.cardColors(containerColor = SurfaceCardDark),
-            shape = RoundedCornerShape(16.dp)
+            color = SurfaceCardDark,
+            shape = RoundedCornerShape(16.dp),
+            border = BorderStroke(1.dp, SafeGreen.copy(alpha = 0.45f))
         ) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(16.dp),
+                    .padding(horizontal = 14.dp, vertical = 13.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Box(
                     modifier = Modifier
-                        .size(48.dp)
-                        .background(SafeGreen, RoundedCornerShape(12.dp)),
+                        .size(44.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(
+                            brush = Brush.linearGradient(
+                                colors = listOf(Color(0xFF10B981), Color(0xFF047857))
+                            )
+                        )
+                        .border(
+                            width = 1.dp,
+                            color = Color(0xFF34D399).copy(alpha = 0.35f),
+                            shape = RoundedCornerShape(12.dp)
+                        ),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        imageVector = Icons.Default.CameraAlt,
+                        imageVector = Icons.Filled.CenterFocusStrong,
                         contentDescription = "Scan",
                         tint = TextWhite,
-                        modifier = Modifier.size(26.dp)
+                        modifier = Modifier.size(22.dp)
                     )
                 }
-                Spacer(modifier = Modifier.width(14.dp))
+
+                Spacer(modifier = Modifier.width(12.dp))
+
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = if (locale == "hi") "दवा पट्टी स्कैन करें" else "Point & Scan Any Medicine",
-                        style = MaterialTheme.typography.titleMedium.copy(
+                        style = MaterialTheme.typography.titleSmall.copy(
                             color = TextWhite,
                             fontWeight = FontWeight.Bold,
-                            fontSize = 18.sp
-                        )
+                            fontSize = 15.sp
+                        ),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
+                    Spacer(modifier = Modifier.height(2.dp))
                     Text(
-                        text = if (locale == "hi") "तुरंत भारतीय आवाज में निर्देश सुनें" else "Live camera OCR & vernacular audio guidance",
+                        text = if (locale == "hi") "तुरंत भारतीय आवाज में निर्देश सुनें" else "Live camera OCR & vernacular voice guidance",
                         style = MaterialTheme.typography.bodySmall.copy(
                             color = TextMuted,
-                            fontSize = 12.sp
-                        )
+                            fontSize = 11.5.sp,
+                            lineHeight = 15.sp
+                        ),
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+
+                Spacer(modifier = Modifier.width(8.dp))
+
+                Box(
+                    modifier = Modifier
+                        .size(28.dp)
+                        .background(SafeGreen.copy(alpha = 0.12f), CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                        contentDescription = null,
+                        tint = SafeGreen,
+                        modifier = Modifier.size(15.dp)
                     )
                 }
             }
@@ -254,6 +312,8 @@ fun HomeScreen(viewModel: ScanViewModel) {
 
         // 3.5 Daily Voice Alarms & Reminder Card (AlarmManager)
         val isRemindersEnabled by viewModel.isDailyRemindersEnabled.collectAsState()
+        val timeSlots by viewModel.prescriptionTimeSlots.collectAsState()
+
         Card(
             modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(containerColor = SurfaceCardDark),
@@ -293,7 +353,7 @@ fun HomeScreen(viewModel: ScanViewModel) {
                                 )
                             )
                             Text(
-                                text = if (locale == "hi") "समय पर बोलकर दवा याद दिलाएगा (7 AM, 8:30 AM, 1:30 PM, 8 PM)" else "Auto-announces prescription times aloud",
+                                text = if (locale == "hi") "समय पर बोलकर दवा याद दिलाएगा" else "Auto-announces prescription times aloud",
                                 style = MaterialTheme.typography.bodySmall.copy(
                                     color = TextMuted,
                                     fontSize = 11.sp
@@ -313,30 +373,149 @@ fun HomeScreen(viewModel: ScanViewModel) {
                 }
 
                 if (isRemindersEnabled) {
-                    Spacer(modifier = Modifier.height(12.dp))
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    Text(
+                        text = if (locale == "hi") "दवा घोषणा समय (समय बदलने के लिए टैप करें)" else "Prescription Announcement Slots (Tap to Edit)",
+                        style = MaterialTheme.typography.titleSmall.copy(
+                            color = TextWhite,
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 12.sp
+                        )
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // 2x2 Interactive Time Slots Grid
+                    val chunkedSlots = timeSlots.chunked(2)
+                    chunkedSlots.forEach { rowSlots ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            rowSlots.forEach { slot ->
+                                val (slotIcon, iconTint) = when (slot.slotId) {
+                                    "morning" -> Icons.Default.WbSunny to Color(0xFFFBBF24)
+                                    "afternoon" -> Icons.Default.LightMode to Color(0xFFF59E0B)
+                                    "evening" -> Icons.Default.NightsStay to ReticleCyan
+                                    else -> Icons.Default.Bedtime to Color(0xFF818CF8)
+                                }
+
+                                val isPm = slot.hour >= 12
+                                val displayHour = when {
+                                    slot.hour == 0 -> 12
+                                    slot.hour > 12 -> slot.hour - 12
+                                    else -> slot.hour
+                                }
+                                val formattedTime = String.format(java.util.Locale.ROOT, "%02d:%02d %s", displayHour, slot.minute, if (isPm) "PM" else "AM")
+                                val slotTitle = if (locale == "hi") slot.titleHi else slot.titleEn
+
+                                Surface(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .clickable {
+                                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                            android.app.TimePickerDialog(
+                                                context,
+                                                { _, selectedHour, selectedMinute ->
+                                                    viewModel.updateSlotTime(slot.slotId, selectedHour, selectedMinute)
+                                                },
+                                                slot.hour,
+                                                slot.minute,
+                                                false
+                                            ).show()
+                                        },
+                                    shape = RoundedCornerShape(12.dp),
+                                    color = SurfaceCardElevated,
+                                    border = BorderStroke(1.dp, AccentBorder)
+                                ) {
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(horizontal = 10.dp, vertical = 8.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.SpaceBetween
+                                    ) {
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            modifier = Modifier.weight(1f)
+                                        ) {
+                                            Box(
+                                                modifier = Modifier
+                                                    .size(26.dp)
+                                                    .background(iconTint.copy(alpha = 0.15f), CircleShape),
+                                                contentAlignment = Alignment.Center
+                                            ) {
+                                                Icon(
+                                                    imageVector = slotIcon,
+                                                    contentDescription = null,
+                                                    tint = iconTint,
+                                                    modifier = Modifier.size(14.dp)
+                                                )
+                                            }
+                                            Spacer(modifier = Modifier.width(6.dp))
+                                            Column {
+                                                Text(
+                                                    text = slotTitle,
+                                                    color = TextWhite,
+                                                    fontSize = 11.sp,
+                                                    fontWeight = FontWeight.Bold,
+                                                    maxLines = 1
+                                                )
+                                                Text(
+                                                    text = formattedTime,
+                                                    color = SafeGreen,
+                                                    fontSize = 11.sp,
+                                                    fontWeight = FontWeight.SemiBold
+                                                )
+                                            }
+                                        }
+
+                                        Icon(
+                                            imageVector = Icons.Default.Edit,
+                                            contentDescription = "Edit Time",
+                                            tint = TextMuted.copy(alpha = 0.6f),
+                                            modifier = Modifier.size(12.dp)
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
+                    }
+
+                    Spacer(modifier = Modifier.height(4.dp))
+
                     Button(
                         onClick = {
                             haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                             viewModel.triggerTestAlarm()
                         },
-                        colors = ButtonDefaults.buttonColors(containerColor = ReticleCyan),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = ReticleCyan.copy(alpha = 0.14f),
+                            contentColor = ReticleCyan
+                        ),
+                        border = BorderStroke(1.dp, ReticleCyan.copy(alpha = 0.45f)),
                         shape = RoundedCornerShape(12.dp),
+                        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 0.dp),
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(56.dp)
+                            .height(44.dp)
                     ) {
                         Icon(
                             imageVector = Icons.Default.PlayArrow,
                             contentDescription = null,
-                            tint = BackgroundCharcoal,
-                            modifier = Modifier.size(22.dp)
+                            tint = ReticleCyan,
+                            modifier = Modifier.size(18.dp)
                         )
-                        Spacer(modifier = Modifier.width(8.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
                         Text(
-                            text = if (locale == "hi") "अलार्म आवाज का परीक्षण करें (Test Alarm 2s)" else "Test Medication Reminder Alarm",
-                            color = BackgroundCharcoal,
+                            text = if (locale == "hi") "अलार्म आवाज जांचें (2s Preview)" else "Test Spoken Alarm (2s)",
+                            color = ReticleCyan,
                             fontWeight = FontWeight.Bold,
-                            fontSize = 14.sp
+                            fontSize = 13.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
                 }

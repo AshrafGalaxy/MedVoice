@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -21,13 +22,21 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Cloud
+import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.FlashOn
 import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.Language
+import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.RecordVoiceOver
 import androidx.compose.material.icons.filled.Save
@@ -39,24 +48,32 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
@@ -82,11 +99,21 @@ fun SettingsScreen(viewModel: ScanViewModel) {
     val patientName by viewModel.patientName.collectAsState()
     val context = LocalContext.current
     val haptic = LocalHapticFeedback.current
+    val coroutineScope = rememberCoroutineScope()
 
     var phoneInput by remember { mutableStateOf(caregiverPhone) }
     var nameInput by remember { mutableStateOf(patientName) }
+    var nameError by remember { mutableStateOf<String?>(null) }
+    var phoneError by remember { mutableStateOf<String?>(null) }
+    var isSavedRecently by remember { mutableStateOf(false) }
+
     var medGemmaKeyInput by remember { mutableStateOf(viewModel.aiEngine.cloudMedGemmaApiKey) }
     var allowCloudPrivacy by remember { mutableStateOf(viewModel.aiEngine.allowCloudPrivacyEgress) }
+
+    LaunchedEffect(caregiverPhone, patientName) {
+        phoneInput = caregiverPhone
+        nameInput = patientName
+    }
 
     var hasSmsPermission by remember {
         mutableStateOf(
@@ -108,23 +135,48 @@ fun SettingsScreen(viewModel: ScanViewModel) {
             .padding(16.dp)
     ) {
         // Top Header
-        Text(
-            text = if (locale == "hi") "सेटिंग्स और वॉयस स्टूडियो" else "Settings & Voice Studio",
-            style = MaterialTheme.typography.titleLarge.copy(
-                color = TextWhite,
-                fontWeight = FontWeight.Bold,
-                fontSize = 22.sp
-            )
-        )
-        Text(
-            text = if (locale == "hi") "आवाज, आपातकालीन संपर्क और मेडगेम्मा AI कॉन्फ़िगर करें" else "Configure vernacular voice, caregiver SOS & MedGemma AI",
-            style = MaterialTheme.typography.bodySmall.copy(
-                color = TextMuted,
-                fontSize = 12.sp
-            )
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(36.dp)
+                    .background(SafeGreen.copy(alpha = 0.15f), RoundedCornerShape(10.dp)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Settings,
+                    contentDescription = "Settings",
+                    tint = SafeGreen,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+            Spacer(modifier = Modifier.width(10.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = if (locale == "hi") "सेटिंग्स और वॉयस स्टूडियो" else "Settings & Voice Studio",
+                    style = MaterialTheme.typography.titleLarge.copy(
+                        color = TextWhite,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 18.sp
+                    ),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    text = if (locale == "hi") "आवाज, आपातकालीन संपर्क और AI" else "Vernacular voice, SOS & MedGemma AI",
+                    style = MaterialTheme.typography.bodySmall.copy(
+                        color = TextMuted,
+                        fontSize = 11.5.sp
+                    ),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(14.dp))
 
         // 1. Language Selection Card
         Card(
@@ -220,14 +272,15 @@ fun SettingsScreen(viewModel: ScanViewModel) {
                         colors = ButtonDefaults.buttonColors(
                             containerColor = if (selectedGender == VoiceGender.FEMALE) SafeGreen else SurfaceCardElevated
                         ),
-                        shape = RoundedCornerShape(10.dp),
-                        modifier = Modifier.weight(1f).height(56.dp)
+                        shape = RoundedCornerShape(8.dp),
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp),
+                        modifier = Modifier.weight(1f).heightIn(min = 44.dp)
                     ) {
-                        Icon(imageVector = Icons.Default.RecordVoiceOver, contentDescription = null, tint = TextWhite, modifier = Modifier.size(20.dp))
-                        Spacer(modifier = Modifier.width(6.dp))
+                        Icon(imageVector = Icons.Default.RecordVoiceOver, contentDescription = null, tint = TextWhite, modifier = Modifier.size(15.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
                         Text(
                             text = if (locale == "hi") "महिला (Female)" else "Female (Warm)",
-                            fontSize = 13.sp,
+                            fontSize = 12.sp,
                             color = TextWhite,
                             fontWeight = FontWeight.Bold
                         )
@@ -241,21 +294,22 @@ fun SettingsScreen(viewModel: ScanViewModel) {
                         colors = ButtonDefaults.buttonColors(
                             containerColor = if (selectedGender == VoiceGender.MALE) SafeGreen else SurfaceCardElevated
                         ),
-                        shape = RoundedCornerShape(10.dp),
-                        modifier = Modifier.weight(1f).height(56.dp)
+                        shape = RoundedCornerShape(8.dp),
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp),
+                        modifier = Modifier.weight(1f).heightIn(min = 44.dp)
                     ) {
-                        Icon(imageVector = Icons.Default.RecordVoiceOver, contentDescription = null, tint = TextWhite, modifier = Modifier.size(20.dp))
-                        Spacer(modifier = Modifier.width(6.dp))
+                        Icon(imageVector = Icons.Default.RecordVoiceOver, contentDescription = null, tint = TextWhite, modifier = Modifier.size(15.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
                         Text(
                             text = if (locale == "hi") "पुरुष (Male)" else "Male (Clear)",
-                            fontSize = 13.sp,
+                            fontSize = 12.sp,
                             color = TextWhite,
                             fontWeight = FontWeight.Bold
                         )
                     }
                 }
 
-                Spacer(modifier = Modifier.height(14.dp))
+                Spacer(modifier = Modifier.height(10.dp))
 
                 // Test Voice Button
                 Button(
@@ -264,16 +318,17 @@ fun SettingsScreen(viewModel: ScanViewModel) {
                         viewModel.testVoicePreview()
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = ReticleCyan),
-                    shape = RoundedCornerShape(12.dp),
-                    modifier = Modifier.fillMaxWidth().height(56.dp)
+                    shape = RoundedCornerShape(10.dp),
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp)
                 ) {
-                    Icon(imageVector = Icons.Default.PlayArrow, contentDescription = null, tint = BackgroundCharcoal, modifier = Modifier.size(22.dp))
-                    Spacer(modifier = Modifier.width(8.dp))
+                    Icon(imageVector = Icons.Default.PlayArrow, contentDescription = null, tint = BackgroundCharcoal, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
                     Text(
                         text = if (locale == "hi") "आवाज का नमूना सुनें (Test Audio)" else "Play Spoken Voice Preview",
                         color = BackgroundCharcoal,
                         fontWeight = FontWeight.Bold,
-                        fontSize = 14.sp
+                        fontSize = 13.sp
                     )
                 }
             }
@@ -388,12 +443,20 @@ fun SettingsScreen(viewModel: ScanViewModel) {
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        text = if (locale == "hi") "केयरगिवर आपातकालीन विवरण" else "Caregiver Emergency SOS Details",
-                        color = TextWhite,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 16.sp
-                    )
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = if (locale == "hi") "केयरगिवर आपातकालीन विवरण" else "Caregiver Emergency SOS Details",
+                            color = TextWhite,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 16.sp
+                        )
+                        Text(
+                            text = if (locale == "hi") "आपातकालीन स्थिति में स्वचालित एसएमएस अलर्ट" else "Direct cellular SMS alert on critical drug risk",
+                            color = TextMuted,
+                            fontSize = 11.5.sp
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
                     Button(
                         onClick = {
                             if (!hasSmsPermission) {
@@ -403,9 +466,9 @@ fun SettingsScreen(viewModel: ScanViewModel) {
                         colors = ButtonDefaults.buttonColors(
                             containerColor = if (hasSmsPermission) SafeGreen.copy(alpha = 0.2f) else AlertRed.copy(alpha = 0.2f)
                         ),
-                        shape = RoundedCornerShape(6.dp),
-                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
-                        modifier = Modifier.heightIn(min = 28.dp)
+                        shape = RoundedCornerShape(8.dp),
+                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                        modifier = Modifier.heightIn(min = 30.dp)
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(
@@ -425,64 +488,328 @@ fun SettingsScreen(viewModel: ScanViewModel) {
                     }
                 }
 
+                Spacer(modifier = Modifier.height(14.dp))
+
+                // Patient Name Label
+                Text(
+                    text = if (locale == "hi") "रोगी का नाम" else "Patient Name",
+                    color = if (nameError != null) AlertRed else TextWhite,
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 12.sp
+                )
+                Spacer(modifier = Modifier.height(6.dp))
+
+                // Patient Name Sleek 44dp Input Field
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(44.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    color = SurfaceCardElevated,
+                    border = BorderStroke(
+                        1.dp,
+                        when {
+                            nameError != null -> AlertRed
+                            nameInput.isNotBlank() -> SafeGreen
+                            else -> AccentBorder
+                        }
+                    )
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.AccountCircle,
+                            contentDescription = null,
+                            tint = when {
+                                nameError != null -> AlertRed
+                                nameInput.isNotBlank() -> SafeGreen
+                                else -> TextMuted
+                            },
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Box(
+                            modifier = Modifier.weight(1f),
+                            contentAlignment = Alignment.CenterStart
+                        ) {
+                            if (nameInput.isEmpty()) {
+                                Text(
+                                    text = if (locale == "hi") "रोगी का नाम दर्ज करें" else "Enter patient name",
+                                    color = TextMuted.copy(alpha = 0.7f),
+                                    fontSize = 13.sp
+                                )
+                            }
+                            BasicTextField(
+                                value = nameInput,
+                                onValueChange = {
+                                    nameInput = it
+                                    if (nameError != null) nameError = null
+                                },
+                                singleLine = true,
+                                keyboardOptions = KeyboardOptions(
+                                    capitalization = KeyboardCapitalization.Words,
+                                    keyboardType = KeyboardType.Text
+                                ),
+                                textStyle = MaterialTheme.typography.bodyMedium.copy(
+                                    color = TextWhite,
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Medium
+                                ),
+                                cursorBrush = SolidColor(SafeGreen),
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
+                        if (nameInput.isNotEmpty()) {
+                            IconButton(
+                                onClick = {
+                                    nameInput = ""
+                                    nameError = null
+                                },
+                                modifier = Modifier.size(24.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Close,
+                                    contentDescription = "Clear",
+                                    tint = TextMuted,
+                                    modifier = Modifier.size(15.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+
+                if (nameError != null) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Default.ErrorOutline,
+                            contentDescription = null,
+                            tint = AlertRed,
+                            modifier = Modifier.size(12.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = nameError ?: "",
+                            color = AlertRed,
+                            fontSize = 11.sp
+                        )
+                    }
+                }
+
                 Spacer(modifier = Modifier.height(12.dp))
 
-                // Patient Name
-                OutlinedTextField(
-                    value = nameInput,
-                    onValueChange = { nameInput = it },
-                    label = { Text("Patient Name (रोगी का नाम)") },
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedTextColor = TextWhite,
-                        unfocusedTextColor = TextWhite,
-                        focusedBorderColor = SafeGreen,
-                        unfocusedBorderColor = AccentBorder,
-                        focusedLabelColor = SafeGreen,
-                        unfocusedLabelColor = TextMuted
-                    ),
-                    shape = RoundedCornerShape(10.dp),
-                    modifier = Modifier.fillMaxWidth()
+                // Caregiver Mobile Label
+                Text(
+                    text = if (locale == "hi") "केयरगिवर मोबाइल नंबर" else "Caregiver Mobile Number",
+                    color = if (phoneError != null) AlertRed else TextWhite,
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 12.sp
                 )
+                Spacer(modifier = Modifier.height(6.dp))
 
-                Spacer(modifier = Modifier.height(12.dp))
+                // Caregiver Phone Sleek 44dp Input Field
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(44.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    color = SurfaceCardElevated,
+                    border = BorderStroke(
+                        1.dp,
+                        when {
+                            phoneError != null -> AlertRed
+                            phoneInput.isNotBlank() -> SafeGreen
+                            else -> AccentBorder
+                        }
+                    )
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Phone,
+                            contentDescription = null,
+                            tint = when {
+                                phoneError != null -> AlertRed
+                                phoneInput.isNotBlank() -> SafeGreen
+                                else -> TextMuted
+                            },
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Box(
+                            modifier = Modifier.weight(1f),
+                            contentAlignment = Alignment.CenterStart
+                        ) {
+                            if (phoneInput.isEmpty()) {
+                                Text(
+                                    text = if (locale == "hi") "10 अंकों का मोबाइल नंबर दर्ज करें" else "Enter 10-digit mobile number",
+                                    color = TextMuted.copy(alpha = 0.7f),
+                                    fontSize = 13.sp
+                                )
+                            }
+                            BasicTextField(
+                                value = phoneInput,
+                                onValueChange = {
+                                    phoneInput = it
+                                    if (phoneError != null) phoneError = null
+                                },
+                                singleLine = true,
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
+                                textStyle = MaterialTheme.typography.bodyMedium.copy(
+                                    color = TextWhite,
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Medium
+                                ),
+                                cursorBrush = SolidColor(SafeGreen),
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
+                        if (phoneInput.isNotEmpty()) {
+                            IconButton(
+                                onClick = {
+                                    phoneInput = ""
+                                    phoneError = null
+                                },
+                                modifier = Modifier.size(24.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Close,
+                                    contentDescription = "Clear",
+                                    tint = TextMuted,
+                                    modifier = Modifier.size(15.dp)
+                                )
+                            }
+                        }
+                    }
+                }
 
-                // Caregiver Mobile
-                OutlinedTextField(
-                    value = phoneInput,
-                    onValueChange = { phoneInput = it },
-                    label = { Text("Caregiver Mobile Number (फोन नंबर)") },
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedTextColor = TextWhite,
-                        unfocusedTextColor = TextWhite,
-                        focusedBorderColor = SafeGreen,
-                        unfocusedBorderColor = AccentBorder,
-                        focusedLabelColor = SafeGreen,
-                        unfocusedLabelColor = TextMuted
-                    ),
-                    shape = RoundedCornerShape(10.dp),
-                    modifier = Modifier.fillMaxWidth()
-                )
+                if (phoneError != null) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Default.ErrorOutline,
+                            contentDescription = null,
+                            tint = AlertRed,
+                            modifier = Modifier.size(12.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = phoneError ?: "",
+                            color = AlertRed,
+                            fontSize = 11.sp
+                        )
+                    }
+                }
 
                 Spacer(modifier = Modifier.height(14.dp))
 
+                // Save Button with Dynamic Green Mark Confirmation State
                 Button(
                     onClick = {
-                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                        viewModel.updateCaregiverInfo(nameInput, phoneInput)
+                        val trimmedName = nameInput.trim()
+                        val rawPhone = phoneInput.trim().replace(" ", "").replace("-", "")
+
+                        var hasError = false
+                        if (trimmedName.length < 2) {
+                            nameError = if (locale == "hi") "कृपया मान्य नाम दर्ज करें (कम से कम 2 अक्षर)" else "Please enter a valid name (min 2 characters)"
+                            hasError = true
+                        } else {
+                            nameError = null
+                        }
+
+                        val indianRegex = Regex("""^(\+91|0)?[6-9]\d{9}$""")
+                        val generalPhoneRegex = Regex("""^\+?[1-9]\d{6,14}$""")
+                        if (!indianRegex.matches(rawPhone) && !generalPhoneRegex.matches(rawPhone)) {
+                            phoneError = if (locale == "hi") "कृपया मान्य 10 अंकों का मोबाइल नंबर दर्ज करें" else "Please enter a valid 10-digit mobile number"
+                            hasError = true
+                        } else {
+                            phoneError = null
+                        }
+
+                        if (!hasError) {
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            val normalizedPhone = if (rawPhone.length == 10 && rawPhone.all { it.isDigit() }) {
+                                "+91$rawPhone"
+                            } else rawPhone
+
+                            phoneInput = normalizedPhone
+                            viewModel.updateCaregiverInfo(trimmedName, normalizedPhone)
+                            isSavedRecently = true
+                            coroutineScope.launch {
+                                kotlinx.coroutines.delay(2500)
+                                isSavedRecently = false
+                            }
+                        }
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = SafeGreen),
-                    shape = RoundedCornerShape(10.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (isSavedRecently) SafeGreen else SafeGreen.copy(alpha = 0.9f)
+                    ),
+                    shape = RoundedCornerShape(12.dp),
                     contentPadding = PaddingValues(horizontal = 16.dp, vertical = 10.dp),
-                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = 46.dp)
                 ) {
-                    Icon(imageVector = Icons.Default.Save, contentDescription = null, tint = TextWhite, modifier = Modifier.size(18.dp))
+                    Icon(
+                        imageVector = if (isSavedRecently) Icons.Default.CheckCircle else Icons.Default.Save,
+                        contentDescription = null,
+                        tint = TextWhite,
+                        modifier = Modifier.size(18.dp)
+                    )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = if (locale == "hi") "सहेजें (Save Details)" else "Save Caregiver Details",
+                        text = if (isSavedRecently) {
+                            if (locale == "hi") "सफलतापूर्वक सहेजा गया! ✓" else "Details Saved Successfully! ✓"
+                        } else {
+                            if (locale == "hi") "केयरगिवर विवरण सहेजें" else "Save Caregiver Details"
+                        },
                         color = TextWhite,
                         fontWeight = FontWeight.Bold,
                         fontSize = 14.sp
                     )
+                }
+
+                // Test SMS Trigger Button
+                if (caregiverPhone.isNotBlank()) {
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Button(
+                        onClick = {
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            if (!hasSmsPermission) {
+                                smsPermissionLauncher.launch(Manifest.permission.SEND_SMS)
+                            } else {
+                                viewModel.testEmergencySms()
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = SurfaceCardElevated),
+                        shape = RoundedCornerShape(10.dp),
+                        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = 40.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.Send,
+                            contentDescription = null,
+                            tint = if (hasSmsPermission) SafeGreen else AlertRed,
+                            modifier = Modifier.size(15.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = if (locale == "hi") "परीक्षण आपातकालीन एसएमएस भेजें" else "Test Emergency SOS Alert to Caregiver",
+                            color = TextWhite,
+                            fontWeight = FontWeight.Medium,
+                            fontSize = 12.5.sp
+                        )
+                    }
                 }
             }
         }

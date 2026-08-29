@@ -91,7 +91,7 @@ fun CaregiverAuditScreen(
             ) {
                 Box(
                     modifier = Modifier
-                        .size(38.dp)
+                        .size(36.dp)
                         .background(SafeGreen.copy(alpha = 0.15f), RoundedCornerShape(10.dp)),
                     contentAlignment = Alignment.Center
                 ) {
@@ -99,7 +99,7 @@ fun CaregiverAuditScreen(
                         imageVector = Icons.Default.History,
                         contentDescription = "Audit",
                         tint = SafeGreen,
-                        modifier = Modifier.size(22.dp)
+                        modifier = Modifier.size(20.dp)
                     )
                 }
                 Spacer(modifier = Modifier.width(10.dp))
@@ -109,7 +109,7 @@ fun CaregiverAuditScreen(
                         style = MaterialTheme.typography.titleLarge.copy(
                             color = TextWhite,
                             fontWeight = FontWeight.Bold,
-                            fontSize = 20.sp
+                            fontSize = 18.sp
                         ),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
@@ -118,7 +118,7 @@ fun CaregiverAuditScreen(
                         text = if (locale == "hi") "रोगी: $patientName" else "Patient: $patientName",
                         style = MaterialTheme.typography.bodySmall.copy(
                             color = TextMuted,
-                            fontSize = 12.sp
+                            fontSize = 11.5.sp
                         ),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis

@@ -4,8 +4,12 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <!-- Clean, High-Contrast MV Branding Mark -->
+    <!-- Clean, Sleek, Minimalist MedVoice M Lettermark -->
     <path
-        android:fillColor="#FFFFFF"
-        android:pathData="M24,72V36h10l16,16l16,-16h10v36h-8V46L50,64L32,46v26H24z M76,36h10l8,26l8,-26h10l-14,36H74L76,36z" />
+        android:fillColor="#00000000"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="7.5"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M33,73 L33,35 L54,57 L75,35 L75,73" />
 </vector>

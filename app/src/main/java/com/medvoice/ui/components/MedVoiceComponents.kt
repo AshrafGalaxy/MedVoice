@@ -45,32 +45,53 @@ import com.medvoice.ui.theme.TextWhite
 import com.medvoice.ui.theme.WarningAmber
 
 /**
- * Premium MedVoice Medical Logo Vector Branding ("MV" Style)
+ * Premium MedVoice Medical Logo Vector Branding ("M" Minimalist Style matching App Launcher Icon)
  */
 @Composable
 fun MedVoiceLogo(
     modifier: Modifier = Modifier,
-    size: Int = 40
+    size: Int = 42
 ) {
     Box(
         modifier = modifier
             .size(size.dp)
+            .clip(RoundedCornerShape((size * 0.28).dp))
             .background(
                 brush = Brush.linearGradient(
-                    colors = listOf(SafeGreen, ReticleCyan)
-                ),
-                shape = RoundedCornerShape((size * 0.22).dp) // Slightly tighter corners for a "Mark" look
+                    colors = listOf(Color(0xFF10B981), Color(0xFF047857))
+                )
+            )
+            .border(
+                width = 1.dp,
+                color = Color(0xFF34D399).copy(alpha = 0.4f),
+                shape = RoundedCornerShape((size * 0.28).dp)
             ),
         contentAlignment = Alignment.Center
     ) {
-        Text(
-            text = "MV",
-            color = Color.White,
-            fontWeight = FontWeight.ExtraBold,
-            fontSize = (size * 0.5).sp, // Larger text relative to box
-            letterSpacing = (-1.5).sp, // Tighter tracking for a "Mark" feel
-            lineHeight = 0.sp
-        )
+        androidx.compose.foundation.Canvas(
+            modifier = Modifier.size((size * 0.58).dp)
+        ) {
+            val strokeWidth = this.size.width * 0.16f
+            val w = this.size.width
+            val h = this.size.height
+
+            val path = androidx.compose.ui.graphics.Path().apply {
+                moveTo(w * 0.10f, h * 0.88f)
+                lineTo(w * 0.10f, h * 0.12f)
+                lineTo(w * 0.50f, h * 0.56f)
+                lineTo(w * 0.90f, h * 0.12f)
+                lineTo(w * 0.90f, h * 0.88f)
+            }
+            drawPath(
+                path = path,
+                color = Color.White,
+                style = androidx.compose.ui.graphics.drawscope.Stroke(
+                    width = strokeWidth,
+                    cap = androidx.compose.ui.graphics.StrokeCap.Round,
+                    join = androidx.compose.ui.graphics.StrokeJoin.Round
+                )
+            )
+        }
     }
 }
 
@@ -122,20 +143,27 @@ enum class StatusType {
 }
 
 /**
- * Dynamic Time-of-Day Weather/Sun Vector Icon
+ * Sleek Minimalist Time-of-Day Weather/Sun Indicator
  */
 @Composable
 fun TimeOfDayIcon(hour: Int) {
     val (icon, tint) = when {
-        hour < 12 -> Icons.Default.WbSunny to Color(0xFFFFB703)
-        hour < 17 -> Icons.Default.LightMode to Color(0xFFFB8500)
+        hour < 12 -> Icons.Default.WbSunny to Color(0xFFFBBF24)
+        hour < 17 -> Icons.Default.LightMode to Color(0xFFF59E0B)
         else -> Icons.Default.NightsStay to ReticleCyan
     }
 
-    Icon(
-        imageVector = icon,
-        contentDescription = null,
-        tint = tint,
-        modifier = Modifier.size(20.dp)
-    )
+    Box(
+        modifier = Modifier
+            .size(20.dp)
+            .background(tint.copy(alpha = 0.14f), CircleShape),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = tint,
+            modifier = Modifier.size(13.dp)
+        )
+    }
 }
