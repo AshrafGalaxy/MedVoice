@@ -451,10 +451,6 @@ class AiPharmacologyEngine(private val context: Context? = null) {
             if (!detectedSalts.contains(m.canonicalName)) {
                 detectedSalts.add(m.canonicalName)
                 primaryCategory = m.category
-                if (m.defaultRoute == "TOPICAL") {
-                    route = "EXTERNAL_TOPICAL"
-                    if (detectedForm == "TABLET") detectedForm = "TOPICAL_LOTION"
-                }
             }
         }
 
@@ -493,8 +489,8 @@ class AiPharmacologyEngine(private val context: Context? = null) {
             upperText.contains("LOTION") || upperText.contains("HAIR OIL") || upperText.contains("SCALP LOTION") -> {
                 detectedForm = "TOPICAL_LOTION"
                 route = "EXTERNAL_TOPICAL"
-                if (upperText.contains("DANDRUFF") || upperText.contains("SCALP")) {
-                    primaryCategory = "ANTI-DANDRUFF SCALP CARE"
+                if (primaryCategory == "GENERAL HEALTHCARE") {
+                    primaryCategory = "DERMATOLOGICAL_TOPICAL"
                 }
             }
             // C. Explicit Oral Solids (Tablets, Capsules, Pellets)
