@@ -119,6 +119,10 @@ class FakeMedicineDao : MedicineDao {
         cabinetList.removeAll { it.id == id }
     }
 
+    override suspend fun clearCabinetPrescriptions() {
+        cabinetList.clear()
+    }
+
     override suspend fun searchCabinetPrescriptions(query: String): List<CabinetPrescriptionEntity> {
         val q = query.lowercase()
         return cabinetList.filter { it.brandName.lowercase().contains(q) || it.rawComposition.lowercase().contains(q) }

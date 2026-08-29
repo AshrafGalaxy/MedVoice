@@ -621,16 +621,20 @@ fun HomeScreen(viewModel: ScanViewModel) {
                 }
             }
         } else {
-            cabinetMedicines.take(4).forEachIndexed { index, med ->
+            cabinetMedicines.take(4).forEach { med ->
                 val isTaken = logs.any { it.scannedBrandName.contains(med.brandName.split(" ").first(), ignoreCase = true) && it.status == "TAKEN" }
-                val slotTiming = when (index) {
-                    0 -> if (locale == "hi") "🌅 सुबह (08:00 AM) • भोजन के बाद" else "🌅 Morning (08:00 AM) • After Breakfast"
-                    1 -> if (locale == "hi") "☀️ दोपहर (01:30 PM) • भोजन के बाद" else "☀️ Afternoon (01:30 PM) • After Lunch"
-                    2 -> if (locale == "hi") "🌙 संध्या (08:00 PM) • भोजन से पहले" else "🌙 Evening (08:00 PM) • Before Dinner"
-                    else -> if (locale == "hi") "💤 सोते समय (09:30 PM) • पानी के साथ" else "💤 Bedtime (09:30 PM) • With Water"
+                val foodTimingRule = med.manufacturer?.ifBlank { "AFTER_FOOD" } ?: "AFTER_FOOD"
+                val slotTiming = when (foodTimingRule) {
+                    "BEFORE_FOOD", "BEFORE_BREAKFAST", "EMPTY_STOMACH" -> if (locale == "hi") "🌅 खाली पेट / भोजन से पहले" else "🌅 Empty Stomach / Before Food"
+                    "AFTER_BREAKFAST" -> if (locale == "hi") "🌅 सुबह • नाश्ते के बाद" else "🌅 Morning • After Breakfast"
+                    "AFTER_LUNCH" -> if (locale == "hi") "☀️ दोपहर • भोजन के बाद" else "☀️ Afternoon • After Lunch"
+                    "BEFORE_DINNER" -> if (locale == "hi") "🌙 संध्या • भोजन से पहले" else "🌙 Evening • Before Dinner"
+                    "AFTER_DINNER" -> if (locale == "hi") "🌙 रात • भोजन के बाद" else "🌙 Night • After Food"
+                    "BEDTIME" -> if (locale == "hi") "💤 सोते समय • पानी के साथ" else "💤 Bedtime • With Water"
+                    else -> if (locale == "hi") "🍽️ भोजन के बाद लें" else "🍽️ Take After Food"
                 }
 
-                val formLabel = when (med.dosageForm) {
+                val formLabel = when (med.dosageForm ?: "TABLET") {
                     "EYE_DROPS" -> if (locale == "hi") "👁️ आई ड्रॉप्स" else "👁️ Eye Drops"
                     "SYRUP" -> if (locale == "hi") "🧪 सिरप" else "🧪 Syrup"
                     "GEL" -> if (locale == "hi") "🧴 जेल" else "🧴 Gel"

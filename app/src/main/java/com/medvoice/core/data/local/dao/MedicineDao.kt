@@ -62,6 +62,9 @@ interface MedicineDao {
     @Query("DELETE FROM cabinet_prescriptions WHERE id = :id")
     suspend fun deleteCabinetPrescription(id: Long)
 
+    @Query("DELETE FROM cabinet_prescriptions")
+    suspend fun clearCabinetPrescriptions()
+
     @Query("""
         SELECT * FROM cabinet_prescriptions 
         WHERE is_active = 1 

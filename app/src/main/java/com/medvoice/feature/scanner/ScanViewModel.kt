@@ -235,50 +235,29 @@ class ScanViewModel(application: Application) : AndroidViewModel(application) {
         aiEngine.activeTier = initialTier
 
         refreshLogs()
-        loadCabinetPrescriptions()
+        if (!prefs.getBoolean("clean_starter_seed_done", false)) {
+            viewModelScope.launch(Dispatchers.IO) {
+                try {
+                    db.medicineDao().clearCabinetPrescriptions()
+                    prefs.edit { putBoolean("clean_starter_seed_done", true) }
+                    loadCabinetPrescriptions()
+                } catch (e: Exception) {
+                    Log.e("MedVoice_ScanVM", "Error clearing starter seeds", e)
+                }
+            }
+        } else {
+            loadCabinetPrescriptions()
+        }
         refreshHardwareAudit()
     }
 
     fun loadCabinetPrescriptions() {
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                var prescriptions = db.medicineDao().getAllCabinetPrescriptions()
-                
-                // Seed standard senior prescription schedule on initial load if database table is empty
-                if (prescriptions.isEmpty()) {
-                    val starterMedications = listOf(
-                        CabinetPrescriptionEntity(
-                            brandName = "Augmentin 625 Duo",
-                            rawComposition = "Amoxicillin 500mg + Clavulanic Acid 125mg",
-                            dosageForm = "TABLET",
-                            foodTimingRule = "AFTER_BREAKFAST"
-                        ),
-                        CabinetPrescriptionEntity(
-                            brandName = "Dolo-650",
-                            rawComposition = "Paracetamol 650mg",
-                            dosageForm = "TABLET",
-                            foodTimingRule = "AFTER_LUNCH"
-                        ),
-                        CabinetPrescriptionEntity(
-                            brandName = "Glycomet 500 SR",
-                            rawComposition = "Metformin Hydrochloride 500mg",
-                            dosageForm = "TABLET",
-                            foodTimingRule = "BEFORE_DINNER"
-                        ),
-                        CabinetPrescriptionEntity(
-                            brandName = "Amlong 5mg",
-                            rawComposition = "Amlodipine 5mg",
-                            dosageForm = "TABLET",
-                            foodTimingRule = "BEDTIME"
-                        )
-                    )
-                    starterMedications.forEach { db.medicineDao().insertCabinetPrescription(it) }
-                    prescriptions = db.medicineDao().getAllCabinetPrescriptions()
-                }
-
+                val prescriptions = db.medicineDao().getAllCabinetPrescriptions()
                 _cabinetPrescriptions.value = prescriptions
 
-                // Also map to MedicineEntity for legacy alarm schedulers
+                // Also map to MedicineEntity for legacy alarm schedulers & home schedule
                 val mapped = prescriptions.map {
                     MedicineEntity(
                         id = it.id,
@@ -292,6 +271,17 @@ class ScanViewModel(application: Application) : AndroidViewModel(application) {
                 _cabinetMedicines.value = (mapped + legacy).distinctBy { it.brandName.lowercase(Locale.ROOT) }
             } catch (e: Exception) {
                 Log.e("MedVoice_ScanVM", "Error loading cabinet prescriptions", e)
+            }
+        }
+    }
+
+    fun clearAllCabinetPrescriptions() {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                db.medicineDao().clearCabinetPrescriptions()
+                loadCabinetPrescriptions()
+            } catch (e: Exception) {
+                Log.e("MedVoice_ScanVM", "Error clearing cabinet prescriptions", e)
             }
         }
     }
@@ -841,6 +831,27 @@ class ScanViewModel(application: Application) : AndroidViewModel(application) {
                 }
             }
 
+            // Auto-add to active prescription cabinet schedule if not already present
+            try {
+                val currentPrescriptions = db.medicineDao().getAllCabinetPrescriptions()
+                val alreadyInCabinet = currentPrescriptions.any { it.brandName.equals(brandName, ignoreCase = true) }
+                if (!alreadyInCabinet) {
+                    val timingRule = if (_uiState.value is ScanUiState.SafeDetected) (_uiState.value as ScanUiState.SafeDetected).timingRuleCode else "AFTER_FOOD"
+                    val dosageForm = if (_uiState.value is ScanUiState.SafeDetected) (_uiState.value as ScanUiState.SafeDetected).dosageForm else "TABLET"
+                    db.medicineDao().insertCabinetPrescription(
+                        CabinetPrescriptionEntity(
+                            brandName = brandName,
+                            rawComposition = rawComposition.ifBlank { brandName },
+                            dosageForm = dosageForm,
+                            foodTimingRule = timingRule
+                        )
+                    )
+                    loadCabinetPrescriptions()
+                }
+            } catch (e: Exception) {
+                Log.e("MedVoice_ScanVM", "Error auto-adding taken dose to cabinet", e)
+            }
+
             db.medicineDao().logIntake(
                 MedicationLogEntity(
                     medicineId = medicineId,
@@ -851,6 +862,7 @@ class ScanViewModel(application: Application) : AndroidViewModel(application) {
                 )
             )
             refreshLogs()
+            loadCabinetPrescriptions()
 
             val successMsg = if (_selectedLocale.value == "hi") "दवा सफलतापूर्वक दर्ज कर ली गई है।" else "Medication logged successfully."
             ttsManager.speak(successMsg, _selectedLocale.value)
