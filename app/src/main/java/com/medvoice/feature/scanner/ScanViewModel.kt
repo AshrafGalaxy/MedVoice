@@ -373,6 +373,8 @@ class ScanViewModel(application: Application) : AndroidViewModel(application) {
         stopTts()
         _selectedLocale.value = locale
         prefs.edit { putString("selected_locale", locale) }
+        val sample = if (locale == "hi") "भाषा हिंदी चुनी गई है।" else "Language set to English."
+        ttsManager.speak(sample, locale, SpeechTriage.NEUTRAL_PREVIEW)
     }
 
     fun setVoiceGender(gender: VoiceGender) {
@@ -380,6 +382,12 @@ class ScanViewModel(application: Application) : AndroidViewModel(application) {
         _selectedGender.value = gender
         ttsManager.selectedGender = gender
         prefs.edit { putString("voice_gender", gender.name) }
+        val sample = if (_selectedLocale.value == "hi") {
+            if (gender == VoiceGender.FEMALE) "नमस्ते, यह महिला आवाज है।" else "नमस्ते, यह पुरुष आवाज है।"
+        } else {
+            if (gender == VoiceGender.FEMALE) "Hello, this is the warm female voice." else "Hello, this is the clear male voice."
+        }
+        ttsManager.speak(sample, _selectedLocale.value, SpeechTriage.NEUTRAL_PREVIEW)
     }
 
     fun stopTts() {

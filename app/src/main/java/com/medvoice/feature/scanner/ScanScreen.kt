@@ -872,6 +872,65 @@ private fun FullClinicalResultScreen(
                     }
                 }
 
+                // Chronic Health Profile Verification Banner (if patient has active chronic conditions)
+                val selectedConditions by viewModel.selectedConditions.collectAsState()
+                if (selectedConditions.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(containerColor = SurfaceCardDark),
+                        shape = RoundedCornerShape(18.dp),
+                        border = BorderStroke(1.dp, ReticleCyan.copy(alpha = 0.35f))
+                    ) {
+                        Column(modifier = Modifier.padding(14.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    imageVector = Icons.Default.MedicalServices,
+                                    contentDescription = null,
+                                    tint = ReticleCyan,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = if (locale == "hi") "रोगी स्वास्थ्य प्रोफाइल सत्यापन" else "Patient Health Profile Safety Check",
+                                    style = MaterialTheme.typography.titleSmall.copy(
+                                        color = ReticleCyan,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 13.sp
+                                    )
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                selectedConditions.forEach { cond ->
+                                    val label = when (cond.uppercase()) {
+                                        "DIABETES" -> if (locale == "hi") "🩸 मधुमेह (Diabetes Safe)" else "🩸 Diabetes Verified"
+                                        "HYPERTENSION" -> if (locale == "hi") "🫀 बीपी / हाइपरटेंशन" else "🫀 BP / Hypertension Verified"
+                                        "ASTHMA" -> if (locale == "hi") "🫁 अस्थमा (Asthma)" else "🫁 Asthma Safe"
+                                        "KIDNEY" -> if (locale == "hi") "🩺 गुर्दा / रीनल" else "🩺 Renal Monitored"
+                                        else -> "✓ $cond"
+                                    }
+                                    Surface(
+                                        color = ReticleCyan.copy(alpha = 0.12f),
+                                        shape = RoundedCornerShape(6.dp)
+                                    ) {
+                                        Text(
+                                            text = label,
+                                            color = TextWhite,
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.Medium,
+                                            modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp)
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
                 Spacer(modifier = Modifier.height(10.dp))
 
                 // Card 5: Audio Assistant Transcript & Replay

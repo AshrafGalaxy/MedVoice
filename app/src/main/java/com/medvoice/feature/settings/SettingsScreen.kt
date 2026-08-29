@@ -28,6 +28,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
@@ -136,9 +137,6 @@ fun SettingsScreen(viewModel: ScanViewModel) {
     val hardwareReport by viewModel.hardwareReport.collectAsState()
     val selectedConditions by viewModel.selectedConditions.collectAsState()
     val isSpeaking by viewModel.isSpeaking.collectAsState()
-    var apiKeyInput by remember { mutableStateOf("") }
-    var isApiKeySavedRecently by remember { mutableStateOf(false) }
-    var isEditingApiKey by remember { mutableStateOf(false) }
     var allowCloudPrivacy by remember { mutableStateOf(viewModel.aiEngine.allowCloudPrivacyEgress) }
 
     DisposableEffect(Unit) {
@@ -1029,297 +1027,46 @@ fun SettingsScreen(viewModel: ScanViewModel) {
                 }
 
                 if (activeAiTier == AiEngineTier.CLOUD_MEDGEMMA_HOSTED) {
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Text(
-                        text = if (locale == "hi") "क्लाउड एपीआई कुंजी (Cloud API Key)" else "Cloud API Key",
-                        color = TextWhite,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-
-                    if (isCloudApiKeyConfigured && !isEditingApiKey) {
-                        Surface(
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(10.dp),
-                            color = SurfaceCardElevated,
-                            border = BorderStroke(1.dp, SafeGreen.copy(alpha = 0.5f))
-                        ) {
-                            Column(modifier = Modifier.padding(12.dp)) {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.SpaceBetween
-                                ) {
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Icon(
-                                            imageVector = Icons.Default.Lock,
-                                            contentDescription = "Encrypted Vault",
-                                            tint = SafeGreen,
-                                            modifier = Modifier.size(16.dp)
-                                        )
-                                        Spacer(modifier = Modifier.width(6.dp))
-                                        Text(
-                                            text = if (locale == "hi") "सक्रिय एवं सुरक्षित (Encrypted)" else "Configured & Encrypted",
-                                            color = SafeGreen,
-                                            fontSize = 12.5.sp,
-                                            fontWeight = FontWeight.Bold
-                                        )
-                                    }
-                                    Surface(
-                                        color = SafeGreen.copy(alpha = 0.15f),
-                                        shape = RoundedCornerShape(6.dp)
-                                    ) {
-                                        Text(
-                                            text = "ACTIVE",
-                                            color = SafeGreen,
-                                            fontSize = 10.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                                        )
-                                    }
-                                }
-                                Spacer(modifier = Modifier.height(6.dp))
-                                Text(
-                                    text = "••••••••••••••••••••••••••••••••",
-                                    color = TextMuted,
-                                    fontSize = 13.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    letterSpacing = 2.sp
-                                )
-                                Spacer(modifier = Modifier.height(10.dp))
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                                ) {
-                                    Button(
-                                        onClick = {
-                                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                            isEditingApiKey = true
-                                            apiKeyInput = ""
-                                        },
-                                        colors = ButtonDefaults.buttonColors(containerColor = SurfaceCardDark),
-                                        shape = RoundedCornerShape(8.dp),
-                                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
-                                        modifier = Modifier.weight(1f).height(36.dp)
-                                    ) {
-                                        Icon(Icons.Default.Refresh, contentDescription = null, tint = TextWhite, modifier = Modifier.size(14.dp))
-                                        Spacer(modifier = Modifier.width(4.dp))
-                                        Text(
-                                            text = if (locale == "hi") "कुंजी बदलें" else "Update Key",
-                                            color = TextWhite,
-                                            fontSize = 11.5.sp,
-                                            fontWeight = FontWeight.SemiBold
-                                        )
-                                    }
-                                    Button(
-                                        onClick = {
-                                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                            viewModel.clearCloudMedGemmaApiKey()
-                                            apiKeyInput = ""
-                                            isEditingApiKey = false
-                                        },
-                                        colors = ButtonDefaults.buttonColors(containerColor = AlertRed.copy(alpha = 0.18f)),
-                                        shape = RoundedCornerShape(8.dp),
-                                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
-                                        modifier = Modifier.height(36.dp)
-                                    ) {
-                                        Icon(Icons.Default.Close, contentDescription = null, tint = AlertRed, modifier = Modifier.size(14.dp))
-                                        Spacer(modifier = Modifier.width(4.dp))
-                                        Text(
-                                            text = if (locale == "hi") "हटाएं" else "Remove",
-                                            color = AlertRed,
-                                            fontSize = 11.5.sp,
-                                            fontWeight = FontWeight.SemiBold
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    } else {
-                        Column(modifier = Modifier.fillMaxWidth()) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Surface(
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .height(48.dp),
-                                    shape = RoundedCornerShape(12.dp),
-                                    color = SurfaceCardElevated,
-                                    border = BorderStroke(
-                                        1.5.dp,
-                                        if (apiKeyInput.isNotBlank()) SafeGreen else AccentBorder
-                                    )
-                                ) {
-                                    Row(
-                                        modifier = Modifier
-                                            .fillMaxSize()
-                                            .padding(horizontal = 12.dp),
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Default.Key,
-                                            contentDescription = null,
-                                            tint = if (apiKeyInput.isNotBlank()) SafeGreen else TextMuted,
-                                            modifier = Modifier.size(18.dp)
-                                        )
-                                        Spacer(modifier = Modifier.width(8.dp))
-                                        Box(
-                                            modifier = Modifier.weight(1f),
-                                            contentAlignment = Alignment.CenterStart
-                                        ) {
-                                            if (apiKeyInput.isEmpty()) {
-                                                Text(
-                                                    text = if (locale == "hi") "Groq API कुंजी पेस्ट करें..." else "Paste Groq API key here...",
-                                                    color = TextMuted.copy(alpha = 0.5f),
-                                                    fontSize = 12.sp,
-                                                    maxLines = 1,
-                                                    overflow = TextOverflow.Ellipsis
-                                                )
-                                            }
-                                            BasicTextField(
-                                                value = apiKeyInput,
-                                                onValueChange = {
-                                                    apiKeyInput = it
-                                                },
-                                                singleLine = true,
-                                                maxLines = 1,
-                                                visualTransformation = PasswordVisualTransformation('*'),
-                                                textStyle = MaterialTheme.typography.bodyMedium.copy(
-                                                    color = TextWhite,
-                                                    fontSize = 13.sp,
-                                                    fontWeight = FontWeight.Medium
-                                                ),
-                                                cursorBrush = SolidColor(SafeGreen),
-                                                modifier = Modifier.fillMaxWidth()
-                                            )
-                                        }
-                                        if (apiKeyInput.isNotEmpty()) {
-                                            IconButton(
-                                                onClick = { apiKeyInput = "" },
-                                                modifier = Modifier.size(24.dp)
-                                            ) {
-                                                Icon(
-                                                    imageVector = Icons.Default.Close,
-                                                    contentDescription = "Clear",
-                                                    tint = TextMuted,
-                                                    modifier = Modifier.size(16.dp)
-                                                )
-                                            }
-                                        }
-                                    }
-                                }
-
-                                Button(
-                                    onClick = {
-                                        if (apiKeyInput.isNotBlank()) {
-                                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                            viewModel.setCloudMedGemmaApiKey(apiKeyInput.trim())
-                                            apiKeyInput = ""
-                                            isEditingApiKey = false
-                                            isApiKeySavedRecently = true
-                                            coroutineScope.launch {
-                                                kotlinx.coroutines.delay(2000L)
-                                                isApiKeySavedRecently = false
-                                            }
-                                        }
-                                    },
-                                    enabled = apiKeyInput.isNotBlank(),
-                                    colors = ButtonDefaults.buttonColors(
-                                        containerColor = SafeGreen,
-                                        disabledContainerColor = SafeGreen.copy(alpha = 0.3f)
-                                    ),
-                                    shape = RoundedCornerShape(12.dp),
-                                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp),
-                                    modifier = Modifier.height(48.dp)
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Save,
-                                        contentDescription = "Save",
-                                        tint = TextWhite,
-                                        modifier = Modifier.size(16.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    Text(
-                                        text = if (locale == "hi") "सेव" else "Save",
-                                        color = TextWhite,
-                                        fontSize = 12.5.sp,
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                }
-                            }
-
-                            Spacer(modifier = Modifier.height(6.dp))
-
-                            // Trust & Security Caption Below Field
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    modifier = Modifier.weight(1f)
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Security,
-                                        contentDescription = null,
-                                        tint = TextMuted,
-                                        modifier = Modifier.size(12.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    Text(
-                                        text = if (locale == "hi") "सुरक्षित वॉल्ट • कुंजी एन्क्रिप्टेड रहती है" else "Write-Only Vault • Encrypted in secure device storage",
-                                        color = TextMuted,
-                                        fontSize = 10.5.sp,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
-                                }
-
-                                if (isEditingApiKey && isCloudApiKeyConfigured) {
-                                    Text(
-                                        text = if (locale == "hi") "रद्द करें" else "Cancel",
-                                        color = WarningAmber,
-                                        fontSize = 11.5.sp,
-                                        fontWeight = FontWeight.SemiBold,
-                                        modifier = Modifier
-                                            .clickable {
-                                                apiKeyInput = ""
-                                                isEditingApiKey = false
-                                            }
-                                            .padding(horizontal = 4.dp, vertical = 2.dp)
-                                    )
-                                }
-                            }
-                        }
-                    }
-
-                    AnimatedVisibility(
-                        visible = isApiKeySavedRecently,
-                        enter = fadeIn(),
-                        exit = fadeOut()
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(10.dp),
+                        color = SurfaceCardElevated,
+                        border = BorderStroke(1.dp, SafeGreen.copy(alpha = 0.4f))
                     ) {
                         Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.padding(top = 6.dp)
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Icon(
-                                imageVector = Icons.Default.CheckCircle,
-                                contentDescription = null,
-                                tint = SafeGreen,
-                                modifier = Modifier.size(14.dp)
-                            )
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text(
-                                text = if (locale == "hi") "क्लाउड एपीआई कुंजी सुरक्षित रूप से सहेजी गई" else "Cloud API key saved successfully",
-                                color = SafeGreen,
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.SemiBold
-                            )
+                            Box(
+                                modifier = Modifier
+                                    .size(36.dp)
+                                    .background(SafeGreen.copy(alpha = 0.15f), CircleShape),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Cloud,
+                                    contentDescription = "Cloud AI Gateway",
+                                    tint = SafeGreen,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = if (locale == "hi") "क्लाउड विजन गेटवे (Qwen 27B)" else "Cloud Vision Gateway (Qwen 27B)",
+                                    color = TextWhite,
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Text(
+                                    text = if (locale == "hi") "डेमो गेटवे सक्रिय • हाई-स्पीड न्यूरल विजन (<400ms)" else "Demo Gateway Active • High-speed neural vision (<400ms)",
+                                    color = SafeGreen,
+                                    fontSize = 11.sp
+                                )
+                            }
                         }
                     }
                 }

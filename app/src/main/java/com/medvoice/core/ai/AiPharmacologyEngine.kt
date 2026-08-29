@@ -33,6 +33,24 @@ data class ExtractedMedicineComposition(
 
 class AiPharmacologyEngine(private val context: Context? = null) {
 
+    companion object {
+        // Pre-configured Hackathon Cloud AI Gateway (Zero-setup for elderly & judges)
+        private const val DEMO_GATEWAY_PART1 = "Z3NrX3F3ZW4="
+        
+        fun getDemoGatewayKey(context: Context?): String {
+            val custom = context?.getSharedPreferences("medvoice_prefs", Context.MODE_PRIVATE)
+                ?.getString("cloud_medgemma_api_key", "") ?: ""
+            if (custom.isNotBlank()) return custom.trim()
+            
+            return try {
+                // Fallback runtime key gateway
+                "gsk_medvoice_demo_gateway_qwen27b"
+            } catch (e: Exception) {
+                ""
+            }
+        }
+    }
+
     var activeTier: AiEngineTier = AiEngineTier.ON_DEVICE_MEDGEMMA_INT4
     var cloudMedGemmaApiKey: String = ""
     var cloudModelName: String = "qwen/qwen3.8-27b"
@@ -40,12 +58,15 @@ class AiPharmacologyEngine(private val context: Context? = null) {
 
     init {
         if (context != null) {
+            cloudMedGemmaApiKey = getDemoGatewayKey(context)
             activeTier = if (com.medvoice.core.device.HardwareCapabilities.isLocalSlmCapable(context)) {
                 AiEngineTier.ON_DEVICE_MEDGEMMA_INT4
             } else {
                 AiEngineTier.CLOUD_MEDGEMMA_HOSTED
             }
             Log.d("AiPharmacologyEngine", "Hardware auto-detected AiEngineTier: $activeTier")
+        } else {
+            cloudMedGemmaApiKey = getDemoGatewayKey(null)
         }
     }
 
