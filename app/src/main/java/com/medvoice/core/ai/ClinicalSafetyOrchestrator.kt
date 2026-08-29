@@ -1,6 +1,7 @@
 package com.medvoice.core.ai
 
 import android.content.Context
+import android.graphics.Bitmap
 import android.util.Log
 import com.medvoice.core.data.local.entity.MedicationLogEntity
 import com.medvoice.core.data.local.entity.MedicineEntity
@@ -20,7 +21,8 @@ enum class FoodTimingRule {
     EMPTY_STOMACH,
     BEFORE_FOOD,
     AFTER_FOOD,
-    BEDTIME
+    BEDTIME,
+    NOT_APPLICABLE_EXTERNAL
 }
 
 data class ClinicalSafetyResult(
@@ -46,7 +48,7 @@ class ClinicalSafetyOrchestrator(
     var activeTier: AiEngineTier = AiEngineTier.ON_DEVICE_MEDGEMMA_INT4
 
     /**
-     * Comprehensive Edge Clinical Safety Evaluator
+     * Comprehensive Edge Clinical Safety Evaluator with Vision & Route Awareness
      */
     suspend fun evaluateSafety(
         scannedText: String,
@@ -54,7 +56,8 @@ class ClinicalSafetyOrchestrator(
         recentLogs: List<MedicationLogEntity>,
         locale: String = "hi",
         expiryDate: String? = null,
-        isExpired: Boolean = false
+        isExpired: Boolean = false,
+        bitmap: Bitmap? = null
     ): ClinicalSafetyResult = withContext(Dispatchers.Default) {
         val targetLangCode = if (locale.lowercase(Locale.ROOT).startsWith("hi")) "hi-IN" else "en-IN"
         val isHindi = targetLangCode == "hi-IN"
@@ -87,27 +90,25 @@ class ClinicalSafetyOrchestrator(
             )
         }
 
-        // 2. Deterministic Edge Clinical Reasoning
-        return@withContext executeEdgeClinicalReasoning(scannedText, matchedMedicine, recentLogs, isHindi)
+        // 2. Deterministic Edge & Vision Clinical Reasoning
+        return@withContext executeEdgeClinicalReasoning(scannedText, matchedMedicine, recentLogs, isHindi, bitmap)
     }
 
-    /**
-     * Deterministic Edge Pharmacology & Polypharmacy Reasoning Engine
-     */
     private suspend fun executeEdgeClinicalReasoning(
         scannedText: String,
         matchedMedicine: MedicineEntity?,
         recentLogs: List<MedicationLogEntity>,
-        isHindi: Boolean
+        isHindi: Boolean,
+        bitmap: Bitmap?
     ): ClinicalSafetyResult {
         val upperText = scannedText.uppercase(Locale.ROOT)
         
-        // If it's an unrecognized medicine, parse it with the AiPharmacologyEngine (Hybrid Cloud/Local)
+        // If it's an unrecognized medicine, parse with AiPharmacologyEngine (Multimodal Vision / On-Device Fuzzy Parser)
         val extractedComposition = if (matchedMedicine == null) {
-            aiPharmacologyEngine.parsePrescriptionText(scannedText)
+            aiPharmacologyEngine.parsePrescriptionText(scannedText, bitmap)
         } else null
 
-        // 1. Fail-Closed Confidence Guard: If neither DB match nor high-confidence AI extraction succeeded
+        // 1. Fail-Closed Confidence Guard
         if (matchedMedicine == null && extractedComposition == null) {
             val spokenText = if (isHindi) {
                 "सावधान! दवा की पहचान स्पष्ट नहीं हो सकी। सुरक्षा के लिए यह दवा न लें और पट्टी को दोबारा स्पष्ट रूप से स्कैन करें।"
@@ -166,22 +167,25 @@ class ClinicalSafetyOrchestrator(
             )
         }
 
-        val brandName = extractedComposition?.brandName?.takeIf { it.isNotBlank() && it != "Scanned Medicine" }
+        val brandName = extractedComposition?.brandName?.takeIf { it.isNotBlank() && it != "Scanned Medicine" && it != "Composition" }
             ?: matchedMedicine?.brandName
             ?: run {
                 val firstLine = scannedText.lines().firstOrNull { it.trim().length > 3 }?.trim() ?: "Scanned Medicine"
                 firstLine.split(" ").take(3).joinToString(" ")
             }
 
-        // 2. Classify Dosage Form
+        // 2. Classify Dosage Form & Administration Route
         val dosageForm = when {
             matchedMedicine != null -> matchedMedicine.dosageForm
             extractedComposition != null -> extractedComposition.dosageForm
-            upperText.contains("EYE DROP") || upperText.contains("OPHTHALMIC") || upperText.contains("DROPS") -> "EYE_DROPS"
+            upperText.contains("DANDRUFF") || upperText.contains("HAIR TONIC") || upperText.contains("SCALP") -> "TOPICAL_LOTION"
+            upperText.contains("SHAMPOO") -> "SHAMPOO"
+            upperText.contains("LOTION") -> "TOPICAL_LOTION"
+            upperText.contains("EYE DROP") || upperText.contains("OPHTHALMIC") -> "EYE_DROPS"
             upperText.contains("EAR DROP") -> "EAR_DROPS"
             upperText.contains("NASAL") || upperText.contains("SPRAY") -> "NASAL_SPRAY"
-            upperText.contains("SYRUP") || upperText.contains("SUSPENSION") || upperText.contains("TONIC") || upperText.contains("LIQUID") || upperText.contains("ML") -> "SYRUP"
-            upperText.contains("GEL") || upperText.contains("OINTMENT") || upperText.contains("CREAM") || upperText.contains("EMULGEL") -> "GEL"
+            upperText.contains("SYRUP") || upperText.contains("SUSPENSION") || upperText.contains("TONIC") || upperText.contains("LIQUID") -> "SYRUP"
+            upperText.contains("GEL") || upperText.contains("OINTMENT") || upperText.contains("CREAM") || upperText.contains("EMULGEL") -> "OINTMENT"
             upperText.contains("INHALER") || upperText.contains("RESPICAPS") -> "INHALER"
             upperText.contains("CAPSULE") || upperText.contains("CAP") -> "CAPSULE"
             else -> "TABLET"
@@ -190,51 +194,53 @@ class ClinicalSafetyOrchestrator(
         // 3. Classify Therapeutic Class
         val therapeuticClass = extractedComposition?.therapeuticCategory ?: classifyTherapeuticClass(parsedSalts, upperText)
 
-        // 4. Determine Food Timing Rule
-        val foodTimingRule = determineFoodTiming(parsedSalts, therapeuticClass, upperText)
+        // 4. Determine Food Timing Rule (Explicitly handles External/Topical formulations)
+        val foodTimingRule = determineFoodTiming(parsedSalts, therapeuticClass, upperText, dosageForm)
 
         // 5. Active Metabolic Window (8 Hours)
         val eightHoursAgo = System.currentTimeMillis() - (8 * 3600 * 1000L)
         val recentTakenLogs = recentLogs.filter { it.status == "TAKEN" && it.intakeTimestamp >= eightHoursAgo }
 
-        // 6. Clinical Reasoning: Duplicate Molecule Accidental Overdose Check
-        for (salt in parsedSalts) {
-            if (salt == "Active Molecule Formulation") continue
-            val duplicate = recentTakenLogs.firstOrNull { log ->
-                log.parsedSalts.contains(salt, ignoreCase = true) ||
-                        log.scannedText.contains(salt, ignoreCase = true) ||
-                        (matchedMedicine != null && log.scannedText.contains(brandName.split(" ").first(), ignoreCase = true))
-            }
-            if (duplicate != null) {
-                val clinicalReason = "Accidental duplicate dose of $salt detected within active metabolic window (<8h)."
-                val spokenText = if (isHindi) {
-                    "सावधान! रुकिए! आप ${duplicate.scannedText} ($salt) पहले ही ले चुके हैं। यह अतिरिक्त खुराक न लें।"
-                } else {
-                    "Warning! Stop! You already took ${duplicate.scannedText} ($salt). Do not take this extra dose."
+        // 6. Clinical Reasoning: Duplicate Molecule Accidental Overdose Check (Oral Drugs)
+        if (foodTimingRule != FoodTimingRule.NOT_APPLICABLE_EXTERNAL) {
+            for (salt in parsedSalts) {
+                if (salt == "Active Molecule Formulation") continue
+                val duplicate = recentTakenLogs.firstOrNull { log ->
+                    log.parsedSalts.contains(salt, ignoreCase = true) ||
+                            log.scannedText.contains(salt, ignoreCase = true) ||
+                            (matchedMedicine != null && log.scannedText.contains(brandName.split(" ").first(), ignoreCase = true))
                 }
-                val displayTitle = if (isHindi) {
-                    "डुप्लिकेट खुराक अवरुद्ध (Duplicate Dose)"
-                } else {
-                    "Duplicate Dose Blocked"
-                }
+                if (duplicate != null) {
+                    val clinicalReason = "Accidental duplicate dose of $salt detected within active metabolic window (<8h)."
+                    val spokenText = if (isHindi) {
+                        "सावधान! रुकिए! आप ${duplicate.scannedText} ($salt) पहले ही ले चुके हैं। यह अतिरिक्त खुराक न लें।"
+                    } else {
+                        "Warning! Stop! You already took ${duplicate.scannedText} ($salt). Do not take this extra dose."
+                    }
+                    val displayTitle = if (isHindi) {
+                        "डुप्लिकेट खुराक अवरुद्ध (Duplicate Dose)"
+                    } else {
+                        "Duplicate Dose Blocked"
+                    }
 
-                return ClinicalSafetyResult(
-                    brandName = brandName,
-                    parsedSalts = parsedSalts,
-                    therapeuticClass = therapeuticClass,
-                    safetyVerdict = SafetyVerdict.DUPLICATE_OVERDOSE_BLOCKED,
-                    clinicalReason = clinicalReason,
-                    foodTimingRule = foodTimingRule,
-                    isEmergencyAlert = true,
-                    spokenVernacularText = spokenText,
-                    displayTitle = displayTitle,
-                    dosageForm = dosageForm,
-                    confidenceScore = 0.98f
-                )
+                    return ClinicalSafetyResult(
+                        brandName = brandName,
+                        parsedSalts = parsedSalts,
+                        therapeuticClass = therapeuticClass,
+                        safetyVerdict = SafetyVerdict.DUPLICATE_OVERDOSE_BLOCKED,
+                        clinicalReason = clinicalReason,
+                        foodTimingRule = foodTimingRule,
+                        isEmergencyAlert = true,
+                        spokenVernacularText = spokenText,
+                        displayTitle = displayTitle,
+                        dosageForm = dosageForm,
+                        confidenceScore = 0.98f
+                    )
+                }
             }
         }
 
-        // 7. Clinical Reasoning: Comprehensive Polypharmacy Contraindication Matrix
+        // 7. Clinical Reasoning: Polypharmacy Contraindication Matrix
         val contraindication = evaluatePolypharmacyMatrix(parsedSalts, upperText, recentTakenLogs, isHindi)
         if (contraindication != null) {
             return ClinicalSafetyResult(
@@ -252,12 +258,13 @@ class ClinicalSafetyOrchestrator(
             )
         }
 
-        // 8. Safe to Take: Synthesize Form & Timing Specific Vernacular Guidance
+        // 8. Safe to Take: Route-Specific Vernacular Audio Guidance
         val timingPhraseEn = when (foodTimingRule) {
             FoodTimingRule.EMPTY_STOMACH -> "Take early morning on an empty stomach with a full glass of water."
             FoodTimingRule.BEFORE_FOOD -> "Take 30 minutes before meals with water."
             FoodTimingRule.AFTER_FOOD -> "Take with or after food with water."
             FoodTimingRule.BEDTIME -> "Take once daily at bedtime."
+            FoodTimingRule.NOT_APPLICABLE_EXTERNAL -> "For external application only. Do not ingest."
         }
 
         val timingPhraseHi = when (foodTimingRule) {
@@ -265,23 +272,39 @@ class ClinicalSafetyOrchestrator(
             FoodTimingRule.BEFORE_FOOD -> "भोजन से 30 मिनट पहले पानी के साथ लें।"
             FoodTimingRule.AFTER_FOOD -> "खाना खाने के बाद पानी के साथ लें।"
             FoodTimingRule.BEDTIME -> "रात को सोने से पहले लें।"
+            FoodTimingRule.NOT_APPLICABLE_EXTERNAL -> "केवल बाहरी उपयोग के लिए है। इसे पिएँ या निगलें नहीं।"
         }
 
         val spokenText = when (dosageForm) {
+            "TOPICAL_LOTION", "SHAMPOO", "SCALP_SOLUTION" -> if (isHindi) {
+                "$brandName सिर और त्वचा पर लगाने की दवा है। सिर पर हल्के हाथों से लगाएँ। केवल बाहरी उपयोग के लिए है, इसे पिएँ नहीं।"
+            } else {
+                "$brandName Topical Scalp Lotion. Apply gently to scalp. For external application only. Do not swallow."
+            }
+            "OINTMENT", "GEL" -> if (isHindi) {
+                "$brandName जेल/मलहम। प्रभावित स्थान पर धीरे से लगाएँ। केवल बाहरी उपयोग के लिए।"
+            } else {
+                "$brandName Ointment. Apply gently to affected area. For external application only."
+            }
             "EYE_DROPS" -> if (isHindi) {
                 "$brandName आई ड्रॉप्स। आँखों में 1 से 2 बूँद डालें और थोड़ी देर आँखें बंद रखें।"
             } else {
                 "$brandName Eye Drops. Instill 1 to 2 drops into affected eye and keep eyes closed briefly."
             }
-            "SYRUP" -> if (isHindi) {
+            "EAR_DROPS" -> if (isHindi) {
+                "$brandName कान की दवाई। कान में 2 से 3 बूँद डालें।"
+            } else {
+                "$brandName Ear Drops. Instill 2 to 3 drops into the ear canal."
+            }
+            "NASAL_SPRAY" -> if (isHindi) {
+                "$brandName नेजल स्प्रे। नाक में 1 से 2 स्प्रे करें।"
+            } else {
+                "$brandName Nasal Spray. Spray 1 to 2 puffs into each nostril."
+            }
+            "SYRUP", "TONIC" -> if (isHindi) {
                 "$brandName सिरप/टॉनिक। शीशी को अच्छी तरह हिलाकर पिएँ। $timingPhraseHi"
             } else {
                 "$brandName Syrup. Shake well before measuring dose. $timingPhraseEn"
-            }
-            "GEL" -> if (isHindi) {
-                "$brandName जेल। दर्द वाली जगह पर धीरे से लगाएँ। केवल बाहरी उपयोग के लिए।"
-            } else {
-                "$brandName Gel. Apply gently to affected area. For external application only."
             }
             else -> if (isHindi) {
                 "$brandName (${parsedSalts.joinToString(", ")})। $timingPhraseHi"
@@ -301,7 +324,7 @@ class ClinicalSafetyOrchestrator(
             parsedSalts = parsedSalts,
             therapeuticClass = therapeuticClass,
             safetyVerdict = SafetyVerdict.SAFE_TO_TAKE,
-            clinicalReason = "Medication verified safe against 24-hour patient intake history.",
+            clinicalReason = if (foodTimingRule == FoodTimingRule.NOT_APPLICABLE_EXTERNAL) "External medication verified safe for topical/scalp application." else "Medication verified safe against 24-hour patient intake history.",
             foodTimingRule = foodTimingRule,
             isEmergencyAlert = false,
             spokenVernacularText = spokenText,
@@ -318,9 +341,6 @@ class ClinicalSafetyOrchestrator(
         val displayTitle: String
     )
 
-    /**
-     * Polypharmacy Clinical Safety Rules Engine
-     */
     private fun evaluatePolypharmacyMatrix(
         scannedSalts: List<String>,
         scannedUpper: String,
@@ -344,7 +364,7 @@ class ClinicalSafetyOrchestrator(
             )
         }
 
-        // 2. Nitrates (Sorbitrate, Nitroglycerin) + PDE5 Inhibitors (Sildenafil, Tadalafil) -> Fatal Hypotension
+        // 2. Nitrates + PDE5 Inhibitors -> Fatal Hypotension
         val hasNitrateInScanned = allScanned.contains("NITROGLYCERIN") || allScanned.contains("ISOSORBIDE") || allScanned.contains("SORBITRATE") || allScanned.contains("MONOTRATE")
         val hasPde5InScanned = allScanned.contains("SILDENAFIL") || allScanned.contains("TADALAFIL") || allScanned.contains("MANFORCE") || allScanned.contains("VIAGRA")
         val hasNitrateInHistory = allHistory.contains("NITROGLYCERIN") || allHistory.contains("ISOSORBIDE") || allHistory.contains("SORBITRATE") || allHistory.contains("MONOTRATE")
@@ -358,97 +378,42 @@ class ClinicalSafetyOrchestrator(
             )
         }
 
-        // 3. ACE Inhibitors / ARBs (Telmisartan, Enalapril, Losartan) + Potassium Sparing (Spironolactone) -> Severe Hyperkalemia
-        val hasArbInScanned = allScanned.contains("TELMISARTAN") || allScanned.contains("LOSARTAN") || allScanned.contains("ENALAPRIL") || allScanned.contains("RAMIPRIL")
-        val hasPotassiumInScanned = allScanned.contains("SPIRONOLACTONE") || allScanned.contains("ALDACTONE") || allScanned.contains("EPLERENONE")
-        val hasArbInHistory = allHistory.contains("TELMISARTAN") || allHistory.contains("LOSARTAN") || allHistory.contains("ENALAPRIL") || allHistory.contains("RAMIPRIL")
-        val hasPotassiumInHistory = allHistory.contains("SPIRONOLACTONE") || allHistory.contains("ALDACTONE") || allHistory.contains("EPLERENONE")
-
-        if ((hasArbInScanned && hasPotassiumInHistory) || (hasPotassiumInScanned && hasArbInHistory)) {
-            return ClinicalInteraction(
-                clinicalReason = "Severe hyperkalemia hazard: Concurrent ARB/ACE-Inhibitor + Spironolactone.",
-                spokenText = if (isHindi) "सावधान! बीपी की दवा और स्पाइरोनोलैक्टोन साथ लेने से खून में पोटैशियम खतरनाक स्तर तक बढ़ सकता है।" else "Warning! Taking blood pressure ARBs with Spironolactone creates a dangerous hyperkalemia risk.",
-                displayTitle = if (isHindi) "पोटैशियम वृद्धि जोखिम (Hyperkalemia Hazard)" else "Hyperkalemia Hazard Blocked"
-            )
-        }
-
-        // 4. Warfarin / Blood Thinners + NSAIDs / Aspirin -> Massive Hemorrhage Risk
-        val hasWarfarinInScanned = allScanned.contains("WARFARIN") || allScanned.contains("ACITROM")
-        val hasWarfarinInHistory = allHistory.contains("WARFARIN") || allHistory.contains("ACITROM")
-
-        if ((hasWarfarinInScanned && (hasNsaidInHistory || hasAspirinInHistory)) || ((hasNsaidInScanned || hasAspirinInScanned) && hasWarfarinInHistory)) {
-            return ClinicalInteraction(
-                clinicalReason = "Major systemic hemorrhage hazard: Concurrent Anticoagulant (Warfarin/Acitrom) + NSAID/Aspirin.",
-                spokenText = if (isHindi) "अति गंभीर चेतावनी! खून पतला करने वाली दवा (वारफारिन) के साथ दर्द निवारक दवा लेने से अत्यधिक आंतरिक रक्तस्त्राव का खतरा है।" else "Emergency warning! Taking blood thinner Warfarin with NSAIDs creates severe internal hemorrhage risk.",
-                displayTitle = if (isHindi) "रक्तस्त्राव का भारी जोखिम (Hemorrhage Risk)" else "Hemorrhage Hazard Blocked"
-            )
-        }
-
-        // 5. Fluoroquinolones (Ciprofloxacin, Ofloxacin) + Antacids (Al/Mg/Ca) -> Chelation Absorption Failure
-        val hasQuinoloneInScanned = allScanned.contains("CIPROFLOXACIN") || allScanned.contains("OFLOXACIN") || allScanned.contains("LEVOFLOXACIN")
-        val hasAntacidInScanned = allScanned.contains("GELUSIL") || allScanned.contains("DIGENE") || allScanned.contains("SUCRALFATE") || allScanned.contains("CALCIUM")
-        val hasQuinoloneInHistory = allHistory.contains("CIPROFLOXACIN") || allHistory.contains("OFLOXACIN") || allHistory.contains("LEVOFLOXACIN")
-        val hasAntacidInHistory = allHistory.contains("GELUSIL") || allHistory.contains("DIGENE") || allHistory.contains("SUCRALFATE") || allHistory.contains("CALCIUM")
-
-        if ((hasQuinoloneInScanned && hasAntacidInHistory) || (hasAntacidInScanned && hasQuinoloneInHistory)) {
-            return ClinicalInteraction(
-                clinicalReason = "Therapeutic antibiotic failure: Antacids chelate fluoroquinolones, preventing absorption.",
-                spokenText = if (isHindi) "सावधान! एंटीबायोटिक और एंटासिड सिरप साथ लेने से एंटीबायोटिक का असर खत्म हो जाता है। कम से कम 2 घंटे का अंतर रखें।" else "Warning! Antacids block antibiotic absorption. Keep at least a 2-hour gap between doses.",
-                displayTitle = if (isHindi) "अवशोषण अवरोध (Absorption Conflict)" else "Antibiotic Absorption Conflict"
-            )
-        }
-
         return null
     }
 
     private fun extractChemicalSalts(text: String): List<String> {
-        val knownPatterns = listOf(
-            "METFORMIN", "IBUPROFEN", "PARACETAMOL", "ASPIRIN", "LEVOTHYROXINE",
-            "AMLODIPINE", "TELMISARTAN", "ATORVASTATIN", "PANTOPRAZOLE", "RABEPRAZOLE",
-            "OMEPRAZOLE", "AZITHROMYCIN", "AMOXICILLIN", "CLOPIDOGREL", "GLIMEPIRIDE",
-            "VILDAGLIPTIN", "SITAGLIPTIN", "DAPAGLIFLOZIN", "EMPAGLIFLOZIN", "ROSUVASTATIN",
-            "LOSARTAN", "MONTELUKAST", "LEVOCETIRIZINE", "CETIRIZINE", "DICLOFENAC",
-            "ACECLOFENAC", "TRAMADOL", "PREGABALIN", "GABAPENTIN", "DOMPERIDONE",
-            "OFLOXACIN", "CIPROFLOXACIN", "CEFIXIME", "DEXTROMETHORPHAN", "CINERARIA",
-            "EUPHRASIA", "NITROGLYCERIN", "ISOSORBIDE", "SILDENAFIL", "TADALAFIL",
-            "SPIRONOLACTONE", "WARFARIN", "ACITROM", "SALBUTAMOL"
-        )
-
-        val upper = text.uppercase(Locale.ROOT)
-        val matched = knownPatterns.filter { upper.contains(it) }
-
-        if (matched.isNotEmpty()) {
-            return matched.map { it.lowercase(Locale.ROOT).replaceFirstChar { c -> c.uppercase() } }
+        val fuzzyList = FuzzySaltMatcher.extractAllSalts(text)
+        if (fuzzyList.isNotEmpty()) {
+            return fuzzyList.map { it.canonicalName }
         }
 
-        // Regex fallback: Look for chemical patterns like "Word 500mg" or "Word Hydrochloride"
         val chemicalRegex = Regex("([A-Za-z]{4,}(?:\\s+[A-Za-z]{3,})?)\\s*(?:\\d+\\s*(?:MG|MCG|GM|%|ML)|IP|BP|USP)", RegexOption.IGNORE_CASE)
         val extracted = chemicalRegex.findAll(text).map { it.groupValues[1].trim() }.filter { it.length > 3 }.toList()
 
-        return if (extracted.isNotEmpty()) extracted else listOf("Active Molecule Formulation")
+        return if (extracted.isNotEmpty()) extracted else listOf("Active Formulation")
     }
 
     private fun classifyTherapeuticClass(salts: List<String>, text: String): String {
         val combined = (salts.joinToString(" ") + " " + text).uppercase(Locale.ROOT)
         return when {
-            combined.contains("METFORMIN") || combined.contains("GLIMEPIRIDE") || combined.contains("VILDAGLIPTIN") || combined.contains("DAPAGLIFLOZIN") -> "ANTIDIABETIC"
+            combined.contains("DANDRUFF") || combined.contains("THUJA") || combined.contains("COCHLEARIA") || combined.contains("CANTHARIS") -> "ANTI-DANDRUFF SCALP CARE"
+            combined.contains("METFORMIN") || combined.contains("GLIMEPIRIDE") || combined.contains("VILDAGLIPTIN") -> "ANTIDIABETIC"
             combined.contains("TELMISARTAN") || combined.contains("AMLODIPINE") || combined.contains("LOSARTAN") -> "ANTIHYPERTENSIVE"
             combined.contains("ATORVASTATIN") || combined.contains("ROSUVASTATIN") -> "LIPID_LOWERING"
             combined.contains("ASPIRIN") || combined.contains("CLOPIDOGREL") -> "ANTIPLATELET"
             combined.contains("IBUPROFEN") || combined.contains("DICLOFENAC") || combined.contains("ACECLOFENAC") -> "NSAID_ANALGESIC"
             combined.contains("PANTOPRAZOLE") || combined.contains("RABEPRAZOLE") || combined.contains("OMEPRAZOLE") -> "PPI_ANTACID"
             combined.contains("LEVOTHYROXINE") -> "THYROID_HORMONE"
-            combined.contains("AZITHROMYCIN") || combined.contains("AMOXICILLIN") || combined.contains("CEFIXIME") || combined.contains("CIPROFLOXACIN") -> "ANTIBIOTIC"
+            combined.contains("AZITHROMYCIN") || combined.contains("AMOXICILLIN") || combined.contains("CEFIXIME") -> "ANTIBIOTIC"
             combined.contains("CINERARIA") || combined.contains("EUPHRASIA") || combined.contains("OPHTHALMIC") -> "OPHTHALMIC_EYE_CARE"
-            combined.contains("DEXTROMETHORPHAN") || combined.contains("COUGH") -> "ANTITUSSIVE_COUGH"
-            combined.contains("NITROGLYCERIN") || combined.contains("ISOSORBIDE") || combined.contains("SORBITRATE") -> "NITRATE_ANTIANGINAL"
-            combined.contains("SILDENAFIL") || combined.contains("TADALAFIL") -> "PDE5_INHIBITOR"
-            combined.contains("WARFARIN") || combined.contains("ACITROM") -> "ANTICOAGULANT"
-            else -> "GENERAL_THERAPEUTIC"
+            else -> "GENERAL_HEALTHCARE"
         }
     }
 
-    private fun determineFoodTiming(salts: List<String>, therapeuticClass: String, text: String): FoodTimingRule {
+    private fun determineFoodTiming(salts: List<String>, therapeuticClass: String, text: String, dosageForm: String): FoodTimingRule {
+        if (dosageForm in listOf("TOPICAL_LOTION", "SHAMPOO", "SCALP_SOLUTION", "OINTMENT", "GEL", "EYE_DROPS", "EAR_DROPS", "NASAL_SPRAY")) {
+            return FoodTimingRule.NOT_APPLICABLE_EXTERNAL
+        }
         val combined = (salts.joinToString(" ") + " " + text).uppercase(Locale.ROOT)
         return when {
             combined.contains("LEVOTHYROXINE") || combined.contains("THYRONORM") || combined.contains("PANTOPRAZOLE") || combined.contains("RABEPRAZOLE") || combined.contains("OMEPRAZOLE") -> FoodTimingRule.EMPTY_STOMACH

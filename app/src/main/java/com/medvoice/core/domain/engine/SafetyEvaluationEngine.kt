@@ -68,7 +68,8 @@ class SafetyEvaluationEngine(
     suspend fun evaluateCandidateTokens(
         tokens: List<String>,
         locale: String = "hi",
-        isExplicitSnap: Boolean = false
+        isExplicitSnap: Boolean = false,
+        bitmap: android.graphics.Bitmap? = null
     ): SafetyEvaluationResult {
         if (tokens.isEmpty()) {
             return if (isExplicitSnap) {
@@ -125,7 +126,8 @@ class SafetyEvaluationEngine(
             recentLogs = recentLogs,
             locale = locale,
             expiryDate = expiryInfo.expiryDateString,
-            isExpired = expiryInfo.isExpired
+            isExpired = expiryInfo.isExpired,
+            bitmap = bitmap
         )
 
         return when (safetyResult.safetyVerdict) {

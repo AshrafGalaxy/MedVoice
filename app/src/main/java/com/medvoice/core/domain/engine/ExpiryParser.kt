@@ -15,9 +15,9 @@ data class ParsedExpiryInfo(
 object ExpiryParser {
 
     private val EXPIRY_PATTERNS = listOf(
-        Pattern.compile("""\b(?:EXP|EXPIRY|EXP\.|USE\s*BEFORE|BEST\s*BEFORE)\s*[:.\-\/]?\s*([0-1]?[0-9][\/\-\.][2-9][0-9](?:[0-9]{2})?)\b""", Pattern.CASE_INSENSITIVE),
+        Pattern.compile("""\b(?:EXP|EXPIRY|EXP\.|USE\s*BEFORE|BEST\s*BEFORE)\s*(?:DATE)?\s*[:.\-\/]?\s*([0-1]?[0-9][\/\-\.][2-9][0-9](?:[0-9]{2})?)\b""", Pattern.CASE_INSENSITIVE),
         Pattern.compile("""\b([0-1]?[0-9][\/\-\.][2-9][0-9](?:[0-9]{2})?)\s*(?:EXP|EXPIRY)\b""", Pattern.CASE_INSENSITIVE),
-        Pattern.compile("""\b(?:EXP|EXPIRY)\s*[:.\-\/]?\s*([A-Z]{3,4}[\/\-\.][2-9][0-9](?:[0-9]{2})?)\b""", Pattern.CASE_INSENSITIVE)
+        Pattern.compile("""\b(?:EXP|EXPIRY|EXP\.)\s*(?:DATE)?\s*[:.\-\/]?\s*([A-Z]{3,4}[\/\-\.][2-9][0-9](?:[0-9]{2})?)\b""", Pattern.CASE_INSENSITIVE)
     )
 
     private val BATCH_PATTERNS = listOf(
