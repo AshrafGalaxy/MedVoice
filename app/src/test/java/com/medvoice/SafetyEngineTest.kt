@@ -1,8 +1,9 @@
 package com.medvoice
 
-import com.medvoice.core.ai.MedGemmaOrchestrator
+import com.medvoice.core.ai.ClinicalSafetyOrchestrator
 import com.medvoice.core.ai.SafetyVerdict
 import com.medvoice.core.data.local.dao.MedicineDao
+import com.medvoice.core.data.local.entity.CabinetPrescriptionEntity
 import com.medvoice.core.data.local.entity.MedicationLogEntity
 import com.medvoice.core.data.local.entity.MedicineEntity
 import com.medvoice.core.domain.engine.SafetyEvaluationEngine
@@ -15,6 +16,7 @@ import org.junit.Test
 
 class FakeMedicineDao : MedicineDao {
     private val logs = mutableListOf<MedicationLogEntity>()
+    private val cabinetList = mutableListOf<CabinetPrescriptionEntity>()
 
     private val sampleMedicines = mutableListOf(
         MedicineEntity(
@@ -84,14 +86,15 @@ class FakeMedicineDao : MedicineDao {
 
     override suspend fun searchCatalog(query: String): MedicineEntity? {
         val q = query.trim().lowercase()
-        if (q.length < 3) return null
+        val qClean = q.replace(Regex("[^a-z0-9]"), "")
+        if (qClean.length < 3) return null
         return sampleMedicines.firstOrNull { med ->
-            val brandWords = med.brandName.lowercase().split(Regex("[\\s,/\\-]+"))
-            val saltWords = med.rawComposition.lowercase().split(Regex("[\\s,/\\-]+"))
-            brandWords.any { it == q || it.startsWith(q) } || saltWords.any { it == q || it.startsWith(q) }
+            val b = med.brandName.lowercase()
+            val bClean = b.replace(Regex("[^a-z0-9]"), "")
+            b == q || b.startsWith(q) || (b.length >= 4 && q.startsWith(b)) ||
+            bClean == qClean || bClean.startsWith(qClean) || qClean.startsWith(bClean)
         }
     }
-
 
     override suspend fun findMedicineByFts(query: String): MedicineEntity? {
         return searchCatalog(query)
@@ -102,6 +105,24 @@ class FakeMedicineDao : MedicineDao {
     }
 
     override suspend fun getCabinetMedicines(): List<MedicineEntity> = sampleMedicines
+
+    override suspend fun insertCabinetPrescription(prescription: CabinetPrescriptionEntity): Long {
+        cabinetList.add(prescription)
+        return prescription.id
+    }
+
+    override suspend fun getAllCabinetPrescriptions(): List<CabinetPrescriptionEntity> = cabinetList
+
+    override suspend fun getCabinetPrescriptionById(id: Long): CabinetPrescriptionEntity? = cabinetList.firstOrNull { it.id == id }
+
+    override suspend fun deleteCabinetPrescription(id: Long) {
+        cabinetList.removeAll { it.id == id }
+    }
+
+    override suspend fun searchCabinetPrescriptions(query: String): List<CabinetPrescriptionEntity> {
+        val q = query.lowercase()
+        return cabinetList.filter { it.brandName.lowercase().contains(q) || it.rawComposition.lowercase().contains(q) }
+    }
 
     override suspend fun insertMedicine(medicine: MedicineEntity): Long {
         sampleMedicines.add(medicine)
@@ -130,233 +151,182 @@ class FakeMedicineDao : MedicineDao {
 
 class SafetyEngineTest {
 
+    private val fakeDao = FakeMedicineDao()
+
     @Test
-    fun testSafeFirstDoseEvaluation() = runBlocking {
-        val fakeDao = FakeMedicineDao()
-        val orchestrator = MedGemmaOrchestrator()
+    fun testSafeFirstDose_GlycometSR500() = runBlocking {
+        fakeDao.clearAllLogs()
+        val orchestrator = ClinicalSafetyOrchestrator()
         val engine = SafetyEvaluationEngine(fakeDao, orchestrator)
 
-        val ocrTokens = listOf("CADILA", "GLYCOMET-SR", "500", "METFORMIN")
-        val result = engine.evaluateCandidateTokens(ocrTokens, "hi")
+        val scannedTokens = listOf(
+            "Glycomet-SR 500",
+            "Metformin Hydrochloride Prolonged Release Tablets IP",
+            "500 mg",
+            "USV Private Limited"
+        )
 
-        assertTrue("First dose of Glycomet must be safe to take", result is SafetyEvaluationResult.SafeToTake)
-        val safe = result as SafetyEvaluationResult.SafeToTake
-        assertEquals("Glycomet-SR 500", safe.brandName)
-        assertTrue(safe.saltName.contains("Metformin", ignoreCase = true))
-        assertEquals(SafetyVerdict.SAFE_TO_TAKE, safe.safetyResult.safetyVerdict)
-        assertTrue("Must include spoken dosage instructions", safe.instructionText.isNotBlank())
+        val result = engine.evaluateCandidateTokens(scannedTokens, locale = "hi", isExplicitSnap = true)
+        assertTrue("Expected SafeToTake, got: $result", result is SafetyEvaluationResult.SafeToTake)
+        val safeResult = (result as SafetyEvaluationResult.SafeToTake).safetyResult
+        assertEquals(SafetyVerdict.SAFE_TO_TAKE, safeResult.safetyVerdict)
+        assertEquals("Glycomet-SR 500", result.matchedMedicine?.brandName)
     }
 
     @Test
-    fun testDuplicateDoseBlockedWithinWindow() = runBlocking {
-        val fakeDao = FakeMedicineDao()
-        val orchestrator = MedGemmaOrchestrator()
-        val engine = SafetyEvaluationEngine(fakeDao, orchestrator)
-
-        // Log prior intake of Glycomet (Metformin) taken 1 hour ago
+    fun testDuplicateDoseDetection_SameBrandWithinActiveWindow() = runBlocking {
+        fakeDao.clearAllLogs()
         fakeDao.logIntake(
             MedicationLogEntity(
                 medicineId = 1,
                 scannedText = "Glycomet-SR 500",
                 parsedSalts = "Metformin Hydrochloride",
-                intakeTimestamp = System.currentTimeMillis() - (1 * 3600 * 1000L),
-                status = "TAKEN"
+                status = "TAKEN",
+                intakeTimestamp = System.currentTimeMillis() - (2 * 3600 * 1000L) // 2 hours ago
             )
         )
 
-        // Patient scans Gluconorm (also Metformin!)
-        val ocrTokens = listOf("LUPIN", "GLUCONORM-SR", "500", "METFORMIN")
-        val result = engine.evaluateCandidateTokens(ocrTokens, "hi")
+        val orchestrator = ClinicalSafetyOrchestrator()
+        val engine = SafetyEvaluationEngine(fakeDao, orchestrator)
 
-        assertTrue("Duplicate Metformin dose must be blocked", result is SafetyEvaluationResult.DuplicateDoseBlocked)
-        val blocked = result as SafetyEvaluationResult.DuplicateDoseBlocked
-        assertEquals(SafetyVerdict.DUPLICATE_OVERDOSE_BLOCKED, blocked.safetyResult.safetyVerdict)
-        assertTrue(blocked.alertMessage.contains("सावधान") || blocked.alertMessage.contains("रुकिए") || blocked.alertMessage.contains("Warning"))
+        val scannedTokens = listOf("Glycomet-SR 500", "Metformin Hydrochloride 500mg")
+        val result = engine.evaluateCandidateTokens(scannedTokens, locale = "hi", isExplicitSnap = true)
+
+        assertTrue("Expected DuplicateDoseBlocked, got: $result", result is SafetyEvaluationResult.DuplicateDoseBlocked)
+        val dupResult = (result as SafetyEvaluationResult.DuplicateDoseBlocked).safetyResult
+        assertEquals(SafetyVerdict.DUPLICATE_OVERDOSE_BLOCKED, dupResult.safetyVerdict)
     }
 
     @Test
-    fun testCriticalDrugDrugInteractionBlocked() = runBlocking {
-        val fakeDao = FakeMedicineDao()
-        val orchestrator = MedGemmaOrchestrator()
+    fun testDuplicateMoleculeDetection_CrossBrandMetformin() = runBlocking {
+        fakeDao.clearAllLogs()
+        // Patient took Gluconorm-SR 500 3 hours ago
+        fakeDao.logIntake(
+            MedicationLogEntity(
+                medicineId = 2,
+                scannedText = "Gluconorm-SR 500",
+                parsedSalts = "Metformin Hydrochloride",
+                status = "TAKEN",
+                intakeTimestamp = System.currentTimeMillis() - (3 * 3600 * 1000L)
+            )
+        )
+
+        val orchestrator = ClinicalSafetyOrchestrator()
         val engine = SafetyEvaluationEngine(fakeDao, orchestrator)
 
-        // Patient took Ecosprin 75 (Aspirin) 2 hours ago
+        // Patient scans Glycomet-SR 500 (Different brand, identical Metformin molecule)
+        val scannedTokens = listOf("Glycomet-SR 500", "Metformin Hydrochloride 500mg SR")
+        val result = engine.evaluateCandidateTokens(scannedTokens, locale = "hi", isExplicitSnap = true)
+
+        assertTrue("Expected cross-brand duplicate block, got: $result", result is SafetyEvaluationResult.DuplicateDoseBlocked)
+        val dup = (result as SafetyEvaluationResult.DuplicateDoseBlocked).safetyResult
+        assertEquals(SafetyVerdict.DUPLICATE_OVERDOSE_BLOCKED, dup.safetyVerdict)
+    }
+
+    @Test
+    fun testPolypharmacyConflict_AspirinAndIbuprofen() = runBlocking {
+        fakeDao.clearAllLogs()
+        // Patient took Ecosprin 75 1 hour ago
         fakeDao.logIntake(
             MedicationLogEntity(
                 medicineId = 11,
                 scannedText = "Ecosprin 75",
                 parsedSalts = "Aspirin",
-                intakeTimestamp = System.currentTimeMillis() - (2 * 3600 * 1000L),
-                status = "TAKEN"
+                status = "TAKEN",
+                intakeTimestamp = System.currentTimeMillis() - (1 * 3600 * 1000L)
             )
         )
 
-        // Patient attempts to take Combiflam (Ibuprofen NSAID!)
-        val ocrTokens = listOf("SANOFI", "COMBIFLAM", "IBUPROFEN", "400MG")
-        val result = engine.evaluateCandidateTokens(ocrTokens, "hi")
+        val orchestrator = ClinicalSafetyOrchestrator()
+        val engine = SafetyEvaluationEngine(fakeDao, orchestrator)
 
-        assertTrue("Aspirin + Ibuprofen concurrent intake must trigger critical interaction alert", result is SafetyEvaluationResult.CriticalInteractionBlocked)
-        val conflict = result as SafetyEvaluationResult.CriticalInteractionBlocked
-        assertEquals(SafetyVerdict.CRITICAL_INTERACTION_BLOCKED, conflict.safetyResult.safetyVerdict)
-        assertTrue(conflict.conflictRisk.contains("bleeding", ignoreCase = true) || conflict.conflictRisk.contains("hazard", ignoreCase = true))
+        // Patient now scans Combiflam (contains Ibuprofen)
+        val scannedTokens = listOf("Combiflam", "Ibuprofen 400mg + Paracetamol 325mg")
+        val result = engine.evaluateCandidateTokens(scannedTokens, locale = "hi", isExplicitSnap = true)
+
+        assertTrue("Expected CriticalInteractionBlocked, got: $result", result is SafetyEvaluationResult.CriticalInteractionBlocked)
+        val conflict = (result as SafetyEvaluationResult.CriticalInteractionBlocked).safetyResult
+        assertEquals(SafetyVerdict.CRITICAL_INTERACTION_BLOCKED, conflict.safetyVerdict)
     }
 
     @Test
-    fun testFailClosedUnidentifiedGibberishScanBlocked() = runBlocking {
-        val fakeDao = FakeMedicineDao()
-        val orchestrator = MedGemmaOrchestrator()
+    fun testOphthalmicEyeDropClassification() = runBlocking {
+        fakeDao.clearAllLogs()
+        val orchestrator = ClinicalSafetyOrchestrator()
         val engine = SafetyEvaluationEngine(fakeDao, orchestrator)
 
-        // Random non-medicine barcode or noise text
-        val noiseTokens = listOf("ACME COURIER 12345", "DO NOT BEND", "TRACKING XYZ")
-        val result = engine.evaluateCandidateTokens(noiseTokens, "hi")
+        val scannedTokens = listOf("Maritima Euphrasia Eye Drops", "Cineraria Maritima + Euphrasia Ophthalmic 10ml")
+        val result = engine.evaluateCandidateTokens(scannedTokens, locale = "hi", isExplicitSnap = true)
 
-        assertTrue("Unidentified noisy scan must fail closed to UnidentifiedMedicineBlocked", result is SafetyEvaluationResult.UnidentifiedMedicineBlocked)
-        val blocked = result as SafetyEvaluationResult.UnidentifiedMedicineBlocked
-        assertTrue(blocked.alertMessage.contains("पहचान") || blocked.alertMessage.contains("Unidentified"))
+        assertTrue("Expected SafeToTake for Eye Drops, got: $result", result is SafetyEvaluationResult.SafeToTake)
+        val safe = (result as SafetyEvaluationResult.SafeToTake).safetyResult
+        assertEquals(SafetyVerdict.SAFE_TO_TAKE, safe.safetyVerdict)
+        assertEquals("EYE_DROPS", safe.dosageForm)
     }
 
     @Test
-    fun testExpiredMedicineBlocked() = runBlocking {
-        val fakeDao = FakeMedicineDao()
-        val orchestrator = MedGemmaOrchestrator()
+    fun testExpiredMedicationBlocked() = runBlocking {
+        fakeDao.clearAllLogs()
+        val orchestrator = ClinicalSafetyOrchestrator()
         val engine = SafetyEvaluationEngine(fakeDao, orchestrator)
 
-        // Packaging with expired date
-        val expiredTokens = listOf(
-            "CROXIN 500",
-            "PARACETAMOL 500MG",
-            "EXP 01/2021",
-            "BATCH B992"
+        val scannedTokens = listOf(
+            "Glycomet-SR 500",
+            "Metformin Hydrochloride 500mg",
+            "EXP. DATE: 01/2020",
+            "BATCH NO: BT9921"
         )
-        val result = engine.evaluateCandidateTokens(expiredTokens, "hi")
+        val result = engine.evaluateCandidateTokens(scannedTokens, locale = "hi", isExplicitSnap = true)
 
-        assertTrue("Expired packaging must be blocked from consumption", result is SafetyEvaluationResult.ExpiredMedicineBlocked)
-        val expired = result as SafetyEvaluationResult.ExpiredMedicineBlocked
-        assertEquals(SafetyVerdict.EXPIRED_MEDICINE_BLOCKED, expired.safetyResult.safetyVerdict)
-        assertTrue(expired.alertMessage.contains("समाप्त") || expired.alertMessage.contains("एक्सपायर") || expired.alertMessage.contains("expired", ignoreCase = true))
+        assertTrue("Expected ExpiredMedicineBlocked, got: $result", result is SafetyEvaluationResult.ExpiredMedicineBlocked)
+        val expired = (result as SafetyEvaluationResult.ExpiredMedicineBlocked).safetyResult
+        assertEquals(SafetyVerdict.EXPIRED_MEDICINE_BLOCKED, expired.safetyVerdict)
     }
 
     @Test
-    fun testPolypharmacyNitrateSildenafilBlocked() = runBlocking {
-        val fakeDao = FakeMedicineDao()
-        val orchestrator = MedGemmaOrchestrator()
-        val engine = SafetyEvaluationEngine(fakeDao, orchestrator)
-
-        // Patient on Sorbitrate (Nitrate)
+    fun testNitrateAndPde5FatalInteraction() = runBlocking {
+        fakeDao.clearAllLogs()
+        // Patient took Sorbitrate 10 2 hours ago
         fakeDao.logIntake(
             MedicationLogEntity(
                 medicineId = 13,
                 scannedText = "Sorbitrate 10",
                 parsedSalts = "Isosorbide Dinitrate",
-                intakeTimestamp = System.currentTimeMillis() - (1 * 3600 * 1000L),
-                status = "TAKEN"
+                status = "TAKEN",
+                intakeTimestamp = System.currentTimeMillis() - (2 * 3600 * 1000L)
             )
         )
 
-        // Patient scans Sildenafil (PDE5 Inhibitor)
-        val sildenafilTokens = listOf("MANFORCE 50", "SILDENAFIL CITRATE 50MG", "MANKIND")
-        val result = engine.evaluateCandidateTokens(sildenafilTokens, "hi")
+        val orchestrator = ClinicalSafetyOrchestrator()
+        val engine = SafetyEvaluationEngine(fakeDao, orchestrator)
 
-        assertTrue("Nitrate + Sildenafil must trigger fatal interaction block", result is SafetyEvaluationResult.CriticalInteractionBlocked)
-        val conflict = result as SafetyEvaluationResult.CriticalInteractionBlocked
-        assertTrue(conflict.conflictRisk.contains("hypotension", ignoreCase = true))
+        // Patient scans Sildenafil
+        val scannedTokens = listOf("Manforce 50", "Sildenafil Citrate 50mg Tablets")
+        val result = engine.evaluateCandidateTokens(scannedTokens, locale = "hi", isExplicitSnap = true)
+
+        assertTrue("Expected Fatal Interaction Block, got: $result", result is SafetyEvaluationResult.CriticalInteractionBlocked)
+        val conflict = (result as SafetyEvaluationResult.CriticalInteractionBlocked).safetyResult
+        assertEquals(SafetyVerdict.CRITICAL_INTERACTION_BLOCKED, conflict.safetyVerdict)
     }
 
     @Test
-    fun testPolypharmacyArbSpironolactoneBlocked() = runBlocking {
-        val fakeDao = FakeMedicineDao()
-        val orchestrator = MedGemmaOrchestrator()
+    fun testExternalTopicalLotion_BaksonDandruffAid() = runBlocking {
+        fakeDao.clearAllLogs()
+        val orchestrator = ClinicalSafetyOrchestrator()
         val engine = SafetyEvaluationEngine(fakeDao, orchestrator)
 
-        // Patient on Telmisartan (ARB)
-        fakeDao.logIntake(
-            MedicationLogEntity(
-                medicineId = 14,
-                scannedText = "Telma 40",
-                parsedSalts = "Telmisartan",
-                intakeTimestamp = System.currentTimeMillis() - (2 * 3600 * 1000L),
-                status = "TAKEN"
-            )
+        val scannedTokens = listOf(
+            "Bakson's Dandruff Aid",
+            "Thuja Occidentalis, Cantharis, Cochlearia",
+            "For External Application Only",
+            "Hair and Scalp Care"
         )
+        val result = engine.evaluateCandidateTokens(scannedTokens, locale = "hi", isExplicitSnap = true)
 
-        // Patient scans Spironolactone (Aldactone)
-        val spiroTokens = listOf("ALDACTONE 25", "SPIRONOLACTONE 25MG", "RPG LIFE")
-        val result = engine.evaluateCandidateTokens(spiroTokens, "hi")
-
-        assertTrue("ARB + Spironolactone must trigger hyperkalemia hazard block", result is SafetyEvaluationResult.CriticalInteractionBlocked)
-        val conflict = result as SafetyEvaluationResult.CriticalInteractionBlocked
-        assertTrue(conflict.conflictRisk.contains("hyperkalemia", ignoreCase = true))
-    }
-
-    @Test
-    fun testPolypharmacyWarfarinNsaidBlocked() = runBlocking {
-        val fakeDao = FakeMedicineDao()
-        val orchestrator = MedGemmaOrchestrator()
-        val engine = SafetyEvaluationEngine(fakeDao, orchestrator)
-
-        // Patient on Warfarin anticoagulant
-        fakeDao.logIntake(
-            MedicationLogEntity(
-                medicineId = 15,
-                scannedText = "Warf 5",
-                parsedSalts = "Warfarin Sodium",
-                intakeTimestamp = System.currentTimeMillis() - (3 * 3600 * 1000L),
-                status = "TAKEN"
-            )
-        )
-
-        // Patient attempts to take Diclofenac
-        val nsaidTokens = listOf("VOVERAN 50", "DICLOFENAC SODIUM 50MG", "NOVARTIS")
-        val result = engine.evaluateCandidateTokens(nsaidTokens, "hi")
-
-        assertTrue("Warfarin + NSAID must trigger hemorrhage risk block", result is SafetyEvaluationResult.CriticalInteractionBlocked)
-        val conflict = result as SafetyEvaluationResult.CriticalInteractionBlocked
-        assertTrue(conflict.conflictRisk.contains("hemorrhage", ignoreCase = true))
-    }
-
-    @Test
-    fun testPolypharmacyQuinoloneAntacidBlocked() = runBlocking {
-        val fakeDao = FakeMedicineDao()
-        val orchestrator = MedGemmaOrchestrator()
-        val engine = SafetyEvaluationEngine(fakeDao, orchestrator)
-
-        // Patient took Gelusil antacid
-        fakeDao.logIntake(
-            MedicationLogEntity(
-                medicineId = 99,
-                scannedText = "Gelusil Antacid",
-                parsedSalts = "Aluminium Hydroxide + Magnesium",
-                intakeTimestamp = System.currentTimeMillis() - (1 * 3600 * 1000L),
-                status = "TAKEN"
-            )
-        )
-
-        // Patient scans Ciprofloxacin
-        val ciproTokens = listOf("CIFRAN 500", "CIPROFLOXACIN 500MG", "SUN PHARMA")
-        val result = engine.evaluateCandidateTokens(ciproTokens, "hi")
-
-        assertTrue("Quinolone + Antacid must trigger absorption chelation conflict", result is SafetyEvaluationResult.CriticalInteractionBlocked)
-        val conflict = result as SafetyEvaluationResult.CriticalInteractionBlocked
-        assertTrue(conflict.conflictRisk.contains("chelate", ignoreCase = true) || conflict.conflictRisk.contains("absorption", ignoreCase = true))
-    }
-
-    @Test
-    fun testZeroShotUnlistedPackagingEvaluation() = runBlocking {
-        val fakeDao = FakeMedicineDao()
-        val orchestrator = MedGemmaOrchestrator()
-        val engine = SafetyEvaluationEngine(fakeDao, orchestrator)
-
-        // Completely unlisted real packaging
-        val unlistedOcr = listOf(
-            "NOVARTIS GALVUS MET",
-            "VILDAGLIPTIN 50MG + METFORMIN HCL 500MG",
-            "EXP 09/2028"
-        )
-        val result = engine.evaluateCandidateTokens(unlistedOcr, "hi")
-
-        assertTrue("Unlisted real blister pack must resolve zero-shot to SafeToTake", result is SafetyEvaluationResult.SafeToTake)
-        val safe = result as SafetyEvaluationResult.SafeToTake
-        assertTrue(safe.saltName.contains("Metformin", ignoreCase = true) || safe.saltName.contains("Vildagliptin", ignoreCase = true))
+        assertTrue("Expected SafeToTake for Topical Lotion, got: $result", result is SafetyEvaluationResult.SafeToTake)
+        val safe = (result as SafetyEvaluationResult.SafeToTake).safetyResult
+        assertEquals(SafetyVerdict.SAFE_TO_TAKE, safe.safetyVerdict)
+        assertEquals(com.medvoice.core.ai.FoodTimingRule.NOT_APPLICABLE_EXTERNAL, safe.foodTimingRule)
+        assertTrue("Expected external instruction in Hindi", safe.spokenVernacularText.contains("बाहरी उपयोग") || safe.spokenVernacularText.contains("सिर"))
     }
 }

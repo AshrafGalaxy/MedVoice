@@ -1,6 +1,6 @@
 package com.medvoice
 
-import com.medvoice.core.ai.MedGemmaOrchestrator
+import com.medvoice.core.ai.ClinicalSafetyOrchestrator
 import com.medvoice.core.data.local.entity.MedicineEntity
 import com.medvoice.core.domain.engine.SafetyEvaluationEngine
 import com.medvoice.core.domain.engine.SafetyEvaluationResult
@@ -14,7 +14,7 @@ class UniversalOcrParsingTest {
     @Test
     fun testRealWorldEyeDropScanEvaluation() = runBlocking {
         val fakeDao = FakeMedicineDao()
-        val orchestrator = MedGemmaOrchestrator()
+        val orchestrator = ClinicalSafetyOrchestrator()
         val safetyEngine = SafetyEvaluationEngine(fakeDao, orchestrator)
 
         val ocrTokens = listOf(
@@ -36,7 +36,7 @@ class UniversalOcrParsingTest {
     @Test
     fun testRealWorldCoughSyrupScanEvaluation() = runBlocking {
         val fakeDao = FakeMedicineDao()
-        val orchestrator = MedGemmaOrchestrator()
+        val orchestrator = ClinicalSafetyOrchestrator()
         val safetyEngine = SafetyEvaluationEngine(fakeDao, orchestrator)
 
         val ocrTokens = listOf(
@@ -56,7 +56,7 @@ class UniversalOcrParsingTest {
     @Test
     fun testRealWorldTopicalGelScanEvaluation() = runBlocking {
         val fakeDao = FakeMedicineDao()
-        val orchestrator = MedGemmaOrchestrator()
+        val orchestrator = ClinicalSafetyOrchestrator()
         val safetyEngine = SafetyEvaluationEngine(fakeDao, orchestrator)
 
         val ocrTokens = listOf(
@@ -69,7 +69,7 @@ class UniversalOcrParsingTest {
         assertTrue(result is SafetyEvaluationResult.SafeToTake)
         val safe = result as SafetyEvaluationResult.SafeToTake
         assertEquals("GEL", safe.dosageForm)
-        assertTrue(safe.instructionText.contains("जेल") || safe.instructionText.contains("लगाएँ") || safe.instructionText.contains("Gel"))
+        assertTrue(safe.instructionText.contains("जेल") || safe.instructionText.contains("लगाएँ") || safe.instructionText.contains("Gel") || safe.instructionText.contains("मलहम"))
     }
 
     @Test

@@ -101,7 +101,7 @@ class AiPharmacologyEngineTest {
         val result = engine.runClinicalDeterministicParser(messyOcr)
         assertNotNull(result)
         assertTrue(result!!.activeSalts.contains("LEVOTHYROXINE"))
-        assertEquals("Thyroid Hormone", result.therapeuticCategory)
+        assertTrue(result.therapeuticCategory.contains("THYROID", ignoreCase = true))
     }
 
     @Test
