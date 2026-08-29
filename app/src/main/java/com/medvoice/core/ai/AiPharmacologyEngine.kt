@@ -117,6 +117,16 @@ class AiPharmacologyEngine(private val context: Context? = null) {
         "ARNICA MONTANA" to Triple("Homeopathic Botanical", 0.0, "TABLET"),
         "BERBERIS AQUIFOLIUM" to Triple("Homeopathic Botanical", 0.0, "TABLET"),
 
+        // Ayurvedic & Herbal Actives
+        "LIV 52" to Triple("Ayurvedic Hepatoprotective Tonic", 0.0, "TONIC"),
+        "LIV-52" to Triple("Ayurvedic Hepatoprotective Tonic", 0.0, "TONIC"),
+        "LIV52" to Triple("Ayurvedic Hepatoprotective Tonic", 0.0, "TONIC"),
+        "HERBAL" to Triple("Herbal Formulation", 0.0, "TONIC"),
+        "ASHWAGANDHA" to Triple("Ayurvedic Adaptogen", 0.0, "TABLET"),
+        "TULSI" to Triple("Herbal Cough & Immunity Relief", 0.0, "SYRUP"),
+        "NEEM" to Triple("Herbal Antiseptic / Skin Care", 0.0, "TABLET"),
+        "TRIPHALA" to Triple("Ayurvedic Digestive Care", 0.0, "TABLET"),
+
         // Systemic Allopathic Actives
         "METFORMIN" to Triple("Antidiabetic (Sugar Control)", 500.0, "TABLET"),
         "GLIMEPIRIDE" to Triple("Antidiabetic (Sugar Control)", 2.0, "TABLET"),
@@ -144,8 +154,24 @@ class AiPharmacologyEngine(private val context: Context? = null) {
         "OFLOXACIN" to Triple("Quinolone Antibiotic", 200.0, "TABLET"),
         "CETIRIZINE" to Triple("Antihistamine / Allergy", 10.0, "TABLET"),
         "LEVOCETIRIZINE" to Triple("Antihistamine / Allergy", 5.0, "TABLET"),
+        "FEXOFENADINE" to Triple("Antihistamine / Allergy Relief", 120.0, "TABLET"),
+        "BILASTINE" to Triple("Antihistamine / Allergy Relief", 20.0, "TABLET"),
         "MONTELUKAST" to Triple("Antiasthmatic / Antiallergic", 10.0, "TABLET"),
-        "DOMPERIDONE" to Triple("Antiemetic / Nausea Relief", 10.0, "TABLET")
+        "DOMPERIDONE" to Triple("Antiemetic / Nausea Relief", 10.0, "TABLET"),
+        "CLAVULANIC ACID" to Triple("Broad-Spectrum Antibiotic Enhancer", 125.0, "TABLET"),
+        "CLAVULANATE" to Triple("Broad-Spectrum Antibiotic Enhancer", 125.0, "TABLET"),
+        "CLOPIDOGREL" to Triple("Blood Thinner / Antiplatelet", 75.0, "TABLET"),
+        "CHOLECALCIFEROL" to Triple("Vitamin D3 Supplement", 60000.0, "CAPSULE"),
+        "CALCIUM" to Triple("Calcium Supplement", 500.0, "TABLET"),
+        "RAMIPRIL" to Triple("BP / ACE Inhibitor", 5.0, "TABLET"),
+        "METOPROLOL" to Triple("Beta Blocker (BP / Heart Rate)", 50.0, "TABLET"),
+        "PROPRANOLOL" to Triple("Beta Blocker (BP / Migraine)", 40.0, "TABLET"),
+        "FLUCONAZOLE" to Triple("Antifungal Oral", 150.0, "TABLET"),
+        "ITRACONAZOLE" to Triple("Antifungal Oral", 100.0, "CAPSULE"),
+        "TRAMADOL" to Triple("Analgesic Pain Reliever", 50.0, "TABLET"),
+        "PREGABALIN" to Triple("Nerve Pain Reliever", 75.0, "CAPSULE"),
+        "GABAPENTIN" to Triple("Nerve Pain Reliever", 300.0, "TABLET"),
+        "METHYLCOBALAMIN" to Triple("Vitamin B12 Supplement", 1500.0, "TABLET")
     )
 
     private val noisePatterns = listOf(
@@ -153,7 +179,7 @@ class AiPharmacologyEngine(private val context: Context? = null) {
         Regex("""(?i)\b(?:mfg\.?\s*lic|mfd\.?\s*by|marketed\s*by|manufactured\s*by|packed\s*by|imported\s*by|batch\s*no|exp\.?\s*date|mrp|pkd|mfg\s*date|inclusive\s*of\s*all\s*taxes)\b.*"""),
         Regex("""(?i)\b(?:for\s*external\s*use\s*only|ophthalmic\s*use|sterile|homoeopathic\s*medicine|ayurvedic\s*medicine|schedule\s+[hghx]|schedule\s+h1)\b.*"""),
         Regex("""(?i)\b(?:net\s*vol|net\s*wt|net\s*qty|pack\s*of|quantity|quality\s*assured|dosage|direction\s*for\s*use|composition|each\s*ml\s*contains|each\s*tablet\s*contains|each\s*capsule\s*contains|each\s*film\s*coated|each\s*uncoated)\b.*"""),
-        Regex("""(?i)\b(?:ip|bp|usp|ph\.?\s*eur|ltd\.?|pvt\.?|pharmaceuticals|laboratories|healthcare|remedies)\b""")
+        Regex("""(?i)\b(?:ip|bp|usp|ph\.?\s*eur|ltd\.?|pvt\.?|pharmaceuticals|laboratories|healthcare|remedies|cipla|sun\s+pharma|torrent|alkem|lupin|abbott|mankind|zydus|intas|aristo)\b""")
     )
 
     fun containsPharmaceuticalMarkers(text: String): Boolean {
@@ -216,26 +242,35 @@ class AiPharmacologyEngine(private val context: Context? = null) {
         try {
             val base64Image = ImagePreprocessingEngine.toBase64Jpeg(bitmap, maxDimension = 1024, quality = 80)
             val systemPrompt = """
-                You are a strict clinical medicine label vision analyzer.
-                Analyze the provided medicine packaging photo and OCR text.
-                Return ONLY valid JSON matching this schema:
+                You are a senior clinical pharmacist and medical OCR label parser.
+                Analyze the medicine packaging photo and OCR text to extract clean clinical facts.
+
+                RULES:
+                1. "brand_name": Extract ONLY the proprietary commercial trade brand (e.g. "Dolo 650", "Augmentin 625 Duo", "Glycomet-SR 500", "Allegra 120", "Volini Gel", "Otrivin", "Bakson's Dandruff Aid", "Candid-B"). Do NOT include company names (Cipla, Sun Pharma) or legal words.
+                2. "active_salts": Extract clean active chemical/botanical molecules without salt tails or excipients (e.g. ["Amoxicillin", "Clavulanic Acid"], ["Paracetamol"], ["Ketoconazole", "Zinc Pyrithione"]).
+                3. "strength_mg": Primary active ingredient strength in mg or %.
+                4. "dosage_form": One of ["TABLET", "CAPSULE", "SYRUP", "EYE_DROPS", "EAR_DROPS", "NASAL_SPRAY", "INHALER", "OINTMENT", "GEL", "TOPICAL_LOTION", "SHAMPOO", "INJECTION"].
+                5. "route_of_administration": One of ["ORAL", "OPHTHALMIC", "OTIC", "NASAL", "RESPIRATORY", "EXTERNAL_TOPICAL"].
+                6. "therapeutic_class": Specific clinical category (e.g. "Analgesic & Antipyretic", "Broad-Spectrum Antibiotic", "Antidiabetic", "Antiseborrheic Scalp Care").
+                7. If the image is a cosmetic non-drug (e.g. plain face wash, moisturizer, perfume), return {"is_medicine": false, "confidence_score": 0.0}.
+
+                Return ONLY valid JSON:
                 {
                   "is_medicine": true,
                   "confidence_score": 0.98,
-                  "brand_name": "Exact Brand Name (e.g. Bakson's Dandruff Aid, Dolo 650)",
-                  "active_salts": ["Active Ingredient 1", "Active Ingredient 2"],
+                  "brand_name": "...",
+                  "active_salts": ["..."],
                   "strength_mg": 0.0,
-                  "dosage_form": "TOPICAL_LOTION | TABLET | CAPSULE | SYRUP | OINTMENT | GEL | EYE_DROPS | SHAMPOO | INHALER",
-                  "route_of_administration": "EXTERNAL_TOPICAL | ORAL | OPHTHALMIC | NASAL",
-                  "therapeutic_class": "Therapeutic Class (e.g. Anti-Dandruff Scalp Care, Analgesic)"
+                  "dosage_form": "...",
+                  "route_of_administration": "...",
+                  "therapeutic_class": "..."
                 }
-                If the image is NOT medicine packaging, return {"is_medicine": false, "confidence_score": 0.0}.
             """.trimIndent()
 
             val contentArray = JSONArray().apply {
                 put(JSONObject().apply {
                     put("type", "text")
-                    put("text", "Identify this medicine packaging. Additional OCR text: $rawOcrText")
+                    put("text", "Extract clinical medicine information from this photo and OCR text:\n$rawOcrText")
                 })
                 put(JSONObject().apply {
                     put("type", "image_url")
@@ -335,20 +370,29 @@ class AiPharmacologyEngine(private val context: Context? = null) {
     private suspend fun runCloudMedGemma(text: String): ExtractedMedicineComposition? = withContext(Dispatchers.IO) {
         try {
             val systemPrompt = """
-                You are a strict clinical pharmacology verification system.
-                Analyze the scanned OCR text from medicine packaging.
-                If authentic medicine, return JSON:
+                You are a senior clinical pharmacist and medical OCR label parser.
+                Analyze the scanned packaging OCR text to extract authentic clinical details.
+
+                RULES:
+                1. "brand_name": Extract ONLY the proprietary commercial trade brand (e.g. "Dolo 650", "Augmentin 625 Duo", "Glycomet-SR 500", "Allegra 120", "Volini Gel", "Otrivin", "Bakson's Dandruff Aid", "Candid-B"). Do NOT include company names (Cipla, Sun Pharma) or legal words.
+                2. "active_salts": Extract clean active chemical/botanical molecules without salt tails or excipients (e.g. ["Amoxicillin", "Clavulanic Acid"], ["Paracetamol"], ["Ketoconazole", "Zinc Pyrithione"]).
+                3. "strength_mg": Primary active ingredient strength in mg or %.
+                4. "dosage_form": One of ["TABLET", "CAPSULE", "SYRUP", "EYE_DROPS", "EAR_DROPS", "NASAL_SPRAY", "INHALER", "OINTMENT", "GEL", "TOPICAL_LOTION", "SHAMPOO", "INJECTION"].
+                5. "route_of_administration": One of ["ORAL", "OPHTHALMIC", "OTIC", "NASAL", "RESPIRATORY", "EXTERNAL_TOPICAL"].
+                6. "therapeutic_class": Specific clinical category (e.g. "Analgesic & Antipyretic", "Broad-Spectrum Antibiotic", "Antidiabetic", "Antiseborrheic Scalp Care").
+                7. If the text represents a non-medicine cosmetic item, return {"is_medicine": false, "confidence_score": 0.0}.
+
+                Return ONLY valid JSON:
                 {
                   "is_medicine": true,
-                  "confidence_score": 0.96,
-                  "brand_name": "Exact Brand Name",
-                  "active_salts": ["Active Salt 1", "Active Salt 2"],
+                  "confidence_score": 0.98,
+                  "brand_name": "...",
+                  "active_salts": ["..."],
                   "strength_mg": 500.0,
-                  "dosage_form": "TOPICAL_LOTION | TABLET | CAPSULE | SYRUP | OINTMENT | GEL | EYE_DROPS | SHAMPOO | INHALER",
-                  "route_of_administration": "EXTERNAL_TOPICAL | ORAL | OPHTHALMIC",
-                  "therapeutic_class": "Therapeutic Class"
+                  "dosage_form": "...",
+                  "route_of_administration": "...",
+                  "therapeutic_class": "..."
                 }
-                Otherwise return {"is_medicine": false, "confidence_score": 0.0}
             """.trimIndent()
 
             val requestJson = JSONObject().apply {
@@ -551,7 +595,14 @@ class AiPharmacologyEngine(private val context: Context? = null) {
             return null
         }
 
-        // 4. Extract Clean Brand Name with Prefix Stripping
+        // 4. Extract Clean Brand Name with Robust Noise Stripping
+        val nonBrandKeywords = listOf(
+            "COMPOSITION", "EACH FILM COATED", "EACH UNCOATED", "EACH TABLET", "EACH CAPSULE", "EACH ML",
+            "FOR EXTERNAL USE", "FOR ORAL USE", "PRESCRIPTION DRUG", "SCHEDULE H", "SCHEDULE H1", "SCHEDULE G",
+            "WARNING", "CAUTION", "DOSAGE", "DIRECTIONS", "STORAGE", "MANUFACTURED", "MARKETED",
+            "BATCH", "EXPIRY", "MFG", "STORE BELOW", "PROTECT FROM"
+        )
+
         val cleanCandidateLines = rawLines.map { line ->
             var cleaned = line
             for (noise in noisePatterns) {
@@ -560,14 +611,27 @@ class AiPharmacologyEngine(private val context: Context? = null) {
             // Strip leading quantities, packaging numbers, "10x10", "Pack of 10", "Net Qty: 10 Tablets", etc.
             cleaned = cleaned.replace(Regex("""^(?:\d+\s*x\s*\d+|\d+\s*tablets?|\d+\s*capsules?|\d+\s*ml|\d+\s*gm|net\s*qty[:.]?|qty[:.]?|pack\s*of\s*\d+|quality\s*assured)\s*""", RegexOption.IGNORE_CASE), "").trim()
             cleaned
-        }.filter { it.length >= 3 && !it.startsWith("₹") && !it.matches(Regex("""^\d+$""")) }
+        }.filter { line ->
+            val upper = line.uppercase(Locale.ROOT)
+            line.length >= 3 && !line.startsWith("₹") && !line.matches(Regex("""^\d+$""")) &&
+                    nonBrandKeywords.none { upper.startsWith(it) || upper == it }
+        }
 
         val firstCleanLine = cleanCandidateLines.firstOrNull() ?: rawLines.first()
         val brandWords = firstCleanLine.split(Regex("""[\s,/\-]+""")).filter { it.length >= 2 }
-        val brandName = brandWords.take(4).joinToString(" ")
+        var rawBrand = brandWords.take(4).joinToString(" ")
 
-        val finalBrand = if (brandName.isNotBlank() && !brandName.equals("Composition", ignoreCase = true) && !brandName.equals("Tablets", ignoreCase = true)) {
-            brandName
+        // Strip trailing repetitive pharmaceutical keywords like "Tablets IP", "Capsules IP", etc.
+        rawBrand = rawBrand.replace(Regex("""(?i)\s+(?:tablets?|capsules?|suspension|syrup)\s+(?:i\.?p\.?|b\.?p\.?|u\.?s\.?p\.?)$"""), "").trim()
+        rawBrand = rawBrand.replace(Regex("""(?i)\s+(?:i\.?p\.?|b\.?p\.?|u\.?s\.?p\.?)$"""), "").trim()
+
+        val finalBrand = if (rawBrand.isNotBlank() &&
+            !rawBrand.equals("Composition", ignoreCase = true) &&
+            !rawBrand.equals("Tablets", ignoreCase = true) &&
+            !rawBrand.equals("Capsules", ignoreCase = true) &&
+            !rawBrand.equals("Syrup", ignoreCase = true)
+        ) {
+            rawBrand
         } else (detectedSalts.firstOrNull() ?: "Scanned Medicine")
 
         val instructions = generateVernacularGuidance(detectedForm)

@@ -57,6 +57,26 @@ object FuzzySaltMatcher {
         "XYLOMETAZOLINE" to MatchedCompound("Xylometazoline", "NASAL_DECONGESTANT"),
         "SALBUTAMOL" to MatchedCompound("Salbutamol", "BRONCHODILATOR"),
         "BUDESONIDE" to MatchedCompound("Budesonide", "CORTICOSTEROID"),
+        "CLAVULANIC ACID" to MatchedCompound("Clavulanic Acid", "BETA_LACTAMASE_INHIBITOR"),
+        "CLAVULANATE" to MatchedCompound("Clavulanic Acid", "BETA_LACTAMASE_INHIBITOR"),
+        "FEXOFENADINE" to MatchedCompound("Fexofenadine", "ANTIHISTAMINE"),
+        "BILASTINE" to MatchedCompound("Bilastine", "ANTIHISTAMINE"),
+        "CHOLECALCIFEROL" to MatchedCompound("Cholecalciferol (Vitamin D3)", "VITAMIN_SUPPLEMENT"),
+        "CALCIUM" to MatchedCompound("Calcium Carbonate", "MINERAL_SUPPLEMENT"),
+        "CLOPIDOGREL" to MatchedCompound("Clopidogrel", "ANTIPLATELET"),
+        "RAMIPRIL" to MatchedCompound("Ramipril", "ANTIHYPERTENSIVE"),
+        "METOPROLOL" to MatchedCompound("Metoprolol", "ANTIHYPERTENSIVE"),
+        "PROPRANOLOL" to MatchedCompound("Propranolol", "ANTIHYPERTENSIVE"),
+        "FLUCONAZOLE" to MatchedCompound("Fluconazole", "ANTIFUNGAL"),
+        "ITRACONAZOLE" to MatchedCompound("Itraconazole", "ANTIFUNGAL"),
+        "TRAMADOL" to MatchedCompound("Tramadol", "OPIOID_ANALGESIC"),
+        "PREGABALIN" to MatchedCompound("Pregabalin", "NEUROPATHIC_ANALGESIC"),
+        "GABAPENTIN" to MatchedCompound("Gabapentin", "NEUROPATHIC_ANALGESIC"),
+        "ALPRAZOLAM" to MatchedCompound("Alprazolam", "ANXIOLYTIC"),
+        "CLONAZEPAM" to MatchedCompound("Clonazepam", "ANXIOLYTIC"),
+        "METHYLCOBALAMIN" to MatchedCompound("Methylcobalamin (Vitamin B12)", "VITAMIN_SUPPLEMENT"),
+        "CYANOCOBALAMIN" to MatchedCompound("Vitamin B12", "VITAMIN_SUPPLEMENT"),
+        "FOLIC ACID" to MatchedCompound("Folic Acid (Vitamin B9)", "VITAMIN_SUPPLEMENT"),
 
         // Dermatology, Antifungal & Wound Care Compounds
         "KETOCONAZOLE" to MatchedCompound("Ketoconazole", "ANTIFUNGAL"),
@@ -85,10 +105,19 @@ object FuzzySaltMatcher {
         "CALENDULA OFFICINALIS" to MatchedCompound("Calendula Officinalis", "HOMEOPATHIC_BOTANICAL"),
         "CALENDULA" to MatchedCompound("Calendula Officinalis", "HOMEOPATHIC_BOTANICAL"),
         "CINERARIA MARITIMA" to MatchedCompound("Cineraria Maritima", "HOMEOPATHIC_BOTANICAL"),
-        "CINERARIA" to MatchedCompound("Cineraria Maritima", "HOMEOPATHIC_BOTANICAL"),
         "EUPHRASIA" to MatchedCompound("Euphrasia Officinalis", "HOMEOPATHIC_BOTANICAL"),
         "BERBERIS AQUIFOLIUM" to MatchedCompound("Berberis Aquifolium", "HOMEOPATHIC_BOTANICAL"),
-        "BERBERIS" to MatchedCompound("Berberis Aquifolium", "HOMEOPATHIC_BOTANICAL")
+        "BERBERIS" to MatchedCompound("Berberis Aquifolium", "HOMEOPATHIC_BOTANICAL"),
+
+        // Ayurvedic & Herbal Active Formulations
+        "LIV 52" to MatchedCompound("Liv 52 Herbal Formulation", "AYURVEDIC_BOTANICAL"),
+        "LIV-52" to MatchedCompound("Liv 52 Herbal Formulation", "AYURVEDIC_BOTANICAL"),
+        "LIV52" to MatchedCompound("Liv 52 Herbal Formulation", "AYURVEDIC_BOTANICAL"),
+        "HERBAL" to MatchedCompound("Herbal Active Compound", "AYURVEDIC_BOTANICAL"),
+        "ASHWAGANDHA" to MatchedCompound("Ashwagandha", "AYURVEDIC_BOTANICAL"),
+        "TULSI" to MatchedCompound("Tulsi", "AYURVEDIC_BOTANICAL"),
+        "NEEM" to MatchedCompound("Neem Extract", "AYURVEDIC_BOTANICAL"),
+        "TRIPHALA" to MatchedCompound("Triphala", "AYURVEDIC_BOTANICAL")
     )
 
     /**

@@ -966,7 +966,7 @@ private fun FullClinicalResultScreen(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Primary Action Button: Confirm Dose Taken (54dp height, full width)
+                // Primary Action Button: Confirm Dose Taken (Sleek 48dp height, matching secondary row)
                 Button(
                     onClick = {
                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
@@ -974,28 +974,28 @@ private fun FullClinicalResultScreen(
                     },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(54.dp),
+                        .height(48.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = SafeGreen),
-                    shape = RoundedCornerShape(14.dp)
+                    shape = RoundedCornerShape(12.dp)
                 ) {
                     Icon(
                         imageVector = Icons.Default.CheckCircle,
                         contentDescription = null,
                         tint = TextWhite,
-                        modifier = Modifier.size(22.dp)
+                        modifier = Modifier.size(18.dp)
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
                         text = if (locale == "hi") "दवा ले ली (Confirm Taken)" else "Confirm Dose Taken",
                         color = TextWhite,
-                        fontSize = 16.sp,
+                        fontSize = 14.5.sp,
                         fontWeight = FontWeight.Bold
                     )
                 }
 
                 Spacer(modifier = Modifier.height(10.dp))
 
-                // Secondary Action Row (Balanced 50dp buttons with consistent typography)
+                // Secondary Action Row (Balanced 48dp buttons with consistent typography)
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(10.dp)
@@ -1014,12 +1014,12 @@ private fun FullClinicalResultScreen(
                         },
                         modifier = Modifier
                             .weight(1f)
-                            .height(50.dp),
+                            .height(48.dp),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = if (isAddedToCabinet) SafeGreen.copy(alpha = 0.25f) else SurfaceCardDark
                         ),
                         border = BorderStroke(1.dp, if (isAddedToCabinet) SafeGreen else AccentBorder),
-                        shape = RoundedCornerShape(14.dp)
+                        shape = RoundedCornerShape(12.dp)
                     ) {
                         Icon(
                             imageVector = if (isAddedToCabinet) Icons.Default.Check else Icons.Default.Bookmark,
@@ -1035,8 +1035,8 @@ private fun FullClinicalResultScreen(
                                 if (locale == "hi") "पेटी में जोड़ें" else "Save to Cabinet"
                             },
                             color = if (isAddedToCabinet) SafeGreen else TextWhite,
-                            fontSize = 13.5.sp,
-                            fontWeight = FontWeight.Bold,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.SemiBold,
                             maxLines = 1
                         )
                     }
@@ -1049,10 +1049,10 @@ private fun FullClinicalResultScreen(
                         },
                         modifier = Modifier
                             .weight(1f)
-                            .height(50.dp),
+                            .height(48.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = SurfaceCardDark),
                         border = BorderStroke(1.dp, AccentBorder),
-                        shape = RoundedCornerShape(14.dp)
+                        shape = RoundedCornerShape(12.dp)
                     ) {
                         Icon(
                             imageVector = Icons.Default.CameraAlt,
@@ -1064,8 +1064,8 @@ private fun FullClinicalResultScreen(
                         Text(
                             text = if (locale == "hi") "अगली दवा" else "Scan Next",
                             color = TextWhite,
-                            fontSize = 13.5.sp,
-                            fontWeight = FontWeight.Bold,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.SemiBold,
                             maxLines = 1
                         )
                     }
@@ -1434,130 +1434,143 @@ private fun FullClinicalResultScreen(
         }
 
         is ScanUiState.AnalyzingSnap -> {
-            Column(
+            Box(
                 modifier = modifier
                     .fillMaxSize()
                     .background(BackgroundCharcoal)
-                    .padding(24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
             ) {
-                // Outer Pulse Container
-                Box(
-                    modifier = Modifier
-                        .size(100.dp)
-                        .background(SafeGreen.copy(alpha = 0.12f), CircleShape),
-                    contentAlignment = Alignment.Center
-                ) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(60.dp),
-                        color = SafeGreen,
-                        strokeWidth = 4.dp
-                    )
-                    Icon(
-                        imageVector = Icons.Default.CameraAlt,
-                        contentDescription = null,
-                        tint = SafeGreen,
-                        modifier = Modifier.size(28.dp)
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(24.dp))
-
-                Text(
-                    text = uiState.stageMessage,
-                    style = MaterialTheme.typography.titleLarge.copy(
-                        color = TextWhite,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 18.sp
-                    ),
-                    textAlign = TextAlign.Center
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                Text(
-                    text = if (locale == "hi") "हाई-रेजोल्यूशन क्लिनिकल विश्लेषण जारी है..." else "Edge Clinical Safety Matrix & OCR in progress...",
-                    style = MaterialTheme.typography.bodyMedium.copy(
-                        color = ReticleCyan,
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Medium
-                    ),
-                    textAlign = TextAlign.Center
-                )
-
-                Spacer(modifier = Modifier.height(28.dp))
-
-                // Clinical Pipeline Status Tags
+                // Centered Processing Animation & Status Tags
                 Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Surface(
-                        color = SurfaceCardDark,
-                        shape = RoundedCornerShape(10.dp),
-                        border = BorderStroke(1.dp, AccentBorder)
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(text = "⚡", fontSize = 14.sp)
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = if (locale == "hi") "स्थानीय SQLite FTS5 औषध विज्ञान इंजन" else "Local SQLite FTS5 Pharmacology Engine",
-                                color = TextWhite,
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.SemiBold
-                            )
-                        }
-                    }
-
-                    Surface(
-                        color = SurfaceCardDark,
-                        shape = RoundedCornerShape(10.dp),
-                        border = BorderStroke(1.dp, AccentBorder)
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(text = "🛡️", fontSize = 14.sp)
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = if (locale == "hi") "ओवरडोज एवं परस्परविरोध सुरक्षा जांच" else "Overdose & Contraindication Guard",
-                                color = TextWhite,
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.SemiBold
-                            )
-                        }
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(36.dp))
-
-                // Cancel Button
-                Button(
-                    onClick = {
-                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                        viewModel.resetScanner()
-                    },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(48.dp),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = SurfaceCardDark),
-                    border = BorderStroke(1.dp, AccentBorder)
+                        .align(Alignment.Center)
+                        .padding(horizontal = 24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
                 ) {
-                    Icon(imageVector = Icons.Default.Close, contentDescription = null, tint = TextMuted, modifier = Modifier.size(16.dp))
-                    Spacer(modifier = Modifier.width(6.dp))
+                    // Outer Pulse Container
+                    Box(
+                        modifier = Modifier
+                            .size(100.dp)
+                            .background(SafeGreen.copy(alpha = 0.12f), CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(60.dp),
+                            color = SafeGreen,
+                            strokeWidth = 4.dp
+                        )
+                        Icon(
+                            imageVector = Icons.Default.CameraAlt,
+                            contentDescription = null,
+                            tint = SafeGreen,
+                            modifier = Modifier.size(28.dp)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(24.dp))
+
                     Text(
-                        text = if (locale == "hi") "रद्द करें (Cancel)" else "Cancel Scan",
-                        color = TextWhite,
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.SemiBold
+                        text = uiState.stageMessage,
+                        style = MaterialTheme.typography.titleLarge.copy(
+                            color = TextWhite,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 18.sp
+                        ),
+                        textAlign = TextAlign.Center
                     )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Text(
+                        text = if (locale == "hi") "हाई-रेजोल्यूशन क्लिनिकल विश्लेषण जारी है..." else "Edge Clinical Safety Matrix & OCR in progress...",
+                        style = MaterialTheme.typography.bodyMedium.copy(
+                            color = ReticleCyan,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Medium
+                        ),
+                        textAlign = TextAlign.Center
+                    )
+
+                    Spacer(modifier = Modifier.height(28.dp))
+
+                    // Clinical Pipeline Status Tags
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Surface(
+                            color = SurfaceCardDark,
+                            shape = RoundedCornerShape(10.dp),
+                            border = BorderStroke(1.dp, AccentBorder)
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(text = "⚡", fontSize = 14.sp)
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = if (locale == "hi") "स्थानीय SQLite FTS5 औषध विज्ञान इंजन" else "Local SQLite FTS5 Pharmacology Engine",
+                                    color = TextWhite,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            }
+                        }
+
+                        Surface(
+                            color = SurfaceCardDark,
+                            shape = RoundedCornerShape(10.dp),
+                            border = BorderStroke(1.dp, AccentBorder)
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(text = "🛡️", fontSize = 14.sp)
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = if (locale == "hi") "ओवरडोज एवं परस्परविरोध सुरक्षा जांच" else "Overdose & Contraindication Guard",
+                                    color = TextWhite,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // Anchored Bottom Cancel Action (Exact position where the scan button was)
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .align(Alignment.BottomCenter)
+                        .padding(horizontal = 20.dp, vertical = 24.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Button(
+                        onClick = {
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            viewModel.resetScanner()
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(48.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = SurfaceCardDark),
+                        border = BorderStroke(1.dp, AccentBorder)
+                    ) {
+                        Icon(imageVector = Icons.Default.Close, contentDescription = null, tint = TextMuted, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = if (locale == "hi") "रद्द करें (Cancel Scan)" else "Cancel Scan",
+                            color = TextWhite,
+                            fontSize = 14.5.sp,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
                 }
             }
         }
