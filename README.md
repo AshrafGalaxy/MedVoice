@@ -124,6 +124,35 @@ MedVoice/
 └── AGENTS.md                                   # Autonomous agent system rules & directives
 ```
 
+## 📱 Step-by-Step User & Evaluator Guide
+
+```
++---------------------------------------------------------------------------------------------------------+
+|                                      2-MINUTE EVALUATION WORKFLOW                                        |
++---------------------------------------------------------------------------------------------------------+
+| STEP 1: SCAN A MEDICINE                                                                                  |
+|   • Open the Scan tab. Align the camera viewfinder over any medicine blister pack, bottle, or syrup.     |
+|   • Tap the shutter button. The multimodal visual engine instantly parses the active chemical salt,      |
+|     brand name, dosage form, and food/temporal intake rules.                                             |
+|                                                                                                         |
+| STEP 2: LISTEN TO VERNACULAR SPOKEN INSTRUCTIONS                                                         |
+|   • Natural Indian voice (Hindi / Marathi / English) announces instructions aloud.                       |
+|   • Tap "Confirm Dose Taken" (or confirm hands-free via voice: "Yes" / "हाँ ले ली").                     |
+|                                                                                                         |
+| STEP 3: TEST THE ACTIVE DUPLICATE SAFETY TRAP                                                           |
+|   • Scan the same medicine again immediately.                                                            |
+|   • 🚨 DUPLICATE DOSE BLOCKED: Screen triggers a high-contrast red warning, announces the risk aloud,   |
+|     and dispatches an emergency cellular SMS alert to the caregiver.                                    |
+|                                                                                                         |
+| STEP 4: MONITOR ADHERENCE IN CAREGIVER AUDIT TRAIL                                                       |
+|   • Switch to the Caregiver tab to review daily compliance timelines, trapped duplicate warnings, and   |
+|     export a 1-tap clinical report for doctors.                                                          |
+|                                                                                                         |
+| STEP 5: DIGITAL TEST PACK                                                                               |
+|   • Point your phone at the digital sample cards in DEMO_TEST_PACK.md directly from your laptop screen!  |
++---------------------------------------------------------------------------------------------------------+
+```
+
 ---
 
 ## 🛠️ Tech Stack
