@@ -37,7 +37,10 @@ data class MedGemmaSafetyResult(
     val confidenceScore: Float = 1.0f
 )
 
-class MedGemmaOrchestrator(private val context: Context? = null) {
+class MedGemmaOrchestrator(
+    private val context: Context? = null,
+    val aiPharmacologyEngine: AiPharmacologyEngine = AiPharmacologyEngine(context)
+) {
 
     var activeTier: AiEngineTier = AiEngineTier.ON_DEVICE_MEDGEMMA_INT4
 
@@ -90,24 +93,21 @@ class MedGemmaOrchestrator(private val context: Context? = null) {
     /**
      * Deterministic Zero-Shot On-Device Pharmacology Engine
      */
-    private fun executeEdgeClinicalReasoning(
+    private suspend fun executeEdgeClinicalReasoning(
         scannedText: String,
         matchedMedicine: MedicineEntity?,
         recentLogs: List<MedicationLogEntity>,
         isHindi: Boolean
     ): MedGemmaSafetyResult {
         val upperText = scannedText.uppercase(Locale.ROOT)
-        val rawComposition = matchedMedicine?.rawComposition ?: scannedText
-        val parsedSalts = extractChemicalSalts(rawComposition)
+        
+        // If it's an unrecognized medicine, try to parse it with the AiPharmacologyEngine (Hybrid Cloud/Local)
+        val extractedComposition = if (matchedMedicine == null) {
+            aiPharmacologyEngine.parsePrescriptionText(scannedText)
+        } else null
 
-        // 1. Fail-Closed Confidence Guard (<80% or unlisted gibberish/noise)
-        val isRecognizedBrand = matchedMedicine != null
-        val hasRecognizedSalt = parsedSalts.any { it != "Active Molecule Formulation" }
-        val hasFormKeywords = upperText.contains("TABLET") || upperText.contains("CAPSULE") ||
-                upperText.contains("DROP") || upperText.contains("SYRUP") ||
-                upperText.contains("GEL") || upperText.contains("MG") || upperText.contains("ML")
-
-        if (!isRecognizedBrand && !hasRecognizedSalt && !hasFormKeywords) {
+        // 1. Fail-Closed Confidence Guard: If neither DB match nor high-confidence AI extraction succeeded
+        if (matchedMedicine == null && extractedComposition == null) {
             val spokenText = if (isHindi) {
                 "सावधान! दवा की पहचान स्पष्ट नहीं हो सकी। सुरक्षा के लिए यह दवा न लें और पट्टी को दोबारा स्पष्ट रूप से स्कैन करें।"
             } else {
@@ -120,13 +120,44 @@ class MedGemmaOrchestrator(private val context: Context? = null) {
             }
 
             return MedGemmaSafetyResult(
-                brandName = "Unidentified Item",
+                brandName = "Unidentified Medicine",
                 parsedSalts = listOf("Unknown Formulation"),
                 therapeuticClass = "UNIDENTIFIED",
                 safetyVerdict = SafetyVerdict.UNIDENTIFIED_MEDICINE_BLOCKED,
                 clinicalReason = "Confidence < 80%. Scanned text matches no recognized pharmaceutical catalog entry or active chemical salt.",
                 foodTimingRule = FoodTimingRule.AFTER_FOOD,
-                isEmergencyAlert = true,
+                isEmergencyAlert = false,
+                spokenVernacularText = spokenText,
+                displayTitle = displayTitle,
+                dosageForm = "UNKNOWN",
+                confidenceScore = 0.0f
+            )
+        }
+
+        val rawComposition = matchedMedicine?.rawComposition ?: extractedComposition?.activeSalts?.joinToString(", ") ?: scannedText
+        val parsedSalts = matchedMedicine?.let { extractChemicalSalts(it.rawComposition) } ?: extractedComposition?.activeSalts ?: extractChemicalSalts(scannedText)
+
+        val isRecognizedBrand = matchedMedicine != null || (extractedComposition != null && extractedComposition.confidenceScore >= 0.8f)
+        if (!isRecognizedBrand) {
+            val spokenText = if (isHindi) {
+                "सावधान! दवा की पहचान स्पष्ट नहीं हो सकी। सुरक्षा के लिए यह दवा न लें और पट्टी को दोबारा स्पष्ट रूप से स्कैन करें।"
+            } else {
+                "Warning! Unidentified medicine formulation. For your safety, do not consume this drug. Please scan the label clearly again."
+            }
+            val displayTitle = if (isHindi) {
+                "पहचान में असमर्थ (Unidentified Medicine)"
+            } else {
+                "Unidentified Medicine Blocked"
+            }
+
+            return MedGemmaSafetyResult(
+                brandName = "Unidentified Medicine",
+                parsedSalts = listOf("Unknown Formulation"),
+                therapeuticClass = "UNIDENTIFIED",
+                safetyVerdict = SafetyVerdict.UNIDENTIFIED_MEDICINE_BLOCKED,
+                clinicalReason = "Confidence < 80%. Scanned text matches no recognized pharmaceutical catalog entry or active chemical salt.",
+                foodTimingRule = FoodTimingRule.AFTER_FOOD,
+                isEmergencyAlert = false,
                 spokenVernacularText = spokenText,
                 displayTitle = displayTitle,
                 dosageForm = "UNKNOWN",
@@ -134,14 +165,17 @@ class MedGemmaOrchestrator(private val context: Context? = null) {
             )
         }
 
-        val brandName = matchedMedicine?.brandName ?: run {
-            val firstLine = scannedText.lines().firstOrNull { it.trim().length > 3 }?.trim() ?: "Scanned Medicine"
-            firstLine.split(" ").take(3).joinToString(" ")
-        }
+        val brandName = extractedComposition?.brandName?.takeIf { it.isNotBlank() && it != "Scanned Medicine" }
+            ?: matchedMedicine?.brandName
+            ?: run {
+                val firstLine = scannedText.lines().firstOrNull { it.trim().length > 3 }?.trim() ?: "Scanned Medicine"
+                firstLine.split(" ").take(3).joinToString(" ")
+            }
 
         // 2. Classify Dosage Form
         val dosageForm = when {
             matchedMedicine != null -> matchedMedicine.dosageForm
+            extractedComposition != null -> extractedComposition.dosageForm
             upperText.contains("EYE DROP") || upperText.contains("OPHTHALMIC") || upperText.contains("DROPS") -> "EYE_DROPS"
             upperText.contains("EAR DROP") -> "EAR_DROPS"
             upperText.contains("NASAL") || upperText.contains("SPRAY") -> "NASAL_SPRAY"
@@ -153,7 +187,7 @@ class MedGemmaOrchestrator(private val context: Context? = null) {
         }
 
         // 3. Classify Therapeutic Class
-        val therapeuticClass = classifyTherapeuticClass(parsedSalts, upperText)
+        val therapeuticClass = extractedComposition?.therapeuticCategory ?: classifyTherapeuticClass(parsedSalts, upperText)
 
         // 4. Determine Food Timing Rule
         val foodTimingRule = determineFoodTiming(parsedSalts, therapeuticClass, upperText)

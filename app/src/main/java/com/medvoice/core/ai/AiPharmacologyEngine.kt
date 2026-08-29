@@ -32,9 +32,20 @@ class AiPharmacologyEngine(private val context: Context? = null) {
 
     var activeTier: AiEngineTier = AiEngineTier.ON_DEVICE_MEDGEMMA_INT4
     var cloudMedGemmaApiKey: String = ""
-    var cloudEndpointUrl: String = "https://api.openai.com/v1/chat/completions"
-    var cloudModelName: String = "google/medgemma-2b-int4"
+    var cloudModelName: String = "gemini-1.5-flash"
     var allowCloudPrivacyEgress: Boolean = true
+
+    init {
+        // Auto-detect capable tier on initialization
+        if (context != null) {
+            activeTier = if (com.medvoice.core.device.HardwareCapabilities.isLocalSlmCapable(context)) {
+                AiEngineTier.ON_DEVICE_MEDGEMMA_INT4
+            } else {
+                AiEngineTier.CLOUD_MEDGEMMA_HOSTED
+            }
+            Log.d("AiPharmacologyEngine", "Hardware auto-detected AiEngineTier: $activeTier")
+        }
+    }
 
     // Comprehensive Indian Pharmacopeia Known Chemical & Botanical Dictionary for On-Device Clinical Tokenizer
     private val knownChemicalDictionary = mapOf(
@@ -47,6 +58,8 @@ class AiPharmacologyEngine(private val context: Context? = null) {
         "TOBRAMYCIN" to Triple("Ophthalmic Antibiotic", 0.3, "EYE_DROPS"),
         "TIMOLOL" to Triple("Glaucoma Eye Drops", 0.5, "EYE_DROPS"),
         "OLOPATADINE" to Triple("Antiallergic Eye Drops", 0.1, "EYE_DROPS"),
+        "BIMATOPROST" to Triple("Glaucoma / Eye Drops", 0.03, "EYE_DROPS"),
+        "DORZOLAMIDE" to Triple("Glaucoma Eye Drops", 2.0, "EYE_DROPS"),
 
         // Nasal / Respiratory / Inhalers
         "XYLOMETAZOLINE" to Triple("Nasal Decongestant", 0.1, "NASAL_SPRAY"),
@@ -54,6 +67,8 @@ class AiPharmacologyEngine(private val context: Context? = null) {
         "SALBUTAMOL" to Triple("Bronchodilator Inhaler", 100.0, "INHALER"),
         "BUDESONIDE" to Triple("Corticosteroid Inhaler", 200.0, "INHALER"),
         "FLUTICASONE" to Triple("Nasal Spray / Inhaler", 50.0, "NASAL_SPRAY"),
+        "FORMOTEROL" to Triple("Bronchodilator Inhaler", 6.0, "INHALER"),
+        "IPRATROPIUM" to Triple("Bronchodilator Inhaler", 20.0, "INHALER"),
 
         // Syrups & Tonics
         "DEXTROMETHORPHAN" to Triple("Cough Suppressant Syrup", 10.0, "SYRUP"),
@@ -61,6 +76,7 @@ class AiPharmacologyEngine(private val context: Context? = null) {
         "AMBROXOL" to Triple("Mucolytic Syrup", 30.0, "SYRUP"),
         "SUCRALFATE" to Triple("Stomach Ulcer Suspension", 1000.0, "SYRUP"),
         "MAGALDRATE" to Triple("Antacid Suspension", 400.0, "SYRUP"),
+        "SIMETHICONE" to Triple("Antiflatulent Gas Relief", 40.0, "SYRUP"),
         "LACTULOSE" to Triple("Laxative Syrup", 10.0, "SYRUP"),
         "CYPROHEPTADINE" to Triple("Appetite Stimulant Tonic", 2.0, "TONIC"),
         "LIV 52" to Triple("Ayurvedic Liver Tonic", 0.0, "TONIC"),
@@ -69,33 +85,68 @@ class AiPharmacologyEngine(private val context: Context? = null) {
         // Topical Ointments & Gels
         "CLOTRIMAZOLE" to Triple("Antifungal Cream", 1.0, "OINTMENT"),
         "BETAMETHASONE" to Triple("Topical Corticosteroid", 0.05, "OINTMENT"),
+        "CLOBETASOL" to Triple("Topical Corticosteroid", 0.05, "OINTMENT"),
         "MUPIROCIN" to Triple("Antibacterial Ointment", 2.0, "OINTMENT"),
         "POVIDONE" to Triple("Antiseptic Solution / Ointment", 5.0, "OINTMENT"),
         "VOLINI" to Triple("Pain Relief Gel", 0.0, "GEL"),
+        "MOOV" to Triple("Pain Relief Ointment", 0.0, "OINTMENT"),
 
         // Common Oral Solid Forms (Tablets / Capsules)
         "METFORMIN" to Triple("Antidiabetic (Sugar Control)", 500.0, "TABLET"),
+        "GLIMEPIRIDE" to Triple("Antidiabetic (Sugar Control)", 2.0, "TABLET"),
+        "GLICLAZIDE" to Triple("Antidiabetic (Sugar Control)", 80.0, "TABLET"),
+        "VILDAGLIPTIN" to Triple("Antidiabetic (Sugar Control)", 50.0, "TABLET"),
+        "SITAGLIPTIN" to Triple("Antidiabetic (Sugar Control)", 100.0, "TABLET"),
+        "DAPAGLIFLOZIN" to Triple("Antidiabetic / Kidney Protection", 10.0, "TABLET"),
+        "EMPAGLIFLOZIN" to Triple("Antidiabetic / Heart Protection", 10.0, "TABLET"),
         "PARACETAMOL" to Triple("Analgesic / Antipyretic", 650.0, "TABLET"),
         "ACETAMINOPHEN" to Triple("Analgesic / Antipyretic", 500.0, "TABLET"),
         "IBUPROFEN" to Triple("NSAID Anti-inflammatory", 400.0, "TABLET"),
+        "ACECLOFENAC" to Triple("NSAID Pain Relief", 100.0, "TABLET"),
+        "DICLOFENAC" to Triple("NSAID Pain Relief", 50.0, "TABLET"),
+        "TRAMADOL" to Triple("Opioid Analgesic", 50.0, "TABLET"),
         "ASPIRIN" to Triple("Antiplatelet / Blood Thinner", 75.0, "TABLET"),
+        "CLOPIDOGREL" to Triple("Antiplatelet Blood Thinner", 75.0, "TABLET"),
         "LEVOTHYROXINE" to Triple("Thyroid Hormone", 0.05, "TABLET"),
         "THYROXINE" to Triple("Thyroid Hormone", 0.05, "TABLET"),
         "PANTOPRAZOLE" to Triple("Antacid / Gas Relief", 40.0, "TABLET"),
         "OMEPRAZOLE" to Triple("Antacid / Reflux Relief", 20.0, "CAPSULE"),
         "RABEPRAZOLE" to Triple("Antacid / Gas Relief", 20.0, "TABLET"),
+        "ESOMEPRAZOLE" to Triple("Antacid / Gas Relief", 40.0, "TABLET"),
+        "RANITIDINE" to Triple("H2 Blocker Antacid", 150.0, "TABLET"),
+        "DOMPERIDONE" to Triple("Antiemetic / Prokinetic", 10.0, "TABLET"),
+        "ONDANSETRON" to Triple("Antiemetic / Nausea Relief", 4.0, "TABLET"),
         "CALCIUM" to Triple("Mineral Bone Supplement", 500.0, "TABLET"),
+        "CHOLECALCIFEROL" to Triple("Vitamin D3 Supplement", 60000.0, "CAPSULE"),
         "ATORVASTATIN" to Triple("Cholesterol Statin", 10.0, "TABLET"),
         "ROSUVASTATIN" to Triple("Cholesterol Statin", 10.0, "TABLET"),
         "AMLODIPINE" to Triple("BP Lowering Medicine", 5.0, "TABLET"),
         "TELMISARTAN" to Triple("BP / Heart Protection", 40.0, "TABLET"),
         "LOSARTAN" to Triple("BP Lowering Medicine", 50.0, "TABLET"),
+        "OLMESARTAN" to Triple("BP Lowering Medicine", 20.0, "TABLET"),
+        "ENALAPRIL" to Triple("ACE Inhibitor BP Medicine", 5.0, "TABLET"),
+        "RAMIPRIL" to Triple("ACE Inhibitor BP Medicine", 5.0, "TABLET"),
+        "ATENOLOL" to Triple("Beta Blocker BP Medicine", 50.0, "TABLET"),
+        "METOPROLOL" to Triple("Beta Blocker BP Medicine", 50.0, "TABLET"),
+        "HYDROCHLOROTHIAZIDE" to Triple("Diuretic BP Medicine", 12.5, "TABLET"),
         "AZITHROMYCIN" to Triple("Macrolide Antibiotic", 500.0, "TABLET"),
         "AMOXICILLIN" to Triple("Penicillin Antibiotic", 500.0, "CAPSULE"),
+        "CLAVULANATE" to Triple("Beta-Lactamase Inhibitor", 125.0, "TABLET"),
+        "CEFIXIME" to Triple("Cephalosporin Antibiotic", 200.0, "TABLET"),
+        "CEFUROXIME" to Triple("Cephalosporin Antibiotic", 500.0, "TABLET"),
         "CIPROFLOXACIN" to Triple("Quinolone Antibiotic", 500.0, "TABLET"),
+        "LEVOFLOXACIN" to Triple("Quinolone Antibiotic", 500.0, "TABLET"),
+        "OFLOXACIN" to Triple("Quinolone Antibiotic", 200.0, "TABLET"),
+        "ORNIDAZOLE" to Triple("Antiprotozoal / Antibacterial", 500.0, "TABLET"),
+        "DOXYCYCLINE" to Triple("Tetracycline Antibiotic", 100.0, "CAPSULE"),
+        "FLUCONAZOLE" to Triple("Antifungal Medication", 150.0, "TABLET"),
+        "ITRACONAZOLE" to Triple("Antifungal Medication", 100.0, "CAPSULE"),
         "CETIRIZINE" to Triple("Antihistamine / Allergy", 10.0, "TABLET"),
-        "DICLOFENAC" to Triple("NSAID Pain Relief", 50.0, "TABLET"),
+        "LEVOCETIRIZINE" to Triple("Antihistamine / Allergy", 5.0, "TABLET"),
+        "FEXOFENADINE" to Triple("Antihistamine / Allergy", 120.0, "TABLET"),
+        "MONTELUKAST" to Triple("Antiasthmatic / Antiallergic", 10.0, "TABLET"),
         "MULTIVITAMIN" to Triple("Nutritional Supplement", 0.0, "CAPSULE"),
+        "METHYLCOBALAMIN" to Triple("Vitamin B12 Supplement", 1500.0, "TABLET"),
         "FOLIC ACID" to Triple("Vitamin B9 Supplement", 5.0, "TABLET")
     )
 
@@ -109,10 +160,41 @@ class AiPharmacologyEngine(private val context: Context? = null) {
     )
 
     /**
+     * Strict Pharmaceutical Signature Verification:
+     * Checks whether text contains authentic medical dosage units, pharmacopeia standards, or known salts.
+     * Prevents false triggers from books, keyboards, newspapers, or non-medical objects.
+     */
+    fun containsPharmaceuticalMarkers(text: String): Boolean {
+        if (text.isBlank()) return false
+        val upper = text.uppercase(Locale.ROOT)
+
+        // 1. Check known chemical salt dictionary
+        if (knownChemicalDictionary.keys.any { upper.contains(it) }) return true
+
+        // 2. Check Dosage Strength patterns (e.g., 500mg, 40 mg, 0.5% w/v, 100ml, 650 MG)
+        val hasStrength = Regex("""\b\d+(?:\.\d+)?\s*(?:mg|mcg|µg|gm|g|ml|iu|%)\b""", RegexOption.IGNORE_CASE).containsMatchIn(text)
+
+        // 3. Check Dosage Form keywords
+        val hasDosageForm = Regex("""\b(?:tablets?|capsules?|syrup|ointment|drops?|inhaler|injection|suspension|elixir|gel|emulgel|tonics?|respicaps?|dispersible)\b""", RegexOption.IGNORE_CASE).containsMatchIn(text)
+
+        // 4. Check Pharmacopeia standards & Medical Packaging markers
+        val hasPharmaMarker = Regex("""\b(?:i\.?p\.?|b\.?p\.?|u\.?s\.?p\.?|ph\.?\s*eur|schedule\s+[hghx]|mfg\.?\s*lic|batch\s*no|exp\.?\s*date|composition|each\s+contains|each\s+film\s+coated|for\s+external\s+use|rx\s+only)\b""", RegexOption.IGNORE_CASE).containsMatchIn(text)
+
+        return (hasStrength && (hasDosageForm || hasPharmaMarker)) || (hasDosageForm && hasPharmaMarker)
+    }
+
+    /**
      * Extracts structured pharmaceutical composition from raw OCR candidate lines.
+     * Rejects non-medical text with zero hallucinations.
      */
     suspend fun parsePrescriptionText(rawOcrText: String): ExtractedMedicineComposition? = withContext(Dispatchers.IO) {
         if (rawOcrText.isBlank()) return@withContext null
+
+        // Fail-closed gate: Verify pharmaceutical signature presence before neural evaluation
+        if (!containsPharmaceuticalMarkers(rawOcrText)) {
+            Log.d("AiPharmacologyEngine", "OCR text rejected: No pharmaceutical signatures detected.")
+            return@withContext null
+        }
 
         when (activeTier) {
             AiEngineTier.ON_DEVICE_MEDGEMMA_INT4 -> {
@@ -144,85 +226,96 @@ class AiPharmacologyEngine(private val context: Context? = null) {
         }
     }
 
-    private fun runCloudMedGemma(text: String): ExtractedMedicineComposition? {
+    private suspend fun runCloudMedGemma(text: String): ExtractedMedicineComposition? {
         return try {
-            val url = URL(cloudEndpointUrl)
-            val conn = url.openConnection() as HttpURLConnection
-            conn.requestMethod = "POST"
-            conn.setRequestProperty("Content-Type", "application/json")
-            conn.setRequestProperty("Authorization", "Bearer $cloudMedGemmaApiKey")
-            conn.connectTimeout = 3500
-            conn.readTimeout = 4500
-            conn.doOutput = true
+            val systemPrompt = """
+                You are a strict clinical pharmacology verification and parsing system.
+                Analyze the provided scanned OCR text.
+                First, determine if the text is genuinely from a pharmaceutical medicine packaging, blister pack, syrup bottle, drops, ointment, or medical prescription.
+                If the text is ordinary text (e.g. from a book, keyboard, laptop, newspaper, non-medical document, or random object) or does not contain authentic pharmaceutical compounds:
+                Return STRICTLY: {"is_medicine": false, "confidence_score": 0.0}
 
-            val systemPrompt = "You are a clinical pharmacology parser. Extract JSON: {\"brand_name\": \"...\", \"active_salts\": [\"...\"], \"strength_mg\": 500, \"dosage_form\": \"TABLET/EYE_DROPS/SYRUP/TONIC/GEL\", \"therapeutic_class\": \"...\"}"
-
-            val payload = JSONObject().apply {
-                put("model", cloudModelName)
-                put("messages", JSONArray().apply {
-                    put(JSONObject().apply {
-                        put("role", "system")
-                        put("content", systemPrompt)
-                    })
-                    put(JSONObject().apply {
-                        put("role", "user")
-                        put("content", "Extract drug details from OCR text:\n$text")
-                    })
-                })
-                put("temperature", 0.1)
-                put("max_tokens", 200)
-            }
-
-            conn.outputStream.use { it.write(payload.toString().toByteArray()) }
-
-            if (conn.responseCode == 200) {
-                val responseStr = conn.inputStream.bufferedReader().use { it.readText() }
-                val rootJson = JSONObject(responseStr)
-                val choices = rootJson.optJSONArray("choices")
-                val content = choices?.getJSONObject(0)?.getJSONObject("message")?.optString("content") ?: ""
-
-                val cleanJsonStr = if (content.contains("{")) {
-                    content.substring(content.indexOf("{"), content.lastIndexOf("}") + 1)
-                } else content
-
-                val json = JSONObject(cleanJsonStr)
-                val brand = json.optString("brand_name", text.split("\n", " ").firstOrNull() ?: text)
-                val saltsArray = json.optJSONArray("active_salts")
-                val saltsList = mutableListOf<String>()
-                if (saltsArray != null) {
-                    for (i in 0 until saltsArray.length()) {
-                        saltsList.add(saltsArray.getString(i))
-                    }
+                If and ONLY IF the text is authentic medication packaging:
+                Return JSON format:
+                {
+                  "is_medicine": true,
+                  "confidence_score": 0.95,
+                  "brand_name": "Exact Brand Name",
+                  "active_salts": ["Active Salt 1", "Active Salt 2"],
+                  "strength_mg": 500.0,
+                  "dosage_form": "TABLET/CAPSULE/SYRUP/EYE_DROPS/GEL/INHALER/OINTMENT",
+                  "therapeutic_class": "Therapeutic Class"
                 }
+            """.trimIndent()
 
-                val dosageForm = json.optString("dosage_form", "TABLET").uppercase(Locale.US)
-                val instructions = generateVernacularGuidance(brand, dosageForm)
+            val generativeModel = com.google.ai.client.generativeai.GenerativeModel(
+                modelName = cloudModelName,
+                apiKey = cloudMedGemmaApiKey,
+                generationConfig = com.google.ai.client.generativeai.type.generationConfig {
+                    temperature = 0.0f
+                    responseMimeType = "application/json"
+                },
+                systemInstruction = com.google.ai.client.generativeai.type.content { text(systemPrompt) }
+            )
 
-                ExtractedMedicineComposition(
-                    brandName = brand,
-                    activeSalts = if (saltsList.isNotEmpty()) saltsList else listOf(brand),
-                    strengthMg = json.optDouble("strength_mg", 500.0),
-                    dosageForm = dosageForm,
-                    therapeuticCategory = json.optString("therapeutic_class", "PHARMACEUTICAL"),
-                    confidenceScore = 0.98f,
-                    sourceTier = AiEngineTier.CLOUD_MEDGEMMA_HOSTED,
-                    vernacularInstructionEn = instructions.first,
-                    vernacularInstructionHi = instructions.second
-                )
-            } else {
-                null
+            val response = generativeModel.generateContent("Analyze and extract drug details from OCR text:\n$text")
+            val content = response.text ?: ""
+
+            val cleanJsonStr = if (content.contains("{")) {
+                content.substring(content.indexOf("{"), content.lastIndexOf("}") + 1)
+            } else content
+
+            val json = JSONObject(cleanJsonStr)
+            val isMedicine = json.optBoolean("is_medicine", false)
+            val confidence = json.optDouble("confidence_score", 0.0).toFloat()
+
+            if (!isMedicine || confidence < 0.80f) {
+                Log.d("AiPharmacologyEngine", "Cloud verification rejected input as non-medicine (isMedicine=$isMedicine, conf=$confidence)")
+                return null
             }
+
+            val brand = json.optString("brand_name", "").trim()
+            val saltsArray = json.optJSONArray("active_salts")
+            val saltsList = mutableListOf<String>()
+            if (saltsArray != null) {
+                for (i in 0 until saltsArray.length()) {
+                    val s = saltsArray.getString(i).trim()
+                    if (s.isNotBlank()) saltsList.add(s)
+                }
+            }
+
+            if (brand.isBlank() || saltsList.isEmpty()) {
+                return null
+            }
+
+            val dosageForm = json.optString("dosage_form", "TABLET").uppercase(Locale.US)
+            val instructions = generateVernacularGuidance(brand, dosageForm)
+
+            ExtractedMedicineComposition(
+                brandName = brand,
+                activeSalts = saltsList,
+                strengthMg = json.optDouble("strength_mg", 500.0),
+                dosageForm = dosageForm,
+                therapeuticCategory = json.optString("therapeutic_class", "PHARMACEUTICAL"),
+                confidenceScore = confidence,
+                sourceTier = AiEngineTier.CLOUD_MEDGEMMA_HOSTED,
+                vernacularInstructionEn = instructions.first,
+                vernacularInstructionHi = instructions.second
+            )
         } catch (e: Exception) {
-            Log.w("AiPharmacologyEngine", "Cloud MedGemma call failed or fallback", e)
+            Log.w("AiPharmacologyEngine", "Cloud MedGemma verification failed or fallback", e)
             null
         }
     }
 
     /**
      * High-speed, 100% deterministic clinical token parser.
-     * Accurately resolves active chemical salts, strength, dosage forms from messy OCR strings of any bottle, tonic, drop, or strip.
+     * Accurately resolves active chemical salts, strength, dosage forms from verified medical packaging strings.
+     * Strictly returns null if non-medical text is provided.
      */
     fun runClinicalDeterministicParser(text: String): ExtractedMedicineComposition? {
+        if (!containsPharmaceuticalMarkers(text)) return null
+
         val rawLines = text.lines().map { it.trim() }.filter { it.length >= 2 }
         if (rawLines.isEmpty()) return null
 
@@ -240,6 +333,11 @@ class AiPharmacologyEngine(private val context: Context? = null) {
                 if (meta.second > 0.0) defaultStrength = meta.second
                 detectedForm = meta.third
             }
+        }
+
+        // Must have at least one recognized salt or verifiable pharma structure
+        if (detectedSalts.isEmpty() && !containsPharmaceuticalMarkers(text)) {
+            return null
         }
 
         // 2. Refine Dosage Form from text keywords if not already specialized
@@ -277,7 +375,7 @@ class AiPharmacologyEngine(private val context: Context? = null) {
         val brandWords = firstCleanLine.split(Regex("""[\s,/\-]+""")).filter { it.length >= 2 }
         val brandName = brandWords.take(3).joinToString(" ")
 
-        val finalBrand = if (brandName.isNotBlank()) brandName else "Scanned Medicine"
+        val finalBrand = if (brandName.isNotBlank()) brandName else (detectedSalts.firstOrNull() ?: "Scanned Medicine")
         val instructions = generateVernacularGuidance(finalBrand, detectedForm)
 
         return ExtractedMedicineComposition(

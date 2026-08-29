@@ -74,77 +74,31 @@ class SafetyEvaluationEngine(
         // Step 1: Scan for Expiry Date across all tokens
         val expiryInfo = ExpiryParser.parse(combinedText)
 
+        // Strict Pre-Filter Gate: Must contain pharmaceutical strength, dosage form, pharmacopeia standards, or active chemical
+        val hasPharmaMarkers = medGemmaOrchestrator.aiPharmacologyEngine.containsPharmaceuticalMarkers(combinedText)
+        if (!hasPharmaMarkers) {
+            return SafetyEvaluationResult.NoMatchFound
+        }
+
         var matchedMedicine: MedicineEntity? = null
 
-        // Step 2: Two-Tier Lookup - Try Fast SQLite Catalog Search (<5ms)
-        val strengthRegex = Regex("^\\d+\\s*(?:mg|mcg|gm|g|ml|l|%|tab|cap|tabs|caps)?$", RegexOption.IGNORE_CASE)
-        val commonCounterIons = setOf(
-            "SODIUM", "HYDROCHLORIDE", "HCL", "POTASSIUM", "CALCIUM", "SUCCINATE",
-            "CITRATE", "MALEATE", "SULPHATE", "SULFATE", "PHOSPHATE", "ACETATE",
-            "NITRATE", "HYDRATE", "MESYLATE", "TARTRATE", "FUMARATE", "CHLORIDE",
-            "TABLET", "TABLETS", "CAPSULE", "CAPSULES", "SYRUP", "DROPS", "SOLUTION",
-            "SUSPENSION", "CREAM", "OINTMENT", "GEL", "EMULGEL", "INJECTION", "INHALER",
-            "LIMITED", "LTD", "PVT", "PHARMA", "LABORATORIES", "INDIA"
-        )
-
-        // 1. Try full line exact FTS matches first to avoid false positives
+        // Step 2: Strict Catalog Lookup on clean non-noise lines
         for (rawToken in tokens) {
             val cleanLine = rawToken.replace(Regex("[^a-zA-Z0-9 ]"), "").trim()
-            if (cleanLine.length >= 5) {
+            if (cleanLine.length in 4..40) {
                 matchedMedicine = medicineDao.searchCatalog(cleanLine)
                     ?: medicineDao.findMedicineByFts(cleanLine)
                 if (matchedMedicine != null) break
             }
         }
 
-        // 2. Strict phrase and token matching if full line fails
-        if (matchedMedicine == null) {
-            for (rawToken in tokens) {
-                val words = rawToken.split(Regex("[\\s,/\\-]+")).map { 
-                    it.replace(Regex("[^a-zA-Z0-9]"), "").trim() 
-                }.filter { 
-                    it.length >= 5 && // Strict minimum 5 characters to avoid wild 3-letter guesses
-                    !it.matches(strengthRegex) && 
-                    !it.all { char -> char.isDigit() } &&
-                    !commonCounterIons.contains(it.uppercase(Locale.ROOT))
-                }
-
-                // Try two-word phrases first (e.g., "Pan 40" but digits are filtered, so "Cadila Glycomet")
-                for (i in 0 until words.size - 1) {
-                    val phrase = "${words[i]} ${words[i+1]}"
-                    if (phrase.length >= 6) {
-                        matchedMedicine = medicineDao.findMedicineByFts(phrase)
-                        if (matchedMedicine != null) break
-                    }
-                }
-                if (matchedMedicine != null) break
-
-                // Try individual long tokens
-                for (word in words) {
-                    if (word.length >= 5) {
-                        matchedMedicine = medicineDao.searchCatalog(word)
-                            ?: medicineDao.findMedicineByFts(word)
-                        if (matchedMedicine != null) break
-                    }
-                }
-                if (matchedMedicine != null) break
-            }
-        }
-
-        // Determine Scanned Chemical Formulation Text
-        val scannedFormulation = if (matchedMedicine != null) {
-            "${matchedMedicine.brandName} - ${matchedMedicine.rawComposition}"
-        } else {
-            tokens.joinToString("\n")
-        }
-
-        // Query active 24-hour medication logs
+        // Query active 24-hour medication logs for interaction matrix
         val threshold24h = System.currentTimeMillis() - (24 * 3600 * 1000L)
         val recentLogs = medicineDao.getRecentLogs(threshold24h)
 
-        // Step 3: MedGemma Clinical Reasoning Engine with Expiry Guard
+        // Step 3: Deep MedGemma Clinical Reasoning (Preserves authentic packaging text)
         val safetyResult = medGemmaOrchestrator.evaluateSafety(
-            scannedText = scannedFormulation,
+            scannedText = combinedText,
             matchedMedicine = matchedMedicine,
             recentLogs = recentLogs,
             locale = locale,
