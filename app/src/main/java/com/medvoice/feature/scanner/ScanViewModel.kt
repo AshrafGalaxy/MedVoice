@@ -7,6 +7,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.medvoice.core.ai.AiEngineTier
 import com.medvoice.core.ai.ClinicalSafetyOrchestrator
+import com.medvoice.core.audio.SpeechTriage
 import com.medvoice.core.audio.VernacularTtsManager
 import com.medvoice.core.audio.VoiceConfirmationListener
 import com.medvoice.core.audio.VoiceGender
@@ -419,7 +420,7 @@ class ScanViewModel(application: Application) : AndroidViewModel(application) {
             putString("caregiver_phone", phone)
         }
         val confirmation = if (_selectedLocale.value == "hi") "केयरगिवर और रोगी का विवरण सहेज लिया गया है।" else "Patient and caregiver details saved successfully."
-        ttsManager.speak(confirmation, _selectedLocale.value)
+        ttsManager.speak(confirmation, _selectedLocale.value, SpeechTriage.NEUTRAL_PREVIEW)
     }
 
     fun testEmergencySms(): Boolean {
@@ -435,7 +436,7 @@ class ScanViewModel(application: Application) : AndroidViewModel(application) {
         } else {
             if (_selectedLocale.value == "hi") "एसएमएस अनुमति आवश्यक है।" else "SMS permission required to send alert."
         }
-        ttsManager.speak(alert, _selectedLocale.value)
+        ttsManager.speak(alert, _selectedLocale.value, SpeechTriage.WARNING_ADVISORY)
         return success
     }
 
@@ -469,7 +470,7 @@ class ScanViewModel(application: Application) : AndroidViewModel(application) {
                 "Hello! MedVoice will ensure all your medications are taken safely on schedule."
             }
         }
-        ttsManager.speak(sampleText, _selectedLocale.value)
+        ttsManager.speak(sampleText, _selectedLocale.value, SpeechTriage.NEUTRAL_PREVIEW)
     }
 
     fun toggleTorch() {
@@ -606,7 +607,7 @@ class ScanViewModel(application: Application) : AndroidViewModel(application) {
                 )
 
                 // Speak vernacular dosage instruction aloud, then start hands-free voice listener
-                ttsManager.speak(result.instructionText, _selectedLocale.value) {
+                ttsManager.speak(result.instructionText, _selectedLocale.value, SpeechTriage.SAFE_ROUTINE) {
                     voiceConfirmationListener.startListening(_selectedLocale.value) { isListening ->
                         _isVoiceListening.value = isListening
                     }
@@ -621,7 +622,7 @@ class ScanViewModel(application: Application) : AndroidViewModel(application) {
                     previousBrand = result.brandName
                 )
 
-                ttsManager.speak(result.alertMessage, _selectedLocale.value)
+                ttsManager.speak(result.alertMessage, _selectedLocale.value, SpeechTriage.CRITICAL_ALERT)
 
                 // Log blocked duplicate attempt
                 db.medicineDao().logIntake(
@@ -656,7 +657,7 @@ class ScanViewModel(application: Application) : AndroidViewModel(application) {
                     severityLevel = "CRITICAL"
                 )
 
-                ttsManager.speak(result.alertMessage, _selectedLocale.value)
+                ttsManager.speak(result.alertMessage, _selectedLocale.value, SpeechTriage.CRITICAL_ALERT)
 
                 // Log conflict attempt
                 db.medicineDao().logIntake(
@@ -690,7 +691,7 @@ class ScanViewModel(application: Application) : AndroidViewModel(application) {
                     alertMessage = result.alertMessage
                 )
 
-                ttsManager.speak(result.alertMessage, _selectedLocale.value)
+                ttsManager.speak(result.alertMessage, _selectedLocale.value, SpeechTriage.CRITICAL_ALERT)
 
                 // Log expired drug attempt
                 db.medicineDao().logIntake(
@@ -722,7 +723,7 @@ class ScanViewModel(application: Application) : AndroidViewModel(application) {
                     clinicalReason = result.clinicalReason
                 )
 
-                ttsManager.speak(result.alertMessage, _selectedLocale.value)
+                ttsManager.speak(result.alertMessage, _selectedLocale.value, SpeechTriage.WARNING_ADVISORY)
             }
 
             is SafetyEvaluationResult.NoMatchFound -> {

@@ -22,6 +22,13 @@ enum class VoiceGender {
     MALE
 }
 
+enum class SpeechTriage {
+    SAFE_ROUTINE,       // Reassuring, warm, senior-friendly cadence
+    CRITICAL_ALERT,     // Urgent, commanding attention (lower assertive pitch, alert cadence)
+    WARNING_ADVISORY,   // Cautious advisory pacing
+    NEUTRAL_PREVIEW     // Standard voice preview / UI confirmation
+}
+
 class VernacularTtsManager(
     private val context: Context,
     private val onInitComplete: (Boolean) -> Unit = {}
@@ -101,8 +108,14 @@ class VernacularTtsManager(
 
     /**
      * Fast, On-Device Google Neural Spoken Voice Entrypoint
+     * Supports dynamic prosody based on clinical SpeechTriage.
      */
-    fun speak(text: String, languageCode: String = "en", onDone: () -> Unit = {}) {
+    fun speak(
+        text: String,
+        languageCode: String = "en",
+        triage: SpeechTriage = SpeechTriage.SAFE_ROUTINE,
+        onDone: () -> Unit = {}
+    ) {
         stop()
 
         if (!isInitialized || tts == null) {
@@ -125,19 +138,23 @@ class VernacularTtsManager(
         // Voice Selection: Select best offline Google Neural voice matching gender and Indian locale
         selectOptimalGoogleNeuralVoice(targetLocale, selectedGender)
 
-        // Set Cadence and Pitch tuned to the selected gender
-        when (selectedGender) {
-            VoiceGender.FEMALE -> {
-                tts?.setPitch(1.28f) // Bright, crisp, authentically female tone
-                tts?.setSpeechRate(0.98f)
-            }
-            VoiceGender.MALE -> {
-                tts?.setPitch(0.70f) // Deep, authoritative, rich male baritone
-                tts?.setSpeechRate(0.88f)
-            }
+        // Dynamic Prosody Calculation based on Triage + Voice Gender
+        val (basePitch, baseRate) = when (selectedGender) {
+            VoiceGender.FEMALE -> Pair(1.28f, 0.96f)
+            VoiceGender.MALE -> Pair(0.70f, 0.88f)
         }
 
-        // Text Pre-Processing for Natural Breathing Pauses & Medical Expansion
+        val (adjustedPitch, adjustedRate) = when (triage) {
+            SpeechTriage.SAFE_ROUTINE -> Pair(basePitch * 1.02f, baseRate * 0.90f) // Slower, warm, senior-friendly
+            SpeechTriage.CRITICAL_ALERT -> Pair(basePitch * 0.92f, baseRate * 1.04f) // Firm, commanding
+            SpeechTriage.WARNING_ADVISORY -> Pair(basePitch * 0.98f, baseRate * 0.95f)
+            SpeechTriage.NEUTRAL_PREVIEW -> Pair(basePitch, baseRate)
+        }
+
+        tts?.setPitch(adjustedPitch)
+        tts?.setSpeechRate(adjustedRate)
+
+        // 100% Dynamic Rule-Based Text Processing via VernacularPhoneticEngine
         val preprocessedText = preprocessMedicalText(text, if (isHindi) "hi-IN" else "en-IN")
 
         requestAudioFocus()
@@ -222,54 +239,10 @@ class VernacularTtsManager(
 
     /**
      * Text Pre-Processing for Natural Delivery:
-     * - Expands medical units and abbreviations in memory (mg -> milligram / मिलीग्राम)
-     * - Inserts explicit breath pauses (commas and periods) between medicine name, dosage, and warnings
+     * Delegated to 100% Dynamic VernacularPhoneticEngine
      */
     fun preprocessMedicalText(rawText: String, langCode: String): String {
-        var processed = rawText.trim()
-        val isHindi = langCode.startsWith("hi", ignoreCase = true)
-
-        if (isHindi) {
-            processed = processed
-                .replace(Regex("""(?i)\b(\d+)\s*mg\b"""), "$1 मिलीग्राम")
-                .replace(Regex("""(?i)\b(\d+)\s*mcg\b"""), "$1 माइक्रोग्राम")
-                .replace(Regex("""(?i)\b(\d+)\s*ml\b"""), "$1 मिलीलीटर")
-                .replace(Regex("""(?i)\b(\d+)\s*gm\b"""), "$1 ग्राम")
-                .replace(Regex("""(?i)\bmg\b"""), "मिलीग्राम")
-                .replace(Regex("""(?i)\btab\b|\btabs\b"""), "गोली")
-                .replace(Regex("""(?i)\bcap\b|\bcaps\b"""), "कैप्सूल")
-                .replace(Regex("""(?i)\b-?SR\b"""), " सस्टेन्ड रिलीज़ ")
-                .replace(Regex("""(?i)\b-?CR\b"""), " कंट्रोल्ड रिलीज़ ")
-                .replace(Regex("""(?i)\b-?ER\b"""), " एक्सटेंडेड रिलीज़ ")
-                .replace(Regex("""\b1\s+गोली\b"""), "एक गोली")
-                .replace(Regex("""\b2\s+गोली\b"""), "दो गोली")
-                .replace(Regex("""\b1/2\s+गोली\b"""), "आधी गोली")
-                .replace(Regex("""\b500\s+मिलीग्राम\b"""), "पाँच सौ मिलीग्राम")
-                .replace(Regex("""\b650\s+मिलीग्राम\b"""), "छह सौ पचास मिलीग्राम")
-                .replace(Regex("""\b1000\s+मिलीग्राम\b"""), "एक हज़ार मिलीग्राम")
-        } else {
-            processed = processed
-                .replace(Regex("""(?i)\b(\d+)\s*mg\b"""), "$1 milligrams")
-                .replace(Regex("""(?i)\b(\d+)\s*mcg\b"""), "$1 micrograms")
-                .replace(Regex("""(?i)\b(\d+)\s*ml\b"""), "$1 milliliters")
-                .replace(Regex("""(?i)\b(\d+)\s*gm\b"""), "$1 grams")
-                .replace(Regex("""(?i)\bmg\b"""), "milligrams")
-                .replace(Regex("""(?i)\btab\b|\btabs\b"""), "tablet")
-                .replace(Regex("""(?i)\bcap\b|\bcaps\b"""), "capsule")
-                .replace(Regex("""(?i)\b-?SR\b"""), " sustained release ")
-                .replace(Regex("""(?i)\b-?CR\b"""), " controlled release ")
-                .replace(Regex("""(?i)\b-?ER\b"""), " extended release ")
-        }
-
-        processed = processed
-            .replace("!", "! , ")
-            .replace("।", "। , ")
-            .replace(":", ": , ")
-            .replace("\n", " , ")
-            .replace(Regex("\\s{2,}"), " ")
-            .trim()
-
-        return processed
+        return VernacularPhoneticEngine.processVernacularSpeechText(rawText, langCode)
     }
 
     private fun requestAudioFocus() {
