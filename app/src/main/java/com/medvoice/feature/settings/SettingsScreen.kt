@@ -556,8 +556,8 @@ fun SettingsScreen(viewModel: ScanViewModel) {
                         )
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(
-                            text = if (locale == "hi") "ऑन-डिवाइस एआई" else "On-Device AI",
-                            fontSize = 11.5.sp,
+                            text = if (locale == "hi") "ऑन-डिवाइस (1B / SQLite)" else "On-Device (1B / SQLite)",
+                            fontSize = 11.sp,
                             color = if (activeAiTier == AiEngineTier.ON_DEVICE_MEDGEMMA_INT4) BackgroundCharcoal else TextWhite,
                             fontWeight = FontWeight.Bold
                         )
@@ -583,8 +583,8 @@ fun SettingsScreen(viewModel: ScanViewModel) {
                         )
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(
-                            text = if (locale == "hi") "क्लाउड एआई" else "Cloud AI",
-                            fontSize = 11.5.sp,
+                            text = if (locale == "hi") "क्लाउड (Qwen 27B)" else "Cloud (Qwen 27B)",
+                            fontSize = 11.sp,
                             color = if (activeAiTier == AiEngineTier.CLOUD_MEDGEMMA_HOSTED) BackgroundCharcoal else TextWhite,
                             fontWeight = FontWeight.Bold
                         )
@@ -930,67 +930,48 @@ fun SettingsScreen(viewModel: ScanViewModel) {
                     Spacer(modifier = Modifier.height(10.dp))
                 }
 
-                // Honest Live Runtime Status Badge
+                // Unified Live Runtime Status Card
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(8.dp),
-                    color = if (activeAiTier == AiEngineTier.CLOUD_MEDGEMMA_HOSTED && isCloudApiKeyConfigured) SafeGreen.copy(alpha = 0.12f) else SurfaceCardElevated,
-                    border = BorderStroke(1.dp, if (activeAiTier == AiEngineTier.CLOUD_MEDGEMMA_HOSTED && isCloudApiKeyConfigured) SafeGreen.copy(alpha = 0.4f) else AccentBorder)
+                    shape = RoundedCornerShape(10.dp),
+                    color = if (activeAiTier == AiEngineTier.CLOUD_MEDGEMMA_HOSTED) SafeGreen.copy(alpha = 0.12f) else SurfaceCardElevated,
+                    border = BorderStroke(1.dp, if (activeAiTier == AiEngineTier.CLOUD_MEDGEMMA_HOSTED) SafeGreen.copy(alpha = 0.4f) else AccentBorder)
                 ) {
-                    Column(modifier = Modifier.padding(10.dp)) {
+                    Column(modifier = Modifier.padding(12.dp)) {
                         if (activeAiTier == AiEngineTier.CLOUD_MEDGEMMA_HOSTED) {
-                            if (isCloudApiKeyConfigured) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(Icons.Default.CheckCircle, contentDescription = null, tint = SafeGreen, modifier = Modifier.size(14.dp))
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Text(
-                                        text = "🟢 Active: Cloud AI (Qwen 3.8 27B on Groq LPU)",
-                                        color = SafeGreen,
-                                        fontSize = 12.sp,
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                }
-                                Spacer(modifier = Modifier.height(3.dp))
-                                Text(
-                                    text = "• Ultra-fast neural inference (<400ms)\n• Zero phone heating & battery load on ${hardwareReport.deviceModel}",
-                                    color = TextMuted,
-                                    fontSize = 10.5.sp,
-                                    lineHeight = 15.sp
-                                )
-                            } else {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(Icons.Default.Warning, contentDescription = null, tint = WarningAmber, modifier = Modifier.size(14.dp))
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Text(
-                                        text = "⚠️ API Key Required for Cloud AI",
-                                        color = WarningAmber,
-                                        fontSize = 12.sp,
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                }
-                                Spacer(modifier = Modifier.height(3.dp))
-                                Text(
-                                    text = "Paste your Groq API key below to activate Qwen 27B. Currently using built-in local database.",
-                                    color = TextMuted,
-                                    fontSize = 10.5.sp
-                                )
-                            }
-                        } else {
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(Icons.Default.FlashOn, contentDescription = null, tint = ReticleCyan, modifier = Modifier.size(14.dp))
+                                Icon(Icons.Default.Cloud, contentDescription = null, tint = SafeGreen, modifier = Modifier.size(16.dp))
                                 Spacer(modifier = Modifier.width(6.dp))
                                 Text(
-                                    text = if (locale == "hi") "सक्रिय: ऑन-डिवाइस इंजन" else "Active: On-Device Engine",
-                                    color = ReticleCyan,
-                                    fontSize = 12.sp,
+                                    text = if (locale == "hi") "सक्रिय: क्लाउड विजन एआई (Qwen 2.5 27B)" else "Active: Cloud Vision AI (Qwen 2.5 27B)",
+                                    color = SafeGreen,
+                                    fontSize = 12.5.sp,
                                     fontWeight = FontWeight.Bold
                                 )
                             }
-                            Spacer(modifier = Modifier.height(3.dp))
+                            Spacer(modifier = Modifier.height(4.dp))
                             Text(
-                                text = "• 100% Offline (No Data Egress) • Local SQLite FTS5 & Pharmacopeia\n• Thermal Note: Tensor operations utilize on-device CPU. Keep device ventilated.",
+                                text = "• Ultra-fast neural reasoning (<400ms)\n• Pre-configured Demo Gateway active with zero setup",
                                 color = TextMuted,
-                                fontSize = 10.5.sp,
+                                fontSize = 11.sp,
+                                lineHeight = 15.sp
+                            )
+                        } else {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Default.FlashOn, contentDescription = null, tint = ReticleCyan, modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = if (locale == "hi") "सक्रिय: ऑन-डिवाइस इंजन (Qwen 1.5B / SQLite FTS5)" else "Active: On-Device Engine (Qwen 1.5B / SQLite FTS5)",
+                                    color = ReticleCyan,
+                                    fontSize = 12.5.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = "• 100% Offline (Zero Network Required) • Local SQLite FTS5 & Pharmacopeia\n• Edge Privacy: No biometric or medication data leaves device.",
+                                color = TextMuted,
+                                fontSize = 11.sp,
                                 lineHeight = 15.sp
                             )
                         }
@@ -1024,51 +1005,6 @@ fun SettingsScreen(viewModel: ScanViewModel) {
                             checkedTrackColor = SafeGreen
                         )
                     )
-                }
-
-                if (activeAiTier == AiEngineTier.CLOUD_MEDGEMMA_HOSTED) {
-                    Spacer(modifier = Modifier.height(10.dp))
-                    Surface(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(10.dp),
-                        color = SurfaceCardElevated,
-                        border = BorderStroke(1.dp, SafeGreen.copy(alpha = 0.4f))
-                    ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(12.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(36.dp)
-                                    .background(SafeGreen.copy(alpha = 0.15f), CircleShape),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Cloud,
-                                    contentDescription = "Cloud AI Gateway",
-                                    tint = SafeGreen,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                            }
-                            Spacer(modifier = Modifier.width(10.dp))
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = if (locale == "hi") "क्लाउड विजन गेटवे (Qwen 27B)" else "Cloud Vision Gateway (Qwen 27B)",
-                                    color = TextWhite,
-                                    fontSize = 13.sp,
-                                    fontWeight = FontWeight.Bold
-                                )
-                                Text(
-                                    text = if (locale == "hi") "डेमो गेटवे सक्रिय • हाई-स्पीड न्यूरल विजन (<400ms)" else "Demo Gateway Active • High-speed neural vision (<400ms)",
-                                    color = SafeGreen,
-                                    fontSize = 11.sp
-                                )
-                            }
-                        }
-                    }
                 }
             }
         }
