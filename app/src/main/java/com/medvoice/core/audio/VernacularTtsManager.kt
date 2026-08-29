@@ -140,13 +140,13 @@ class VernacularTtsManager(
 
         // Dynamic Prosody Calculation based on Triage + Voice Gender
         val (basePitch, baseRate) = when (selectedGender) {
-            VoiceGender.FEMALE -> Pair(1.28f, 0.96f)
-            VoiceGender.MALE -> Pair(0.70f, 0.88f)
+            VoiceGender.FEMALE -> Pair(1.05f, 0.95f) // Natural, warm, clear female voice
+            VoiceGender.MALE -> Pair(0.95f, 0.95f)   // Deep, resonant, clear male voice
         }
 
         val (adjustedPitch, adjustedRate) = when (triage) {
-            SpeechTriage.SAFE_ROUTINE -> Pair(basePitch * 1.02f, baseRate * 0.90f) // Slower, warm, senior-friendly
-            SpeechTriage.CRITICAL_ALERT -> Pair(basePitch * 0.92f, baseRate * 1.04f) // Firm, commanding
+            SpeechTriage.SAFE_ROUTINE -> Pair(basePitch * 1.00f, baseRate * 0.92f) // Senior-friendly calm pacing
+            SpeechTriage.CRITICAL_ALERT -> Pair(basePitch * 0.95f, baseRate * 1.02f) // Firm, commanding
             SpeechTriage.WARNING_ADVISORY -> Pair(basePitch * 0.98f, baseRate * 0.95f)
             SpeechTriage.NEUTRAL_PREVIEW -> Pair(basePitch, baseRate)
         }
@@ -194,7 +194,9 @@ class VernacularTtsManager(
      * Highest-Quality Local Neural Voice Selector
      * - Inspects device installed voice catalog for hi-IN and en-IN
      * - Ensures voice does not require network connection (!voice.isNetworkConnectionRequired)
-     * - Disambiguates female vs male accurately avoiding substring collisions ("female".contains("male"))
+     * - Disambiguates female vs male accurately:
+     *   Google hi-IN: hib, hid, hif are FEMALE; hia, hic, hie are MALE.
+     *   Google en-IN: ena, enc, ene are FEMALE; enb, end, enf are MALE.
      */
     private fun selectOptimalGoogleNeuralVoice(locale: Locale, gender: VoiceGender) {
         try {
@@ -214,19 +216,21 @@ class VernacularTtsManager(
                         val features = voice.features?.map { it.lowercase() } ?: emptyList()
                         when (gender) {
                             VoiceGender.FEMALE -> when {
-                                features.any { it.contains("gender=female") } -> 10
-                                name.contains("female") || name.contains("-f-") || name.contains("_f_") || name.contains("#female") -> 8
-                                name.contains("hia") || name.contains("hid") || name.contains("hie") ||
-                                        name.contains("ena") || name.contains("end") || name.contains("ene") || name.contains("network-f") -> 6
-                                !name.contains("male") && !name.contains("hib") && !name.contains("hic") && !name.contains("hif") &&
-                                        !name.contains("enb") && !name.contains("enc") && !name.contains("enf") -> 2
+                                features.any { it.contains("gender=female") || it.contains("female") } -> 12
+                                name.contains("female") || name.contains("-f-") || name.contains("_f_") || name.contains("#female") -> 10
+                                name.contains("hib") || name.contains("hid") || name.contains("hif") ||
+                                        name.contains("ena") || name.contains("enc") || name.contains("ene") || name.contains("network-f") -> 8
+                                !name.contains("male") && !name.contains("hia") && !name.contains("hic") && !name.contains("hie") &&
+                                        !name.contains("enb") && !name.contains("end") && !name.contains("enf") -> 4
                                 else -> 0
                             }
                             VoiceGender.MALE -> when {
-                                features.any { it.contains("gender=male") } -> 10
-                                (name.contains("male") && !name.contains("female")) || name.contains("-m-") || name.contains("_m_") || name.contains("#male") -> 8
-                                name.contains("hib") || name.contains("hic") || name.contains("hif") ||
-                                        name.contains("enb") || name.contains("enc") || name.contains("enf") || name.contains("network-m") -> 6
+                                features.any { it.contains("gender=male") } -> 12
+                                (name.contains("male") && !name.contains("female")) || name.contains("-m-") || name.contains("_m_") || name.contains("#male") -> 10
+                                name.contains("hia") || name.contains("hic") || name.contains("hie") ||
+                                        name.contains("enb") || name.contains("end") || name.contains("enf") || name.contains("network-m") -> 8
+                                !name.contains("female") && !name.contains("hib") && !name.contains("hid") && !name.contains("hif") &&
+                                        !name.contains("ena") && !name.contains("enc") && !name.contains("ene") -> 4
                                 else -> 0
                             }
                         }
