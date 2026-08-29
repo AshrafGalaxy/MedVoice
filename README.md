@@ -19,28 +19,58 @@ MedVoice operates with a **Hybrid Edge-Cloud Architecture**:
 - **Multimodal Visual AI & OCR**: Combines on-device Google ML Kit Vision with cloud-hosted visual language models (Groq `llama-3.2-11b-vision-preview` & MedGemma Qwen 27B) to extract high-accuracy pharmaceutical brand names and active compositions from complex blister packs.
 - **Vernacular Audio & Hands-Free Interaction**: Delivers instant spoken guidance in vernacular Indian languages (Hindi, Marathi, English) with voice confirmation.
 
-```
-   [ Point Camera at Blister Pack / Bottle / Drops / Syrup ]
-                               │
-                               ▼
-        [ On-Device ML Kit OCR / Groq Multimodal Visual AI ]
-                               │
-                               ▼
-        [ SQLite FTS5 Fast Match (<5ms) / Fuzzy Salt Matcher ]
-                               │
-                               ▼
-          [ Clinical Safety & Pharmacology Engine ]
-            ├── Evaluates Active 24h Medication History
-            ├── Traps Duplicate Active Chemical Molecules
-            ├── Checks Severe Drug-to-Drug Contraindications
-            └── Formulates Vernacular Food/Temporal Rules
-                               │
-            ┌──────────────────┼──────────────────┐
-            ▼                  ▼                  ▼
-     [ Safe to Take ]   [ Duplicate Trap ]  [ Drug Conflict ]
-            │                  │                  │
-    [ Vernacular TTS ]   [ Spoken Alert ]   [ Spoken Alert ]
-    [ Voice Confirm  ]   [ Caregiver SOS ]  [ Caregiver SOS ]
+```mermaid
+graph TD
+    %% Styling
+    classDef inputNode fill:#1E293B,stroke:#38BDF8,stroke-width:2px,color:#FFFFFF;
+    classDef visionNode fill:#0F172A,stroke:#6366F1,stroke-width:2px,color:#FFFFFF;
+    classDef aiNode fill:#1E1B4B,stroke:#A855F7,stroke-width:2px,color:#FFFFFF;
+    classDef safetyNode fill:#064E3B,stroke:#10B981,stroke-width:2px,color:#FFFFFF;
+    classDef alertNode fill:#7F1D1D,stroke:#EF4444,stroke-width:2px,color:#FFFFFF;
+    classDef actionNode fill:#134E4A,stroke:#14B8A6,stroke-width:2px,color:#FFFFFF;
+
+    subgraph Input_Layer ["📷 Vision & Input Layer"]
+        A["📦 Medicine Packaging<br/>(Blister Strip / Bottle / Syrup / Eye Drops)"]:::inputNode
+        B["📸 CameraX Real-Time Pipeline<br/>(8 FPS Throttled Frame Analyzer)"]:::visionNode
+        A --> B
+    end
+
+    subgraph Hybrid_AI_Layer ["🧠 Hybrid Intelligence & Pharmacology Engine"]
+        C1["⚡ On-Device Google ML Kit OCR<br/>(Zero Latency Fast Tokenizer)"]:::visionNode
+        C2["☁️ Groq Multimodal Visual AI<br/>(Llama 3.2 11B Vision / MedGemma)"]:::aiNode
+        D["🗄️ On-Device SQLite FTS5 Database<br/>(~30,000 Indian Pharmaceutical Brands & Salts)"]:::visionNode
+        E["🔍 FuzzySaltMatcher<br/>(Levenshtein ≤ 2 Chemical Matcher)"]:::visionNode
+        
+        B --> C1
+        B --> C2
+        C1 --> E
+        C2 --> E
+        E <--> D
+    end
+
+    subgraph Clinical_Safety_Matrix ["🛡️ On-Device Deterministic Safety Matrix"]
+        F["⚖️ Clinical Safety Evaluation Engine"]:::safetyNode
+        F1["⏱️ 24h Medication History Check"]:::safetyNode
+        F2["🧪 Active Molecule Duplicate Trap"]:::safetyNode
+        F3["⚠️ Drug-to-Drug Contraindication Guard"]:::safetyNode
+        F4["🍽️ Route & Food-Timing Rules Formulation"]:::safetyNode
+
+        E --> F
+        F --> F1
+        F --> F2
+        F --> F3
+        F --> F4
+    end
+
+    subgraph Outcomes ["🔊 Output & Caregiver Response"]
+        SAFE["✅ SAFE TO TAKE<br/>• Natural Vernacular TTS (Hindi / Marathi / English)<br/>• Voice & Touch Confirmation<br/>• Logged to Patient Adherence Database"]:::actionNode
+        ALERT["🚨 CRITICAL ALERT / DUPLICATE BLOCKED<br/>• High-Contrast Red Warning Banner<br/>• Spoken Emergency Warning Audio<br/>• Automatic Cellular SOS SMS to Caregiver"]:::alertNode
+        
+        F1 -->|Active Dose Found| ALERT
+        F2 -->|Duplicate Salt Detected| ALERT
+        F3 -->|Dangerous Interaction| ALERT
+        F4 -->|Safety Cleared| SAFE
+    end
 ```
 
 ---
