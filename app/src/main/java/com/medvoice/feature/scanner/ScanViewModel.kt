@@ -28,6 +28,11 @@ import java.util.Locale
 sealed class ScanUiState {
     data object Scanning : ScanUiState()
 
+    data class AnalyzingSnap(
+        val stageMessage: String = "Capturing high-resolution photo...",
+        val sideIndex: Int = 1
+    ) : ScanUiState()
+
     data class SafeDetected(
         val brandName: String,
         val saltName: String,
@@ -68,6 +73,7 @@ sealed class ScanUiState {
 class ScanViewModel(application: Application) : AndroidViewModel(application) {
 
     private val db = AppDatabase.getInstance(application)
+    val dualSideOcrManager = com.medvoice.core.vision.DualSideOcrManager()
     val aiEngine = com.medvoice.core.ai.AiPharmacologyEngine(application)
     val medGemmaOrchestrator = MedGemmaOrchestrator(application, aiEngine)
     private val safetyEngine = SafetyEvaluationEngine(db.medicineDao(), medGemmaOrchestrator)
@@ -394,6 +400,79 @@ class ScanViewModel(application: Application) : AndroidViewModel(application) {
 
     fun toggleTorch() {
         _isTorchOn.value = !_isTorchOn.value
+    }
+
+    fun snapPhoto(
+        imageCapture: androidx.camera.core.ImageCapture,
+        context: android.content.Context,
+        sideIndex: Int = 1
+    ) {
+        if (_uiState.value is ScanUiState.AnalyzingSnap) return
+
+        val stageText = if (_selectedLocale.value == "hi") {
+            if (sideIndex == 1) "दवा की फोटो ले रहे हैं..." else "दूसरी तरफ की फोटो ले रहे हैं..."
+        } else {
+            if (sideIndex == 1) "Capturing medication photo..." else "Capturing back side photo..."
+        }
+        _uiState.value = ScanUiState.AnalyzingSnap(stageText, sideIndex)
+
+        val executor = androidx.core.content.ContextCompat.getMainExecutor(context)
+        imageCapture.takePicture(
+            executor,
+            object : androidx.camera.core.ImageCapture.OnImageCapturedCallback() {
+                @androidx.annotation.OptIn(androidx.camera.core.ExperimentalGetImage::class)
+                override fun onCaptureSuccess(imageProxy: androidx.camera.core.ImageProxy) {
+                    val rotationDegrees = imageProxy.imageInfo.rotationDegrees
+                    val bitmap = imageProxy.toBitmap()
+                    imageProxy.close()
+
+                    viewModelScope.launch(Dispatchers.IO) {
+                        try {
+                            _uiState.value = ScanUiState.AnalyzingSnap(
+                                if (_selectedLocale.value == "hi") "लिखावट और घटक पढ़ रहे हैं..." else "Reading packaging and chemical salts...",
+                                sideIndex
+                            )
+
+                            val capture = dualSideOcrManager.processHighResBitmap(bitmap, rotationDegrees, sideIndex)
+                            val synthesizedTokens = dualSideOcrManager.getSynthesizedTokens()
+
+                            _uiState.value = ScanUiState.AnalyzingSnap(
+                                if (_selectedLocale.value == "hi") "सुरक्षा नियमों की जांच कर रहे हैं..." else "Evaluating clinical safety matrix...",
+                                sideIndex
+                            )
+
+                            val result = safetyEngine.evaluateCandidateTokens(
+                                tokens = synthesizedTokens,
+                                locale = _selectedLocale.value,
+                                isExplicitSnap = true
+                            )
+                            handleEvaluationResult(result)
+                        } catch (e: Exception) {
+                            Log.e("MedVoice_ScanVM", "Error in snapPhoto pipeline", e)
+                            _uiState.value = ScanUiState.UnidentifiedAlert(
+                                alertMessage = if (_selectedLocale.value == "hi") "पहचान में त्रुटि हुई। कृपया दोबारा प्रयास करें।" else "Error analyzing photo. Please try snapping again.",
+                                clinicalReason = e.message ?: "Unknown processing error"
+                            )
+                        }
+                    }
+                }
+
+                override fun onError(exception: androidx.camera.core.ImageCaptureException) {
+                    Log.e("MedVoice_ScanVM", "ImageCapture failed", exception)
+                    _uiState.value = ScanUiState.UnidentifiedAlert(
+                        alertMessage = if (_selectedLocale.value == "hi") "कैमरा फोटो नहीं ले सका। कृपया दोबारा प्रयास करें।" else "Camera could not take photo. Please try again.",
+                        clinicalReason = exception.message ?: "Camera capture exception"
+                    )
+                }
+            }
+        )
+    }
+
+    fun resetScanState() {
+        dualSideOcrManager.clear()
+        voiceConfirmationListener.stopListening()
+        _isVoiceListening.value = false
+        _uiState.value = ScanUiState.Scanning
     }
 
     fun processOcrTokens(tokens: List<String>) {
