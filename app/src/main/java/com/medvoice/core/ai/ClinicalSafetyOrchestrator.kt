@@ -57,7 +57,8 @@ class ClinicalSafetyOrchestrator(
         locale: String = "hi",
         expiryDate: String? = null,
         isExpired: Boolean = false,
-        bitmap: Bitmap? = null
+        bitmap: Bitmap? = null,
+        patientConditions: Set<String> = emptySet()
     ): ClinicalSafetyResult = withContext(Dispatchers.Default) {
         val targetLangCode = if (locale.lowercase(Locale.ROOT).startsWith("hi")) "hi-IN" else "en-IN"
         val isHindi = targetLangCode == "hi-IN"
@@ -91,7 +92,7 @@ class ClinicalSafetyOrchestrator(
         }
 
         // 2. Deterministic Edge & Vision Clinical Reasoning
-        return@withContext executeEdgeClinicalReasoning(scannedText, matchedMedicine, recentLogs, isHindi, bitmap)
+        return@withContext executeEdgeClinicalReasoning(scannedText, matchedMedicine, recentLogs, isHindi, bitmap, patientConditions)
     }
 
     private suspend fun executeEdgeClinicalReasoning(
@@ -99,7 +100,8 @@ class ClinicalSafetyOrchestrator(
         matchedMedicine: MedicineEntity?,
         recentLogs: List<MedicationLogEntity>,
         isHindi: Boolean,
-        bitmap: Bitmap?
+        bitmap: Bitmap?,
+        patientConditions: Set<String> = emptySet()
     ): ClinicalSafetyResult {
         val upperText = scannedText.uppercase(Locale.ROOT)
         
@@ -258,6 +260,24 @@ class ClinicalSafetyOrchestrator(
             )
         }
 
+        // 8. Clinical Reasoning: Patient Chronic Disease Contraindication Matrix
+        val diseaseContraindication = evaluateDiseaseContraindications(parsedSalts, upperText, patientConditions, isHindi)
+        if (diseaseContraindication != null) {
+            return ClinicalSafetyResult(
+                brandName = brandName,
+                parsedSalts = parsedSalts,
+                therapeuticClass = therapeuticClass,
+                safetyVerdict = SafetyVerdict.CRITICAL_INTERACTION_BLOCKED,
+                clinicalReason = diseaseContraindication.clinicalReason,
+                foodTimingRule = foodTimingRule,
+                isEmergencyAlert = true,
+                spokenVernacularText = diseaseContraindication.spokenText,
+                displayTitle = diseaseContraindication.displayTitle,
+                dosageForm = dosageForm,
+                confidenceScore = 0.99f
+            )
+        }
+
         // 8. Safe to Take: Route-Specific Vernacular Audio Guidance
         val timingPhraseEn = when (foodTimingRule) {
             FoodTimingRule.EMPTY_STOMACH -> "Take early morning on an empty stomach with a full glass of water."
@@ -376,6 +396,134 @@ class ClinicalSafetyOrchestrator(
                 spokenText = if (isHindi) "अति गंभीर चेतावनी! नाइट्रेट दिल की दवा और सिल्डेनाफिल साथ लेने से रक्तचाप जानलेवा स्तर तक गिर सकता है। तुरंत रोकें!" else "Emergency warning! Taking Nitrates with PDE-5 inhibitors causes fatal blood pressure collapse. Do not take!",
                 displayTitle = if (isHindi) "घातक दवा परस्परविरोध (Fatal Interaction)" else "Fatal Interaction Blocked"
             )
+        }
+
+        return null
+    }
+
+    private fun evaluateDiseaseContraindications(
+        scannedSalts: List<String>,
+        scannedUpper: String,
+        patientConditions: Set<String>,
+        isHindi: Boolean
+    ): ClinicalInteraction? {
+        if (patientConditions.isEmpty()) return null
+        val allScanned = (scannedSalts.joinToString(" ") + " " + scannedUpper).uppercase(Locale.ROOT)
+
+        // 1. Hypertension (BP) Matrix
+        val hasHypertension = patientConditions.any { 
+            it.contains("Hypertension", ignoreCase = true) || it.contains("BP", ignoreCase = true) || it.contains("Blood Pressure", ignoreCase = true) 
+        }
+        if (hasHypertension) {
+            val isNsaid = allScanned.contains("IBUPROFEN") || allScanned.contains("DICLOFENAC") || 
+                    allScanned.contains("ACECLOFENAC") || allScanned.contains("NAPROXEN") || 
+                    allScanned.contains("BRUFEN") || allScanned.contains("COMBIFLAM") || allScanned.contains("VOVERAN")
+            if (isNsaid) {
+                return ClinicalInteraction(
+                    clinicalReason = "Contraindicated in Hypertension: Oral NSAIDs cause sodium/fluid retention and elevate arterial blood pressure.",
+                    spokenText = if (isHindi) {
+                        "सावधान! आपके मेडिकल प्रोफाइल में हाई ब्लड प्रेशर दर्ज है। यह दर्द निवारक दवा ब्लड प्रेशर को बढ़ा सकती है। डॉक्टर की सलाह के बिना न लें।"
+                    } else {
+                        "Warning! You have Hypertension recorded in your medical profile. This NSAID pain medication can significantly increase blood pressure. Consult your doctor."
+                    },
+                    displayTitle = if (isHindi) "उच्च रक्तचाप चेतावनी (Hypertension Alert)" else "Hypertension Risk: NSAID"
+                )
+            }
+
+            val isDecongestant = allScanned.contains("PSEUDOEPHEDRINE") || allScanned.contains("PHENYLEPHRINE") || allScanned.contains("EPHEDRINE")
+            if (isDecongestant) {
+                return ClinicalInteraction(
+                    clinicalReason = "Contraindicated in Hypertension: Sympathomimetic decongestants cause acute vasoconstriction and severe blood pressure spikes.",
+                    spokenText = if (isHindi) {
+                        "सावधान! आपको हाई ब्लड प्रेशर है। इस सर्दी-जुकाम की दवा में मौजूद तत्व रक्तचाप को अचानक बहुत अधिक बढ़ा सकते हैं।"
+                    } else {
+                        "Warning! You have Hypertension. Decongestants in this formulation can cause acute and dangerous blood pressure spikes."
+                    },
+                    displayTitle = if (isHindi) "बीपी चेतावनी (BP Spike Alert)" else "Severe BP Spike Warning"
+                )
+            }
+        }
+
+        // 2. Type-2 Diabetes Matrix
+        val hasDiabetes = patientConditions.any { it.contains("Diabetes", ignoreCase = true) || it.contains("Sugar", ignoreCase = true) }
+        if (hasDiabetes) {
+            val isSteroid = allScanned.contains("PREDNISOLONE") || allScanned.contains("DEXAMETHASONE") || 
+                    allScanned.contains("BETAMETHASONE") || allScanned.contains("DEFLAZACORT") || 
+                    allScanned.contains("HYDROCORTISONE") || allScanned.contains("WYMESONE") || allScanned.contains("OMNACORTIL")
+            if (isSteroid) {
+                return ClinicalInteraction(
+                    clinicalReason = "Contraindicated in Type-2 Diabetes: Systemic corticosteroids cause acute insulin resistance and severe blood glucose spikes.",
+                    spokenText = if (isHindi) {
+                        "सावधान! आपके मेडिकल प्रोफाइल में डायबिटीज दर्ज है। इस स्टेरॉयड दवा से शुगर लेवल बहुत तेजी से बढ़ सकता है। डॉक्टर की निगरानी में ही लें।"
+                    } else {
+                        "Warning! You have Type-2 Diabetes. This corticosteroid medication can cause severe blood glucose spikes. Consult your doctor."
+                    },
+                    displayTitle = if (isHindi) "डायबिटीज चेतावनी (Diabetes Alert)" else "Diabetes Risk: Steroid"
+                )
+            }
+
+            val isNonSelectiveBetaBlocker = allScanned.contains("PROPRANOLOL") || allScanned.contains("INDERAL")
+            if (isNonSelectiveBetaBlocker) {
+                return ClinicalInteraction(
+                    clinicalReason = "Caution in Diabetes: Non-selective beta-blockers mask crucial warning signs of hypoglycemia (tachycardia and tremors).",
+                    spokenText = if (isHindi) {
+                        "सावधान! डायबिटीज में यह दवा लो-शुगर (Hypoglycemia) के चेतावनी लक्षणों जैसे घबराहट और कंपकंपी को छिपा सकती है।"
+                    } else {
+                        "Caution: In Diabetes, this beta-blocker can mask vital warning symptoms of low blood sugar (hypoglycemia)."
+                    },
+                    displayTitle = if (isHindi) "लो-शुगर चेतावनी (Hypoglycemia Alert)" else "Hypoglycemia Masking Alert"
+                )
+            }
+        }
+
+        // 3. Cardiac / Heart Condition Matrix
+        val hasCardiac = patientConditions.any { 
+            it.contains("Cardiac", ignoreCase = true) || it.contains("Heart", ignoreCase = true) 
+        }
+        if (hasCardiac) {
+            val isNsaid = allScanned.contains("IBUPROFEN") || allScanned.contains("DICLOFENAC") || allScanned.contains("ACECLOFENAC") || allScanned.contains("BRUFEN")
+            if (isNsaid) {
+                return ClinicalInteraction(
+                    clinicalReason = "High Risk in Cardiac Disease: NSAIDs increase thrombotic cardiovascular risk and can worsen heart failure.",
+                    spokenText = if (isHindi) {
+                        "चेतावनी! आपके मेडिकल प्रोफाइल में हृदय रोग दर्ज है। यह दर्द निवारक दवा दिल पर अतिरिक्त दबाव और हार्ट अटैक का खतरा बढ़ा सकती है।"
+                    } else {
+                        "Critical Warning! You have a Cardiac condition. NSAIDs significantly increase the risk of heart failure and cardiovascular events."
+                    },
+                    displayTitle = if (isHindi) "कार्डियक चेतावनी (Cardiac Risk)" else "Cardiac Hazard Alert"
+                )
+            }
+
+            val isPde5 = allScanned.contains("SILDENAFIL") || allScanned.contains("TADALAFIL") || allScanned.contains("MANFORCE") || allScanned.contains("VIAGRA")
+            if (isPde5) {
+                return ClinicalInteraction(
+                    clinicalReason = "High Risk in Cardiac Disease: Vasodilators in compromised coronary circulation can induce severe hypotension.",
+                    spokenText = if (isHindi) {
+                        "गंभीर चेतावनी! हृदय रोग में यह दवा रक्तचाप को जानलेवा स्तर तक गिरा सकती है। तुरंत डॉक्टर से संपर्क करें।"
+                    } else {
+                        "Fatal Alert! In cardiac conditions, this vasodilator can cause life-threatening low blood pressure."
+                    },
+                    displayTitle = if (isHindi) "गंभीर कार्डियक अलर्ट (Cardiac Alert)" else "Fatal Cardiac Hypotension Risk"
+                )
+            }
+        }
+
+        // 4. Thyroid Disorder Matrix
+        val hasThyroid = patientConditions.any { it.contains("Thyroid", ignoreCase = true) }
+        if (hasThyroid) {
+            val isChelatingAgent = allScanned.contains("CALCIUM") || allScanned.contains("FERROUS") || 
+                    allScanned.contains("IRON") || allScanned.contains("SHELCAL") || allScanned.contains("AUTRIN")
+            if (isChelatingAgent) {
+                return ClinicalInteraction(
+                    clinicalReason = "Thyroid Absorption Interaction: Calcium/Iron binds to Thyroid hormone (Levothyroxine) in the gut. Must be taken at least 4 hours apart.",
+                    spokenText = if (isHindi) {
+                        "थायरॉइड चेतावनी: कैल्शियम या आयरन की दवा थायरॉइड की गोली (थायरोक्सिन) के असर को रोकती है। इसे थायरॉइड की दवा से कम से कम 4 घंटे के अंतर पर लें।"
+                    } else {
+                        "Thyroid Alert: Calcium and Iron bind to thyroid hormone. Take this at least 4 hours apart from your thyroid tablet."
+                    },
+                    displayTitle = if (isHindi) "थायरॉइड चेतावनी (Thyroid Alert)" else "Thyroid Absorption Alert"
+                )
+            }
         }
 
         return null

@@ -69,7 +69,8 @@ class SafetyEvaluationEngine(
         tokens: List<String>,
         locale: String = "hi",
         isExplicitSnap: Boolean = false,
-        bitmap: android.graphics.Bitmap? = null
+        bitmap: android.graphics.Bitmap? = null,
+        patientConditions: Set<String> = emptySet()
     ): SafetyEvaluationResult {
         if (tokens.isEmpty()) {
             return if (isExplicitSnap) {
@@ -127,7 +128,8 @@ class SafetyEvaluationEngine(
             locale = locale,
             expiryDate = expiryInfo.expiryDateString,
             isExpired = expiryInfo.isExpired,
-            bitmap = bitmap
+            bitmap = bitmap,
+            patientConditions = patientConditions
         )
 
         return when (safetyResult.safetyVerdict) {

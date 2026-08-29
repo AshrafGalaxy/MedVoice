@@ -329,4 +329,92 @@ class SafetyEngineTest {
         assertEquals(com.medvoice.core.ai.FoodTimingRule.NOT_APPLICABLE_EXTERNAL, safe.foodTimingRule)
         assertTrue("Expected external instruction in Hindi", safe.spokenVernacularText.contains("बाहरी उपयोग") || safe.spokenVernacularText.contains("सिर"))
     }
+
+    @Test
+    fun testDiseaseDrugContraindication_HypertensionAndNsaid() = runBlocking {
+        fakeDao.clearAllLogs()
+        val orchestrator = ClinicalSafetyOrchestrator()
+        val engine = SafetyEvaluationEngine(fakeDao, orchestrator)
+
+        val scannedTokens = listOf("Brufen 400", "Ibuprofen Tablets IP 400mg")
+        val patientConditions = setOf("Hypertension (BP)")
+
+        val result = engine.evaluateCandidateTokens(
+            tokens = scannedTokens,
+            locale = "en",
+            isExplicitSnap = true,
+            patientConditions = patientConditions
+        )
+
+        assertTrue("Expected CriticalInteractionBlocked for Hypertension + Ibuprofen, got: $result", result is SafetyEvaluationResult.CriticalInteractionBlocked)
+        val conflict = (result as SafetyEvaluationResult.CriticalInteractionBlocked).safetyResult
+        assertEquals(SafetyVerdict.CRITICAL_INTERACTION_BLOCKED, conflict.safetyVerdict)
+        assertTrue("Expected clinical reason to mention Hypertension", conflict.clinicalReason.contains("Hypertension"))
+    }
+
+    @Test
+    fun testDiseaseDrugContraindication_DiabetesAndCorticosteroid() = runBlocking {
+        fakeDao.clearAllLogs()
+        val orchestrator = ClinicalSafetyOrchestrator()
+        val engine = SafetyEvaluationEngine(fakeDao, orchestrator)
+
+        val scannedTokens = listOf("Wysolone 10", "Prednisolone Tablets IP 10mg")
+        val patientConditions = setOf("Type-2 Diabetes")
+
+        val result = engine.evaluateCandidateTokens(
+            tokens = scannedTokens,
+            locale = "en",
+            isExplicitSnap = true,
+            patientConditions = patientConditions
+        )
+
+        assertTrue("Expected CriticalInteractionBlocked for Diabetes + Prednisolone, got: $result", result is SafetyEvaluationResult.CriticalInteractionBlocked)
+        val conflict = (result as SafetyEvaluationResult.CriticalInteractionBlocked).safetyResult
+        assertEquals(SafetyVerdict.CRITICAL_INTERACTION_BLOCKED, conflict.safetyVerdict)
+        assertTrue("Expected clinical reason to mention Diabetes", conflict.clinicalReason.contains("Diabetes"))
+    }
+
+    @Test
+    fun testDiseaseDrugContraindication_CardiacAndNsaid() = runBlocking {
+        fakeDao.clearAllLogs()
+        val orchestrator = ClinicalSafetyOrchestrator()
+        val engine = SafetyEvaluationEngine(fakeDao, orchestrator)
+
+        val scannedTokens = listOf("Voveran 50", "Diclofenac Sodium 50mg Tablets")
+        val patientConditions = setOf("Cardiac / Heart Condition")
+
+        val result = engine.evaluateCandidateTokens(
+            tokens = scannedTokens,
+            locale = "en",
+            isExplicitSnap = true,
+            patientConditions = patientConditions
+        )
+
+        assertTrue("Expected CriticalInteractionBlocked for Cardiac + Diclofenac, got: $result", result is SafetyEvaluationResult.CriticalInteractionBlocked)
+        val conflict = (result as SafetyEvaluationResult.CriticalInteractionBlocked).safetyResult
+        assertEquals(SafetyVerdict.CRITICAL_INTERACTION_BLOCKED, conflict.safetyVerdict)
+        assertTrue("Expected clinical reason to mention Cardiac", conflict.clinicalReason.contains("Cardiac"))
+    }
+
+    @Test
+    fun testDiseaseDrugContraindication_ThyroidAndCalcium() = runBlocking {
+        fakeDao.clearAllLogs()
+        val orchestrator = ClinicalSafetyOrchestrator()
+        val engine = SafetyEvaluationEngine(fakeDao, orchestrator)
+
+        val scannedTokens = listOf("Shelcal 500", "Calcium and Vitamin D3 Tablets")
+        val patientConditions = setOf("Thyroid Disorder")
+
+        val result = engine.evaluateCandidateTokens(
+            tokens = scannedTokens,
+            locale = "en",
+            isExplicitSnap = true,
+            patientConditions = patientConditions
+        )
+
+        assertTrue("Expected CriticalInteractionBlocked for Thyroid + Calcium, got: $result", result is SafetyEvaluationResult.CriticalInteractionBlocked)
+        val conflict = (result as SafetyEvaluationResult.CriticalInteractionBlocked).safetyResult
+        assertEquals(SafetyVerdict.CRITICAL_INTERACTION_BLOCKED, conflict.safetyVerdict)
+        assertTrue("Expected clinical reason to mention Thyroid", conflict.clinicalReason.contains("Thyroid"))
+    }
 }

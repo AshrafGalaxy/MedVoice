@@ -122,12 +122,12 @@ class VernacularTtsManager(
         // Set Cadence and Pitch tuned to the selected gender
         when (selectedGender) {
             VoiceGender.FEMALE -> {
-                tts?.setPitch(1.24f) // Bright, crisp, authentically female tone
-                tts?.setSpeechRate(0.96f)
+                tts?.setPitch(1.28f) // Bright, crisp, authentically female tone
+                tts?.setSpeechRate(0.98f)
             }
             VoiceGender.MALE -> {
-                tts?.setPitch(0.84f) // Deep, clear, authoritative male tone
-                tts?.setSpeechRate(0.92f)
+                tts?.setPitch(0.70f) // Deep, authoritative, rich male baritone
+                tts?.setSpeechRate(0.88f)
             }
         }
 
@@ -149,6 +149,13 @@ class VernacularTtsManager(
         })
 
         tts?.speak(preprocessedText, TextToSpeech.QUEUE_FLUSH, null, "MEDVOICE_GOOGLE_NEURAL_${System.currentTimeMillis()}")
+    }
+
+    /**
+     * Set Voice Gender and synchronize pitch
+     */
+    fun setVoiceGender(gender: VoiceGender) {
+        selectedGender = gender
     }
 
     /**
@@ -175,19 +182,19 @@ class VernacularTtsManager(
                         val features = voice.features?.map { it.lowercase() } ?: emptyList()
                         when (gender) {
                             VoiceGender.FEMALE -> when {
-                                features.any { it.contains("gender=female") || it.contains("female") } -> 5
-                                name.contains("female") || name.contains("-f-") || name.contains("_f_") -> 4
+                                features.any { it.contains("gender=female") } -> 10
+                                name.contains("female") || name.contains("-f-") || name.contains("_f_") || name.contains("#female") -> 8
                                 name.contains("hia") || name.contains("hid") || name.contains("hie") ||
-                                        name.contains("ena") || name.contains("end") || name.contains("ene") || name.contains("network-f") -> 3
-                                !name.contains("male") && (name.contains("wavenet") || name.contains("neural")) -> 2
+                                        name.contains("ena") || name.contains("end") || name.contains("ene") || name.contains("network-f") -> 6
+                                !name.contains("male") && !name.contains("hib") && !name.contains("hic") && !name.contains("hif") &&
+                                        !name.contains("enb") && !name.contains("enc") && !name.contains("enf") -> 2
                                 else -> 0
                             }
                             VoiceGender.MALE -> when {
-                                features.any { it.contains("gender=male") } -> 5
-                                name.contains("male") && !name.contains("female") -> 4
+                                features.any { it.contains("gender=male") } -> 10
+                                (name.contains("male") && !name.contains("female")) || name.contains("-m-") || name.contains("_m_") || name.contains("#male") -> 8
                                 name.contains("hib") || name.contains("hic") || name.contains("hif") ||
-                                        name.contains("enb") || name.contains("enc") || name.contains("enf") || name.contains("network-m") -> 3
-                                !name.contains("female") && (name.contains("wavenet") || name.contains("neural")) -> 2
+                                        name.contains("enb") || name.contains("enc") || name.contains("enf") || name.contains("network-m") -> 6
                                 else -> 0
                             }
                         }

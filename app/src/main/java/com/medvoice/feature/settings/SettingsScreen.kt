@@ -128,6 +128,7 @@ fun SettingsScreen(viewModel: ScanViewModel) {
     val isCloudApiKeyConfigured by viewModel.isCloudApiKeyConfigured.collectAsState()
     val activeAiTier by viewModel.activeAiTier.collectAsState()
     val hardwareReport by viewModel.hardwareReport.collectAsState()
+    val selectedConditions by viewModel.selectedConditions.collectAsState()
     var apiKeyInput by remember { mutableStateOf("") }
     var isApiKeySavedRecently by remember { mutableStateOf(false) }
     var isEditingApiKey by remember { mutableStateOf(false) }
@@ -359,7 +360,114 @@ fun SettingsScreen(viewModel: ScanViewModel) {
 
         Spacer(modifier = Modifier.height(14.dp))
 
-        // 3. Medical AI Reasoning Engine
+        // 3. Chronic Medical Conditions Card (Disease-Drug Matrix)
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = SurfaceCardDark),
+            shape = RoundedCornerShape(14.dp)
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(imageVector = Icons.Default.Security, contentDescription = null, tint = SafeGreen, modifier = Modifier.size(20.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Column {
+                        Text(
+                            text = if (locale == "hi") "क्रोनिक मेडिकल प्रोफाइल (Health Profile)" else "Patient Chronic Health Profile",
+                            color = TextWhite,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 15.sp
+                        )
+                        Text(
+                            text = if (locale == "hi") "सक्रिय बीमारियों के अनुसार परस्परविरोधी दवाएं रोकी जाएंगी" else "Clinical engine blocks drugs conflicting with your conditions",
+                            color = TextMuted,
+                            fontSize = 11.5.sp
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.height(12.dp))
+
+                val conditionsList = listOf(
+                    "Type-2 Diabetes" to (if (locale == "hi") "टाइप-2 डायबिटीज (Diabetes)" else "Type-2 Diabetes"),
+                    "Hypertension (BP)" to (if (locale == "hi") "हाई ब्लड प्रेशर (BP)" else "Hypertension (BP)"),
+                    "Thyroid Disorder" to (if (locale == "hi") "थायरॉइड विकार (Thyroid)" else "Thyroid Disorder"),
+                    "Cardiac / Heart Condition" to (if (locale == "hi") "हृदय रोग (Cardiac)" else "Cardiac / Heart Condition")
+                )
+
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    conditionsList.forEach { (canonicalKey, localizedLabel) ->
+                        val isSelected = selectedConditions.contains(canonicalKey)
+                        Surface(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    viewModel.togglePatientCondition(canonicalKey)
+                                },
+                            shape = RoundedCornerShape(10.dp),
+                            color = if (isSelected) SurfaceCardElevated else SurfaceCardDark,
+                            border = BorderStroke(
+                                1.5.dp,
+                                if (isSelected) SafeGreen else AccentBorder.copy(alpha = 0.5f)
+                            )
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 14.dp, vertical = 10.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(22.dp)
+                                            .background(
+                                                if (isSelected) SafeGreen else SurfaceCardDark,
+                                                RoundedCornerShape(6.dp)
+                                            )
+                                            .border(
+                                                1.dp,
+                                                if (isSelected) SafeGreen else TextMuted.copy(alpha = 0.5f),
+                                                RoundedCornerShape(6.dp)
+                                            ),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        if (isSelected) {
+                                            Icon(Icons.Default.Check, contentDescription = null, tint = BackgroundCharcoal, modifier = Modifier.size(16.dp))
+                                        }
+                                    }
+                                    Spacer(modifier = Modifier.width(10.dp))
+                                    Text(
+                                        text = localizedLabel,
+                                        color = if (isSelected) TextWhite else TextMuted,
+                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                        fontSize = 13.5.sp
+                                    )
+                                }
+                                if (isSelected) {
+                                    Surface(
+                                        color = SafeGreen.copy(alpha = 0.15f),
+                                        shape = RoundedCornerShape(4.dp)
+                                    ) {
+                                        Text(
+                                            text = if (locale == "hi") "सुरक्षा सक्रिय" else "ACTIVE GUARD",
+                                            color = SafeGreen,
+                                            fontSize = 9.5.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(14.dp))
+
+        // 4. Medical AI Reasoning Engine
         Card(
             modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(containerColor = SurfaceCardDark),

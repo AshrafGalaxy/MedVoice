@@ -663,6 +663,7 @@ fun OnboardingScreen(
                             } else rawPhone
 
                             viewModel.updateCaregiverInfo(trimmedName, normalizedPhone)
+                            viewModel.updatePatientConditions(selectedConditions.toSet())
                             onOnboardingComplete()
                         }
                     }

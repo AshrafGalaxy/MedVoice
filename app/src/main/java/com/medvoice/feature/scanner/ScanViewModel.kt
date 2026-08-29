@@ -131,6 +131,11 @@ class ScanViewModel(application: Application) : AndroidViewModel(application) {
     private val _patientName = MutableStateFlow(prefs.getString("patient_name", "") ?: "")
     val patientName: StateFlow<String> = _patientName.asStateFlow()
 
+    private val _selectedConditions = MutableStateFlow<Set<String>>(
+        prefs.getStringSet("patient_conditions", setOf("Type-2 Diabetes", "Hypertension (BP)")) ?: setOf("Type-2 Diabetes", "Hypertension (BP)")
+    )
+    val selectedConditions: StateFlow<Set<String>> = _selectedConditions.asStateFlow()
+
     private val _medicationLogs = MutableStateFlow<List<MedicationLogEntity>>(emptyList())
     val medicationLogs: StateFlow<List<MedicationLogEntity>> = _medicationLogs.asStateFlow()
 
@@ -184,6 +189,7 @@ class ScanViewModel(application: Application) : AndroidViewModel(application) {
 
     init {
         // Hydrate audio & MedGemma persistent configuration
+        ttsManager.selectedGender = _selectedGender.value
         aiEngine.cloudMedGemmaApiKey = prefs.getString("cloud_medgemma_api_key", aiEngine.cloudMedGemmaApiKey) ?: aiEngine.cloudMedGemmaApiKey
         aiEngine.cloudModelName = prefs.getString("cloud_model_name", "qwen/qwen3.8-27b") ?: "qwen/qwen3.8-27b"
         aiEngine.allowCloudPrivacyEgress = prefs.getBoolean("cloud_privacy_egress", true)
@@ -380,6 +386,21 @@ class ScanViewModel(application: Application) : AndroidViewModel(application) {
         _hardwareReport.value = com.medvoice.core.ai.DeviceHardwareDetector.evaluateHardware(getApplication())
     }
 
+    fun updatePatientConditions(conditions: Set<String>) {
+        _selectedConditions.value = conditions
+        prefs.edit { putStringSet("patient_conditions", conditions) }
+    }
+
+    fun togglePatientCondition(condition: String) {
+        val current = _selectedConditions.value.toMutableSet()
+        if (current.contains(condition)) {
+            current.remove(condition)
+        } else {
+            current.add(condition)
+        }
+        updatePatientConditions(current)
+    }
+
     fun updateCaregiverInfo(name: String, phone: String) {
         val sanitizedName = name.trim().ifBlank { "Senior Patient" }
         _patientName.value = sanitizedName
@@ -480,7 +501,8 @@ class ScanViewModel(application: Application) : AndroidViewModel(application) {
                                 tokens = synthesizedTokens,
                                 locale = _selectedLocale.value,
                                 isExplicitSnap = true,
-                                bitmap = bitmap
+                                bitmap = bitmap,
+                                patientConditions = _selectedConditions.value
                             )
                             handleEvaluationResult(result)
                         } catch (e: Exception) {
@@ -535,7 +557,11 @@ class ScanViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch(Dispatchers.IO) {
             isProcessingEvaluation = true
             try {
-                val result = safetyEngine.evaluateCandidateTokens(tokens, _selectedLocale.value)
+                val result = safetyEngine.evaluateCandidateTokens(
+                    tokens = tokens,
+                    locale = _selectedLocale.value,
+                    patientConditions = _selectedConditions.value
+                )
                 handleEvaluationResult(result)
             } catch (e: Exception) {
                 Log.e("MedVoice_ScanVM", "Error evaluating tokens", e)
