@@ -544,20 +544,20 @@ fun SettingsScreen(viewModel: ScanViewModel) {
                         colors = ButtonDefaults.buttonColors(
                             containerColor = if (activeAiTier == AiEngineTier.ON_DEVICE_MEDGEMMA_INT4) SafeGreen else SurfaceCardElevated
                         ),
-                        shape = RoundedCornerShape(8.dp),
-                        contentPadding = PaddingValues(horizontal = 6.dp, vertical = 6.dp),
-                        modifier = Modifier.weight(1f).heightIn(min = 44.dp)
+                        shape = RoundedCornerShape(10.dp),
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
+                        modifier = Modifier.weight(1f).heightIn(min = 46.dp)
                     ) {
                         Icon(
                             imageVector = Icons.Default.FlashOn,
                             contentDescription = null,
                             tint = if (activeAiTier == AiEngineTier.ON_DEVICE_MEDGEMMA_INT4) BackgroundCharcoal else TextWhite,
-                            modifier = Modifier.size(14.dp)
+                            modifier = Modifier.size(16.dp)
                         )
-                        Spacer(modifier = Modifier.width(4.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
                         Text(
-                            text = if (locale == "hi") "ऑन-डिवाइस (1B / SQLite)" else "On-Device (1B / SQLite)",
-                            fontSize = 11.sp,
+                            text = if (locale == "hi") "ऑन-डिवाइस" else "On-Device",
+                            fontSize = 13.sp,
                             color = if (activeAiTier == AiEngineTier.ON_DEVICE_MEDGEMMA_INT4) BackgroundCharcoal else TextWhite,
                             fontWeight = FontWeight.Bold
                         )
@@ -571,20 +571,20 @@ fun SettingsScreen(viewModel: ScanViewModel) {
                         colors = ButtonDefaults.buttonColors(
                             containerColor = if (activeAiTier == AiEngineTier.CLOUD_MEDGEMMA_HOSTED) SafeGreen else SurfaceCardElevated
                         ),
-                        shape = RoundedCornerShape(8.dp),
-                        contentPadding = PaddingValues(horizontal = 6.dp, vertical = 6.dp),
-                        modifier = Modifier.weight(1f).heightIn(min = 44.dp)
+                        shape = RoundedCornerShape(10.dp),
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
+                        modifier = Modifier.weight(1f).heightIn(min = 46.dp)
                     ) {
                         Icon(
                             imageVector = Icons.Default.Cloud,
                             contentDescription = null,
                             tint = if (activeAiTier == AiEngineTier.CLOUD_MEDGEMMA_HOSTED) BackgroundCharcoal else TextWhite,
-                            modifier = Modifier.size(14.dp)
+                            modifier = Modifier.size(16.dp)
                         )
-                        Spacer(modifier = Modifier.width(4.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
                         Text(
-                            text = if (locale == "hi") "क्लाउड (Qwen 27B)" else "Cloud (Qwen 27B)",
-                            fontSize = 11.sp,
+                            text = if (locale == "hi") "क्लाउड" else "Cloud",
+                            fontSize = 13.sp,
                             color = if (activeAiTier == AiEngineTier.CLOUD_MEDGEMMA_HOSTED) BackgroundCharcoal else TextWhite,
                             fontWeight = FontWeight.Bold
                         )
