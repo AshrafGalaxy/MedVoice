@@ -42,6 +42,8 @@ import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.FlashOn
 import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.Language
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.LockOpen
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.RecordVoiceOver
@@ -79,6 +81,8 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -115,6 +119,7 @@ fun SettingsScreen(viewModel: ScanViewModel) {
 
     var apiKeyInput by remember { mutableStateOf(viewModel.aiEngine.cloudMedGemmaApiKey) }
     var isApiKeySavedRecently by remember { mutableStateOf(false) }
+    var isKeyVisible by remember { mutableStateOf(false) }
     var allowCloudPrivacy by remember { mutableStateOf(viewModel.aiEngine.allowCloudPrivacyEgress) }
 
     LaunchedEffect(caregiverPhone, patientName) {
@@ -487,6 +492,7 @@ fun SettingsScreen(viewModel: ScanViewModel) {
                                             isApiKeySavedRecently = false
                                         },
                                         singleLine = true,
+                                        visualTransformation = if (isKeyVisible) VisualTransformation.None else PasswordVisualTransformation(),
                                         textStyle = MaterialTheme.typography.bodyMedium.copy(
                                             color = TextWhite,
                                             fontSize = 12.sp,
@@ -495,6 +501,21 @@ fun SettingsScreen(viewModel: ScanViewModel) {
                                         cursorBrush = SolidColor(SafeGreen),
                                         modifier = Modifier.fillMaxWidth()
                                     )
+                                }
+                                if (apiKeyInput.isNotEmpty()) {
+                                    IconButton(
+                                        onClick = {
+                                            isKeyVisible = !isKeyVisible
+                                        },
+                                        modifier = Modifier.size(24.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = if (isKeyVisible) Icons.Default.LockOpen else Icons.Default.Lock,
+                                            contentDescription = if (isKeyVisible) "Hide Key" else "Show Key",
+                                            tint = if (isKeyVisible) SafeGreen else TextMuted,
+                                            modifier = Modifier.size(15.dp)
+                                        )
+                                    }
                                 }
                             }
                         }
