@@ -4,6 +4,12 @@ import android.Manifest
 import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -107,7 +113,8 @@ fun SettingsScreen(viewModel: ScanViewModel) {
     var phoneError by remember { mutableStateOf<String?>(null) }
     var isSavedRecently by remember { mutableStateOf(false) }
 
-    var medGemmaKeyInput by remember { mutableStateOf(viewModel.aiEngine.cloudMedGemmaApiKey) }
+    var apiKeyInput by remember { mutableStateOf(viewModel.aiEngine.cloudMedGemmaApiKey) }
+    var isApiKeySavedRecently by remember { mutableStateOf(false) }
     var allowCloudPrivacy by remember { mutableStateOf(viewModel.aiEngine.allowCloudPrivacyEgress) }
 
     LaunchedEffect(caregiverPhone, patientName) {
@@ -336,7 +343,7 @@ fun SettingsScreen(viewModel: ScanViewModel) {
 
         Spacer(modifier = Modifier.height(14.dp))
 
-        // 3. MedGemma AI Medical Reasoning Engine
+        // 3. Medical AI Reasoning Engine
         Card(
             modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(containerColor = SurfaceCardDark),
@@ -347,7 +354,7 @@ fun SettingsScreen(viewModel: ScanViewModel) {
                     Icon(imageVector = Icons.Default.Security, contentDescription = null, tint = SafeGreen, modifier = Modifier.size(18.dp))
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = if (locale == "hi") "मेडिकल एआई मॉडल (Medical AI)" else "Medical AI Engine (SLM / Cloud)",
+                        text = if (locale == "hi") "मेडिकल एआई मॉडल (Medical AI)" else "Medical AI Engine",
                         color = TextWhite,
                         fontWeight = FontWeight.Bold,
                         fontSize = 15.sp
@@ -355,7 +362,7 @@ fun SettingsScreen(viewModel: ScanViewModel) {
                 }
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = if (locale == "hi") "ऑन-डिवाइस MedGemma INT4 और Groq Qwen 3.8 27B मॉडल" else "On-Device MedGemma INT4 & Groq Qwen 3.8 27B LPU",
+                    text = if (locale == "hi") "दवा सुरक्षा और रासायनिक संरचना विश्लेषण" else "Clinical pharmaceutical safety and formulation analysis",
                     color = TextMuted,
                     fontSize = 12.sp
                 )
@@ -378,7 +385,7 @@ fun SettingsScreen(viewModel: ScanViewModel) {
                     ) {
                         Icon(imageVector = Icons.Default.FlashOn, contentDescription = null, tint = TextWhite, modifier = Modifier.size(14.dp))
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text("On-Device INT4", fontSize = 11.sp, color = TextWhite, fontWeight = FontWeight.Bold)
+                        Text(if (locale == "hi") "ऑन-डिवाइस एआई" else "On-Device AI", fontSize = 11.5.sp, color = TextWhite, fontWeight = FontWeight.Bold)
                     }
 
                     Button(
@@ -394,7 +401,7 @@ fun SettingsScreen(viewModel: ScanViewModel) {
                     ) {
                         Icon(imageVector = Icons.Default.Cloud, contentDescription = null, tint = TextWhite, modifier = Modifier.size(14.dp))
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text("Cloud Qwen 27B", fontSize = 11.sp, color = TextWhite, fontWeight = FontWeight.Bold)
+                        Text(if (locale == "hi") "क्लाउड एआई" else "Cloud AI", fontSize = 11.5.sp, color = TextWhite, fontWeight = FontWeight.Bold)
                     }
                 }
 
@@ -409,7 +416,7 @@ fun SettingsScreen(viewModel: ScanViewModel) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text("Privacy Guardrail (Data Egress)", color = TextWhite, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
                         Text(
-                            text = if (allowCloudPrivacy) "Cloud processing allowed" else "100% On-Device Only (No cloud egress)",
+                            text = if (allowCloudPrivacy) "Cloud processing allowed" else "100% On-Device Only (No data egress)",
                             color = if (allowCloudPrivacy) ReticleCyan else SafeGreen,
                             fontSize = 11.sp
                         )
@@ -430,14 +437,7 @@ fun SettingsScreen(viewModel: ScanViewModel) {
                 if (allowCloudPrivacy || viewModel.aiEngine.activeTier == AiEngineTier.CLOUD_MEDGEMMA_HOSTED) {
                     Spacer(modifier = Modifier.height(12.dp))
                     Text(
-                        text = "Groq Model: qwen/qwen3.8-27b (27B Parameters)",
-                        color = ReticleCyan,
-                        fontSize = 11.5.sp,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                    Spacer(modifier = Modifier.height(6.dp))
-                    Text(
-                        text = "Groq API Key",
+                        text = if (locale == "hi") "क्लाउड एपीआई कुंजी (Cloud API Key)" else "Cloud API Key",
                         color = TextWhite,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.SemiBold
@@ -454,7 +454,7 @@ fun SettingsScreen(viewModel: ScanViewModel) {
                                 .height(44.dp),
                             shape = RoundedCornerShape(10.dp),
                             color = SurfaceCardElevated,
-                            border = BorderStroke(1.dp, if (medGemmaKeyInput.isNotBlank()) SafeGreen else AccentBorder)
+                            border = BorderStroke(1.dp, if (isApiKeySavedRecently) SafeGreen else if (apiKeyInput.isNotBlank()) SafeGreen.copy(alpha = 0.6f) else AccentBorder)
                         ) {
                             Row(
                                 modifier = Modifier
@@ -465,7 +465,7 @@ fun SettingsScreen(viewModel: ScanViewModel) {
                                 Icon(
                                     imageVector = Icons.Default.Cloud,
                                     contentDescription = null,
-                                    tint = if (medGemmaKeyInput.isNotBlank()) SafeGreen else TextMuted,
+                                    tint = if (isApiKeySavedRecently || apiKeyInput.isNotBlank()) SafeGreen else TextMuted,
                                     modifier = Modifier.size(16.dp)
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
@@ -473,17 +473,18 @@ fun SettingsScreen(viewModel: ScanViewModel) {
                                     modifier = Modifier.weight(1f),
                                     contentAlignment = Alignment.CenterStart
                                 ) {
-                                    if (medGemmaKeyInput.isEmpty()) {
+                                    if (apiKeyInput.isEmpty()) {
                                         Text(
-                                            text = "Enter Groq API Key (gsk_...)",
+                                            text = if (locale == "hi") "एपीआई कुंजी दर्ज करें..." else "Enter Cloud API Key...",
                                             color = TextMuted.copy(alpha = 0.6f),
                                             fontSize = 12.sp
                                         )
                                     }
                                     BasicTextField(
-                                        value = medGemmaKeyInput,
+                                        value = apiKeyInput,
                                         onValueChange = {
-                                            medGemmaKeyInput = it
+                                            apiKeyInput = it
+                                            isApiKeySavedRecently = false
                                         },
                                         singleLine = true,
                                         textStyle = MaterialTheme.typography.bodyMedium.copy(
@@ -501,25 +502,81 @@ fun SettingsScreen(viewModel: ScanViewModel) {
                         Button(
                             onClick = {
                                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                viewModel.setCloudMedGemmaApiKey(medGemmaKeyInput.trim())
+                                viewModel.setCloudMedGemmaApiKey(apiKeyInput.trim())
+                                isApiKeySavedRecently = true
+                                coroutineScope.launch {
+                                    kotlinx.coroutines.delay(2500L)
+                                    isApiKeySavedRecently = false
+                                }
                             },
                             colors = ButtonDefaults.buttonColors(containerColor = SafeGreen),
                             shape = RoundedCornerShape(10.dp),
                             contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
                             modifier = Modifier.height(44.dp)
                         ) {
+                            AnimatedContent(
+                                targetState = isApiKeySavedRecently,
+                                transitionSpec = { fadeIn(tween(180)) togetherWith fadeOut(tween(180)) },
+                                label = "ApiKeySaveTransition"
+                            ) { saved ->
+                                if (saved) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Icon(
+                                            imageVector = Icons.Default.CheckCircle,
+                                            contentDescription = "Saved",
+                                            tint = TextWhite,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text(
+                                            text = if (locale == "hi") "सहेजा गया!" else "Saved!",
+                                            color = TextWhite,
+                                            fontSize = 12.sp,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    }
+                                } else {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Icon(
+                                            imageVector = Icons.Default.Save,
+                                            contentDescription = "Save",
+                                            tint = TextWhite,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text(
+                                            text = if (locale == "hi") "सेव करें" else "Save",
+                                            color = TextWhite,
+                                            fontSize = 12.sp,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    AnimatedVisibility(
+                        visible = isApiKeySavedRecently,
+                        enter = fadeIn(),
+                        exit = fadeOut()
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(top = 6.dp)
+                        ) {
                             Icon(
-                                imageVector = Icons.Default.Check,
-                                contentDescription = "Save",
-                                tint = TextWhite,
-                                modifier = Modifier.size(16.dp)
+                                imageVector = Icons.Default.CheckCircle,
+                                contentDescription = null,
+                                tint = SafeGreen,
+                                modifier = Modifier.size(14.dp)
                             )
-                            Spacer(modifier = Modifier.width(4.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
                             Text(
-                                text = "Save",
-                                color = TextWhite,
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Bold
+                                text = if (locale == "hi") "क्लाउड एपीआई कुंजी सुरक्षित रूप से सहेजी गई" else "Cloud API key saved successfully",
+                                color = SafeGreen,
+                                fontSize = 11.5.sp,
+                                fontWeight = FontWeight.Medium
                             )
                         }
                     }
