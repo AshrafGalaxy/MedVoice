@@ -1,5 +1,6 @@
 package com.medvoice.core.domain.engine
 
+import com.medvoice.core.ai.FoodTimingRule
 import com.medvoice.core.ai.MedGemmaOrchestrator
 import com.medvoice.core.ai.MedGemmaSafetyResult
 import com.medvoice.core.ai.SafetyVerdict
@@ -65,9 +66,29 @@ class SafetyEvaluationEngine(
 ) {
     suspend fun evaluateCandidateTokens(
         tokens: List<String>,
-        locale: String = "hi"
+        locale: String = "hi",
+        isExplicitSnap: Boolean = false
     ): SafetyEvaluationResult {
-        if (tokens.isEmpty()) return SafetyEvaluationResult.NoMatchFound
+        if (tokens.isEmpty()) {
+            return if (isExplicitSnap) {
+                SafetyEvaluationResult.UnidentifiedMedicineBlocked(
+                    MedGemmaSafetyResult(
+                        brandName = if (locale == "hi") "लिखावट नहीं मिली" else "No Text Found",
+                        parsedSalts = emptyList(),
+                        therapeuticClass = "UNIDENTIFIED",
+                        safetyVerdict = SafetyVerdict.UNIDENTIFIED_MEDICINE_BLOCKED,
+                        clinicalReason = if (locale == "hi") "कृपया दवा की पट्टी को रोशनी में कैमरे के पास लाएं और दोबारा फोटो लें।" else "No clear text found on packaging. Please snap closer under good lighting.",
+                        foodTimingRule = FoodTimingRule.AFTER_FOOD,
+                        isEmergencyAlert = false,
+                        spokenVernacularText = if (locale == "hi") "दवा पर कोई लिखावट नहीं दिखी। कृपया पट्टी को रोशनी में दोबारा स्कैन करें।" else "No legible text detected on packaging. Please scan the label clearly again.",
+                        displayTitle = if (locale == "hi") "पहचान में असमर्थ (Unidentified)" else "Unidentified Medicine",
+                        dosageForm = "UNKNOWN"
+                    )
+                )
+            } else {
+                SafetyEvaluationResult.NoMatchFound
+            }
+        }
 
         val combinedText = tokens.joinToString(" ")
 
@@ -76,7 +97,7 @@ class SafetyEvaluationEngine(
 
         // Strict Pre-Filter Gate: Must contain pharmaceutical strength, dosage form, pharmacopeia standards, or active chemical
         val hasPharmaMarkers = medGemmaOrchestrator.aiPharmacologyEngine.containsPharmaceuticalMarkers(combinedText)
-        if (!hasPharmaMarkers) {
+        if (!hasPharmaMarkers && !isExplicitSnap) {
             return SafetyEvaluationResult.NoMatchFound
         }
 

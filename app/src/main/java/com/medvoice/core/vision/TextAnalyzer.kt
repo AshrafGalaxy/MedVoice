@@ -36,23 +36,11 @@ class TextAnalyzer(
             recognizer.process(image)
                 .addOnSuccessListener { visionText ->
                     val lines = visionText.textBlocks.flatMap { block ->
-                        block.lines.map { it.text.trim().uppercase() }
-                    }.filter { it.isNotBlank() && it.length >= 3 }
+                        block.lines.map { it.text.trim() }
+                    }.filter { it.isNotBlank() && it.length >= 2 }
 
                     if (lines.isNotEmpty()) {
-                        frameBuffer.add(lines)
-                        if (frameBuffer.size > requiredStableFrames + 1) {
-                            frameBuffer.removeAt(0)
-                        }
-
-                        if (frameBuffer.size == requiredStableFrames + 1) {
-                            if (checkStability(frameBuffer)) {
-                                onTextDetected(lines)
-                                frameBuffer.clear()
-                            }
-                        }
-                    } else {
-                        frameBuffer.clear()
+                        onTextDetected(lines)
                     }
                 }
                 .addOnFailureListener { error ->
