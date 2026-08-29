@@ -120,7 +120,6 @@ MedVoice/
 │   └── test/                                   # 37 comprehensive unit tests (100% pass)
 ├── scripts/
 │   └── compile_catalog_db.py                   # Automated CSV downloader & SQLite FTS5 compiler
-├── DEMO_TEST_PACK.md                           # 2-Minute Judge Evaluation Cards
 └── AGENTS.md                                   # Autonomous agent system rules & directives
 ```
 
