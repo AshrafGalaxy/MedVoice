@@ -5,15 +5,17 @@ import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import com.medvoice.core.data.local.dao.MedicineDao
+import com.medvoice.core.data.local.entity.CabinetPrescriptionEntity
 import com.medvoice.core.data.local.entity.MedicationLogEntity
 import com.medvoice.core.data.local.entity.MedicineEntity
 
 @Database(
     entities = [
         MedicineEntity::class,
-        MedicationLogEntity::class
+        MedicationLogEntity::class,
+        CabinetPrescriptionEntity::class
     ],
-    version = 1,
+    version = 2,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {

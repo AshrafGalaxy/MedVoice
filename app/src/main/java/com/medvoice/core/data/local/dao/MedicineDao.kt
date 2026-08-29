@@ -4,6 +4,8 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.Update
+import com.medvoice.core.data.local.entity.CabinetPrescriptionEntity
 import com.medvoice.core.data.local.entity.MedicationLogEntity
 import com.medvoice.core.data.local.entity.MedicineEntity
 
@@ -12,18 +14,36 @@ interface MedicineDao {
 
     @Query("""
         SELECT * FROM medicines 
-        WHERE brand_name LIKE :query
+        WHERE LOWER(brand_name) = LOWER(:query)
+           OR LOWER(brand_name) LIKE LOWER(:query) || ' %'
+           OR LOWER(brand_name) LIKE LOWER(:query) || '-%'
+           OR LOWER(raw_composition) = LOWER(:query)
+           OR LOWER(raw_composition) LIKE LOWER(:query) || ' %'
+        ORDER BY 
+           CASE 
+             WHEN LOWER(brand_name) = LOWER(:query) THEN 1
+             WHEN LOWER(brand_name) LIKE LOWER(:query) || ' %' THEN 2
+             WHEN LOWER(brand_name) LIKE LOWER(:query) || '-%' THEN 3
+             ELSE 4
+           END
         LIMIT 1
     """)
     suspend fun searchCatalog(query: String): MedicineEntity?
 
-
-    @Query("SELECT * FROM medicines WHERE brand_name LIKE :query LIMIT 1")
+    @Query("""
+        SELECT * FROM medicines 
+        WHERE LOWER(brand_name) = LOWER(:query)
+           OR LOWER(brand_name) LIKE LOWER(:query) || ' %'
+           OR LOWER(raw_composition) = LOWER(:query)
+           OR LOWER(raw_composition) LIKE LOWER(:query) || ' %'
+        LIMIT 1
+    """)
     suspend fun findMedicineByFts(query: String): MedicineEntity?
 
     @Query("SELECT * FROM medicines WHERE id = :id LIMIT 1")
     suspend fun getMedicineById(id: Long): MedicineEntity?
 
+    // Legacy cabinet query
     @Query("""
         SELECT DISTINCT m.* 
         FROM medicines m 
@@ -31,6 +51,27 @@ interface MedicineDao {
         ORDER BY m.brand_name ASC
     """)
     suspend fun getCabinetMedicines(): List<MedicineEntity>
+
+    // Active Cabinet Prescriptions CRUD
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertCabinetPrescription(prescription: CabinetPrescriptionEntity): Long
+
+    @Query("SELECT * FROM cabinet_prescriptions WHERE is_active = 1 ORDER BY brand_name ASC")
+    suspend fun getAllCabinetPrescriptions(): List<CabinetPrescriptionEntity>
+
+    @Query("SELECT * FROM cabinet_prescriptions WHERE id = :id LIMIT 1")
+    suspend fun getCabinetPrescriptionById(id: Long): CabinetPrescriptionEntity?
+
+    @Query("DELETE FROM cabinet_prescriptions WHERE id = :id")
+    suspend fun deleteCabinetPrescription(id: Long)
+
+    @Query("""
+        SELECT * FROM cabinet_prescriptions 
+        WHERE is_active = 1 
+          AND (brand_name LIKE '%' || :query || '%' OR raw_composition LIKE '%' || :query || '%')
+        ORDER BY brand_name ASC
+    """)
+    suspend fun searchCabinetPrescriptions(query: String): List<CabinetPrescriptionEntity>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertMedicine(medicine: MedicineEntity): Long

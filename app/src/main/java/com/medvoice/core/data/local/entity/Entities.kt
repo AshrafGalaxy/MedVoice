@@ -57,3 +57,31 @@ data class MedicationLogEntity(
     val resolvedSaltId: Long
         get() = medicineId
 }
+
+@Entity(tableName = "cabinet_prescriptions")
+data class CabinetPrescriptionEntity(
+    @PrimaryKey(autoGenerate = true)
+    @ColumnInfo(name = "id")
+    val id: Long = 0,
+
+    @ColumnInfo(name = "brand_name")
+    val brandName: String,
+
+    @ColumnInfo(name = "raw_composition")
+    val rawComposition: String,
+
+    @ColumnInfo(name = "dosage_form")
+    val dosageForm: String = "TABLET",
+
+    @ColumnInfo(name = "food_timing_rule")
+    val foodTimingRule: String = "AFTER_FOOD",
+
+    @ColumnInfo(name = "manufacturer")
+    val manufacturer: String? = "Prescribed Formulation",
+
+    @ColumnInfo(name = "is_active")
+    val isActive: Boolean = true,
+
+    @ColumnInfo(name = "created_timestamp")
+    val createdTimestamp: Long = System.currentTimeMillis()
+)
