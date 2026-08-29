@@ -949,13 +949,36 @@ fun SettingsScreen(viewModel: ScanViewModel) {
                                     fontWeight = FontWeight.Bold
                                 )
                             }
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text(
-                                text = "• Ultra-fast neural reasoning (<400ms)\n• Pre-configured Demo Gateway active with zero setup",
-                                color = TextMuted,
-                                fontSize = 11.sp,
-                                lineHeight = 15.sp
-                            )
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                Surface(
+                                    color = SafeGreen.copy(alpha = 0.12f),
+                                    shape = RoundedCornerShape(6.dp)
+                                ) {
+                                    Text(
+                                        text = if (locale == "hi") "⚡ हाई-स्पीड न्यूरल विजन (<400ms)" else "⚡ Neural Reasoning (<400ms)",
+                                        color = SafeGreen,
+                                        fontSize = 10.5.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp)
+                                    )
+                                }
+                                Surface(
+                                    color = SafeGreen.copy(alpha = 0.12f),
+                                    shape = RoundedCornerShape(6.dp)
+                                ) {
+                                    Text(
+                                        text = if (locale == "hi") "🌐 डेमो गेटवे सक्रिय" else "🌐 Zero Setup Demo Gateway",
+                                        color = SafeGreen,
+                                        fontSize = 10.5.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp)
+                                    )
+                                }
+                            }
                         } else {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Icon(Icons.Default.FlashOn, contentDescription = null, tint = ReticleCyan, modifier = Modifier.size(16.dp))
@@ -967,13 +990,36 @@ fun SettingsScreen(viewModel: ScanViewModel) {
                                     fontWeight = FontWeight.Bold
                                 )
                             }
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text(
-                                text = "• 100% Offline (Zero Network Required) • Local SQLite FTS5 & Pharmacopeia\n• Edge Privacy: No biometric or medication data leaves device.",
-                                color = TextMuted,
-                                fontSize = 11.sp,
-                                lineHeight = 15.sp
-                            )
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                Surface(
+                                    color = ReticleCyan.copy(alpha = 0.12f),
+                                    shape = RoundedCornerShape(6.dp)
+                                ) {
+                                    Text(
+                                        text = if (locale == "hi") "🔒 100% ऑफलाइन (No Data Egress)" else "🔒 100% Offline (No Data Egress)",
+                                        color = ReticleCyan,
+                                        fontSize = 10.5.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp)
+                                    )
+                                }
+                                Surface(
+                                    color = ReticleCyan.copy(alpha = 0.12f),
+                                    shape = RoundedCornerShape(6.dp)
+                                ) {
+                                    Text(
+                                        text = if (locale == "hi") "⚡ लोकल SQLite FTS5" else "⚡ Local SQLite FTS5 Index",
+                                        color = ReticleCyan,
+                                        fontSize = 10.5.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp)
+                                    )
+                                }
+                            }
                         }
                     }
                 }
