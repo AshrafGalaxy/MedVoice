@@ -502,7 +502,7 @@ fun SettingsScreen(viewModel: ScanViewModel) {
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(imageVector = Icons.Default.Memory, contentDescription = null, tint = SafeGreen, modifier = Modifier.size(20.dp))
+                        Icon(imageVector = Icons.Default.Security, contentDescription = null, tint = SafeGreen, modifier = Modifier.size(18.dp))
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
                             text = if (locale == "hi") "मेडिकल एआई मॉडल (Medical AI)" else "Medical AI Engine",
@@ -608,7 +608,7 @@ fun SettingsScreen(viewModel: ScanViewModel) {
                                 horizontalArrangement = Arrangement.SpaceBetween
                             ) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(Icons.Default.Memory, contentDescription = null, tint = SafeGreen, modifier = Modifier.size(16.dp))
+                                    Icon(Icons.Default.Speed, contentDescription = null, tint = SafeGreen, modifier = Modifier.size(18.dp))
                                     Spacer(modifier = Modifier.width(6.dp))
                                     Text(
                                         text = if (locale == "hi") "हार्डवेयर स्पेक्स" else "Hardware Diagnostics",
