@@ -1,8 +1,8 @@
 package com.medvoice.core.domain.engine
 
+import com.medvoice.core.ai.ClinicalSafetyOrchestrator
+import com.medvoice.core.ai.ClinicalSafetyResult
 import com.medvoice.core.ai.FoodTimingRule
-import com.medvoice.core.ai.MedGemmaOrchestrator
-import com.medvoice.core.ai.MedGemmaSafetyResult
 import com.medvoice.core.ai.SafetyVerdict
 import com.medvoice.core.data.local.dao.MedicineDao
 import com.medvoice.core.data.local.entity.MedicineEntity
@@ -10,7 +10,7 @@ import java.util.Locale
 
 sealed class SafetyEvaluationResult {
     data class SafeToTake(
-        val safetyResult: MedGemmaSafetyResult,
+        val safetyResult: ClinicalSafetyResult,
         val matchedMedicine: MedicineEntity?
     ) : SafetyEvaluationResult() {
         val brandName: String get() = safetyResult.brandName
@@ -22,7 +22,7 @@ sealed class SafetyEvaluationResult {
     }
 
     data class DuplicateDoseBlocked(
-        val safetyResult: MedGemmaSafetyResult,
+        val safetyResult: ClinicalSafetyResult,
         val matchedMedicine: MedicineEntity?
     ) : SafetyEvaluationResult() {
         val brandName: String get() = safetyResult.brandName
@@ -32,7 +32,7 @@ sealed class SafetyEvaluationResult {
     }
 
     data class CriticalInteractionBlocked(
-        val safetyResult: MedGemmaSafetyResult,
+        val safetyResult: ClinicalSafetyResult,
         val matchedMedicine: MedicineEntity?
     ) : SafetyEvaluationResult() {
         val brandName: String get() = safetyResult.brandName
@@ -42,7 +42,7 @@ sealed class SafetyEvaluationResult {
     }
 
     data class ExpiredMedicineBlocked(
-        val safetyResult: MedGemmaSafetyResult,
+        val safetyResult: ClinicalSafetyResult,
         val matchedMedicine: MedicineEntity?,
         val expiryDateString: String?
     ) : SafetyEvaluationResult() {
@@ -52,7 +52,7 @@ sealed class SafetyEvaluationResult {
     }
 
     data class UnidentifiedMedicineBlocked(
-        val safetyResult: MedGemmaSafetyResult
+        val safetyResult: ClinicalSafetyResult
     ) : SafetyEvaluationResult() {
         val alertMessage: String get() = safetyResult.spokenVernacularText
         val clinicalReason: String get() = safetyResult.clinicalReason
@@ -63,7 +63,7 @@ sealed class SafetyEvaluationResult {
 
 class SafetyEvaluationEngine(
     private val medicineDao: MedicineDao,
-    private val medGemmaOrchestrator: MedGemmaOrchestrator = MedGemmaOrchestrator()
+    private val clinicalOrchestrator: ClinicalSafetyOrchestrator = ClinicalSafetyOrchestrator()
 ) {
     suspend fun evaluateCandidateTokens(
         tokens: List<String>,
@@ -73,7 +73,7 @@ class SafetyEvaluationEngine(
         if (tokens.isEmpty()) {
             return if (isExplicitSnap) {
                 SafetyEvaluationResult.UnidentifiedMedicineBlocked(
-                    MedGemmaSafetyResult(
+                    ClinicalSafetyResult(
                         brandName = if (locale == "hi") "लिखावट नहीं मिली" else "No Text Found",
                         parsedSalts = emptyList(),
                         therapeuticClass = "UNIDENTIFIED",
@@ -97,7 +97,7 @@ class SafetyEvaluationEngine(
         val expiryInfo = ExpiryParser.parse(combinedText)
 
         // Strict Pre-Filter Gate: Must contain pharmaceutical strength, dosage form, pharmacopeia standards, or active chemical
-        val hasPharmaMarkers = medGemmaOrchestrator.aiPharmacologyEngine.containsPharmaceuticalMarkers(combinedText)
+        val hasPharmaMarkers = clinicalOrchestrator.aiPharmacologyEngine.containsPharmaceuticalMarkers(combinedText)
         if (!hasPharmaMarkers && !isExplicitSnap) {
             return SafetyEvaluationResult.NoMatchFound
         }
@@ -118,8 +118,8 @@ class SafetyEvaluationEngine(
         val threshold24h = System.currentTimeMillis() - (24 * 3600 * 1000L)
         val recentLogs = medicineDao.getRecentLogs(threshold24h)
 
-        // Step 3: Deep MedGemma Clinical Reasoning (Preserves authentic packaging text)
-        val safetyResult = medGemmaOrchestrator.evaluateSafety(
+        // Step 3: Deep Clinical Safety Reasoning (Preserves authentic packaging text)
+        val safetyResult = clinicalOrchestrator.evaluateSafety(
             scannedText = combinedText,
             matchedMedicine = matchedMedicine,
             recentLogs = recentLogs,

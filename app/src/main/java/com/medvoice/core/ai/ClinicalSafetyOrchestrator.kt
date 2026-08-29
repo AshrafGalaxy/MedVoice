@@ -23,7 +23,7 @@ enum class FoodTimingRule {
     BEDTIME
 }
 
-data class MedGemmaSafetyResult(
+data class ClinicalSafetyResult(
     val brandName: String,
     val parsedSalts: List<String>,
     val therapeuticClass: String,
@@ -38,7 +38,7 @@ data class MedGemmaSafetyResult(
     val sourceTier: AiEngineTier = AiEngineTier.CLOUD_MEDGEMMA_HOSTED
 )
 
-class MedGemmaOrchestrator(
+class ClinicalSafetyOrchestrator(
     private val context: Context? = null,
     val aiPharmacologyEngine: AiPharmacologyEngine = AiPharmacologyEngine(context)
 ) {
@@ -46,7 +46,7 @@ class MedGemmaOrchestrator(
     var activeTier: AiEngineTier = AiEngineTier.ON_DEVICE_MEDGEMMA_INT4
 
     /**
-     * 100% Edge Execution Clinical Safety Evaluator
+     * Comprehensive Edge Clinical Safety Evaluator
      */
     suspend fun evaluateSafety(
         scannedText: String,
@@ -55,7 +55,7 @@ class MedGemmaOrchestrator(
         locale: String = "hi",
         expiryDate: String? = null,
         isExpired: Boolean = false
-    ): MedGemmaSafetyResult = withContext(Dispatchers.Default) {
+    ): ClinicalSafetyResult = withContext(Dispatchers.Default) {
         val targetLangCode = if (locale.lowercase(Locale.ROOT).startsWith("hi")) "hi-IN" else "en-IN"
         val isHindi = targetLangCode == "hi-IN"
 
@@ -72,7 +72,7 @@ class MedGemmaOrchestrator(
                 "Expired Medicine Blocked"
             }
 
-            return@withContext MedGemmaSafetyResult(
+            return@withContext ClinicalSafetyResult(
                 brandName = matchedMedicine?.brandName ?: "Expired Medicine",
                 parsedSalts = listOf(matchedMedicine?.rawComposition ?: "Expired Formulation"),
                 therapeuticClass = "EXPIRED_HAZARD",
@@ -92,17 +92,17 @@ class MedGemmaOrchestrator(
     }
 
     /**
-     * Deterministic Zero-Shot On-Device Pharmacology Engine
+     * Deterministic Edge Pharmacology & Polypharmacy Reasoning Engine
      */
     private suspend fun executeEdgeClinicalReasoning(
         scannedText: String,
         matchedMedicine: MedicineEntity?,
         recentLogs: List<MedicationLogEntity>,
         isHindi: Boolean
-    ): MedGemmaSafetyResult {
+    ): ClinicalSafetyResult {
         val upperText = scannedText.uppercase(Locale.ROOT)
         
-        // If it's an unrecognized medicine, try to parse it with the AiPharmacologyEngine (Hybrid Cloud/Local)
+        // If it's an unrecognized medicine, parse it with the AiPharmacologyEngine (Hybrid Cloud/Local)
         val extractedComposition = if (matchedMedicine == null) {
             aiPharmacologyEngine.parsePrescriptionText(scannedText)
         } else null
@@ -120,7 +120,7 @@ class MedGemmaOrchestrator(
                 "Unidentified Medicine Blocked"
             }
 
-            return MedGemmaSafetyResult(
+            return ClinicalSafetyResult(
                 brandName = "Unidentified Medicine",
                 parsedSalts = listOf("Unknown Formulation"),
                 therapeuticClass = "UNIDENTIFIED",
@@ -151,7 +151,7 @@ class MedGemmaOrchestrator(
                 "Unidentified Medicine Blocked"
             }
 
-            return MedGemmaSafetyResult(
+            return ClinicalSafetyResult(
                 brandName = "Unidentified Medicine",
                 parsedSalts = listOf("Unknown Formulation"),
                 therapeuticClass = "UNIDENTIFIED",
@@ -218,7 +218,7 @@ class MedGemmaOrchestrator(
                     "Duplicate Dose Blocked"
                 }
 
-                return MedGemmaSafetyResult(
+                return ClinicalSafetyResult(
                     brandName = brandName,
                     parsedSalts = parsedSalts,
                     therapeuticClass = therapeuticClass,
@@ -237,7 +237,7 @@ class MedGemmaOrchestrator(
         // 7. Clinical Reasoning: Comprehensive Polypharmacy Contraindication Matrix
         val contraindication = evaluatePolypharmacyMatrix(parsedSalts, upperText, recentTakenLogs, isHindi)
         if (contraindication != null) {
-            return MedGemmaSafetyResult(
+            return ClinicalSafetyResult(
                 brandName = brandName,
                 parsedSalts = parsedSalts,
                 therapeuticClass = therapeuticClass,
@@ -296,7 +296,7 @@ class MedGemmaOrchestrator(
             "Safe: $brandName"
         }
 
-        return MedGemmaSafetyResult(
+        return ClinicalSafetyResult(
             brandName = brandName,
             parsedSalts = parsedSalts,
             therapeuticClass = therapeuticClass,

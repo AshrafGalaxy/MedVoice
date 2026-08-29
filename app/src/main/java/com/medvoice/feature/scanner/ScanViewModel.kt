@@ -6,7 +6,7 @@ import androidx.core.content.edit
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.medvoice.core.ai.AiEngineTier
-import com.medvoice.core.ai.MedGemmaOrchestrator
+import com.medvoice.core.ai.ClinicalSafetyOrchestrator
 import com.medvoice.core.audio.VernacularTtsManager
 import com.medvoice.core.audio.VoiceConfirmationListener
 import com.medvoice.core.audio.VoiceGender
@@ -76,8 +76,8 @@ class ScanViewModel(application: Application) : AndroidViewModel(application) {
     private val db = AppDatabase.getInstance(application)
     val dualSideOcrManager = com.medvoice.core.vision.DualSideOcrManager()
     val aiEngine = com.medvoice.core.ai.AiPharmacologyEngine(application)
-    val medGemmaOrchestrator = MedGemmaOrchestrator(application, aiEngine)
-    private val safetyEngine = SafetyEvaluationEngine(db.medicineDao(), medGemmaOrchestrator)
+    val clinicalOrchestrator = com.medvoice.core.ai.ClinicalSafetyOrchestrator(application, aiEngine)
+    private val safetyEngine = SafetyEvaluationEngine(db.medicineDao(), clinicalOrchestrator)
     val ttsManager = VernacularTtsManager(application)
     val alarmScheduler = com.medvoice.core.scheduler.MedicationAlarmScheduler(application)
     private val prefs = application.getSharedPreferences("medvoice_prefs", android.content.Context.MODE_PRIVATE)
@@ -197,7 +197,7 @@ class ScanViewModel(application: Application) : AndroidViewModel(application) {
             }
         }
         _activeAiTier.value = initialTier
-        medGemmaOrchestrator.activeTier = initialTier
+        clinicalOrchestrator.activeTier = initialTier
         aiEngine.activeTier = initialTier
 
         refreshLogs()
@@ -368,7 +368,7 @@ class ScanViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun setAiTier(tier: com.medvoice.core.ai.AiEngineTier) {
-        medGemmaOrchestrator.activeTier = tier
+        clinicalOrchestrator.activeTier = tier
         aiEngine.activeTier = tier
         _activeAiTier.value = tier
         prefs.edit { putString("ai_tier", tier.name) }
