@@ -734,22 +734,25 @@ fun SettingsScreen(viewModel: ScanViewModel) {
                                 Surface(
                                     modifier = Modifier
                                         .weight(1f)
-                                        .height(44.dp),
-                                    shape = RoundedCornerShape(10.dp),
+                                        .height(48.dp),
+                                    shape = RoundedCornerShape(12.dp),
                                     color = SurfaceCardElevated,
-                                    border = BorderStroke(1.dp, if (apiKeyInput.isNotBlank()) SafeGreen else AccentBorder)
+                                    border = BorderStroke(
+                                        1.5.dp,
+                                        if (apiKeyInput.isNotBlank()) SafeGreen else AccentBorder
+                                    )
                                 ) {
                                     Row(
                                         modifier = Modifier
                                             .fillMaxSize()
-                                            .padding(horizontal = 10.dp),
+                                            .padding(horizontal = 12.dp),
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
                                         Icon(
                                             imageVector = Icons.Default.Key,
                                             contentDescription = null,
                                             tint = if (apiKeyInput.isNotBlank()) SafeGreen else TextMuted,
-                                            modifier = Modifier.size(16.dp)
+                                            modifier = Modifier.size(18.dp)
                                         )
                                         Spacer(modifier = Modifier.width(8.dp))
                                         Box(
@@ -758,9 +761,11 @@ fun SettingsScreen(viewModel: ScanViewModel) {
                                         ) {
                                             if (apiKeyInput.isEmpty()) {
                                                 Text(
-                                                    text = if (locale == "hi") "नई एपीआई कुंजी दर्ज करें..." else "Paste new API key (Write-Only)...",
-                                                    color = TextMuted.copy(alpha = 0.6f),
-                                                    fontSize = 11.5.sp
+                                                    text = if (locale == "hi") "Groq API कुंजी पेस्ट करें..." else "Paste Groq API key here...",
+                                                    color = TextMuted.copy(alpha = 0.5f),
+                                                    fontSize = 12.sp,
+                                                    maxLines = 1,
+                                                    overflow = TextOverflow.Ellipsis
                                                 )
                                             }
                                             BasicTextField(
@@ -769,10 +774,11 @@ fun SettingsScreen(viewModel: ScanViewModel) {
                                                     apiKeyInput = it
                                                 },
                                                 singleLine = true,
+                                                maxLines = 1,
                                                 visualTransformation = PasswordVisualTransformation('*'),
                                                 textStyle = MaterialTheme.typography.bodyMedium.copy(
                                                     color = TextWhite,
-                                                    fontSize = 12.sp,
+                                                    fontSize = 13.sp,
                                                     fontWeight = FontWeight.Medium
                                                 ),
                                                 cursorBrush = SolidColor(SafeGreen),
@@ -788,7 +794,7 @@ fun SettingsScreen(viewModel: ScanViewModel) {
                                                     imageVector = Icons.Default.Close,
                                                     contentDescription = "Clear",
                                                     tint = TextMuted,
-                                                    modifier = Modifier.size(14.dp)
+                                                    modifier = Modifier.size(16.dp)
                                                 )
                                             }
                                         }
@@ -810,10 +816,13 @@ fun SettingsScreen(viewModel: ScanViewModel) {
                                         }
                                     },
                                     enabled = apiKeyInput.isNotBlank(),
-                                    colors = ButtonDefaults.buttonColors(containerColor = SafeGreen),
-                                    shape = RoundedCornerShape(10.dp),
-                                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
-                                    modifier = Modifier.height(44.dp)
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = SafeGreen,
+                                        disabledContainerColor = SafeGreen.copy(alpha = 0.3f)
+                                    ),
+                                    shape = RoundedCornerShape(12.dp),
+                                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp),
+                                    modifier = Modifier.height(48.dp)
                                 ) {
                                     Icon(
                                         imageVector = Icons.Default.Save,
@@ -823,27 +832,56 @@ fun SettingsScreen(viewModel: ScanViewModel) {
                                     )
                                     Spacer(modifier = Modifier.width(4.dp))
                                     Text(
-                                        text = if (locale == "hi") "सेव करें" else "Save",
+                                        text = if (locale == "hi") "सेव" else "Save",
                                         color = TextWhite,
-                                        fontSize = 12.sp,
+                                        fontSize = 12.5.sp,
                                         fontWeight = FontWeight.Bold
                                     )
                                 }
                             }
 
-                            if (isEditingApiKey && isCloudApiKeyConfigured) {
-                                Spacer(modifier = Modifier.height(6.dp))
-                                Text(
-                                    text = if (locale == "hi") "रद्द करें (Cancel)" else "Cancel editing",
-                                    color = TextMuted,
-                                    fontSize = 11.5.sp,
-                                    modifier = Modifier
-                                        .clickable {
-                                            apiKeyInput = ""
-                                            isEditingApiKey = false
-                                        }
-                                        .padding(vertical = 2.dp)
-                                )
+                            Spacer(modifier = Modifier.height(6.dp))
+
+                            // Trust & Security Caption Below Field
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Security,
+                                        contentDescription = null,
+                                        tint = TextMuted,
+                                        modifier = Modifier.size(12.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text(
+                                        text = if (locale == "hi") "सुरक्षित वॉल्ट • कुंजी एन्क्रिप्टेड रहती है" else "Write-Only Vault • Encrypted in secure device storage",
+                                        color = TextMuted,
+                                        fontSize = 10.5.sp,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
+
+                                if (isEditingApiKey && isCloudApiKeyConfigured) {
+                                    Text(
+                                        text = if (locale == "hi") "रद्द करें" else "Cancel",
+                                        color = WarningAmber,
+                                        fontSize = 11.5.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        modifier = Modifier
+                                            .clickable {
+                                                apiKeyInput = ""
+                                                isEditingApiKey = false
+                                            }
+                                            .padding(horizontal = 4.dp, vertical = 2.dp)
+                                    )
+                                }
                             }
                         }
                     }
