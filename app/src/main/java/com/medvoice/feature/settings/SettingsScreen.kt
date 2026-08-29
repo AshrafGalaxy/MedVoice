@@ -49,6 +49,7 @@ import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.LockOpen
+import androidx.compose.material.icons.filled.MedicalServices
 import androidx.compose.material.icons.filled.Memory
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.Refresh
@@ -390,22 +391,21 @@ fun SettingsScreen(viewModel: ScanViewModel) {
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(imageVector = Icons.Default.Security, contentDescription = null, tint = SafeGreen, modifier = Modifier.size(20.dp))
+                    Icon(imageVector = Icons.Default.MedicalServices, contentDescription = null, tint = SafeGreen, modifier = Modifier.size(18.dp))
                     Spacer(modifier = Modifier.width(8.dp))
-                    Column {
-                        Text(
-                            text = if (locale == "hi") "क्रोनिक मेडिकल प्रोफाइल (Health Profile)" else "Patient Chronic Health Profile",
-                            color = TextWhite,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 15.sp
-                        )
-                        Text(
-                            text = if (locale == "hi") "सक्रिय बीमारियों के अनुसार परस्परविरोधी दवाएं रोकी जाएंगी" else "Clinical engine blocks drugs conflicting with your conditions",
-                            color = TextMuted,
-                            fontSize = 11.5.sp
-                        )
-                    }
+                    Text(
+                        text = if (locale == "hi") "क्रोनिक मेडिकल प्रोफाइल (Health Profile)" else "Patient Chronic Health Profile",
+                        color = TextWhite,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 15.sp
+                    )
                 }
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = if (locale == "hi") "सक्रिय बीमारियों के अनुसार परस्परविरोधी दवाएं रोकी जाएंगी" else "Clinical engine blocks drugs conflicting with your conditions",
+                    color = TextMuted,
+                    fontSize = 12.sp
+                )
                 Spacer(modifier = Modifier.height(12.dp))
 
                 val conditionsList = listOf(
@@ -502,7 +502,7 @@ fun SettingsScreen(viewModel: ScanViewModel) {
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(imageVector = Icons.Default.Security, contentDescription = null, tint = SafeGreen, modifier = Modifier.size(18.dp))
+                        Icon(imageVector = Icons.Default.Memory, contentDescription = null, tint = SafeGreen, modifier = Modifier.size(18.dp))
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
                             text = if (locale == "hi") "मेडिकल एआई मॉडल (Medical AI)" else "Medical AI Engine",
