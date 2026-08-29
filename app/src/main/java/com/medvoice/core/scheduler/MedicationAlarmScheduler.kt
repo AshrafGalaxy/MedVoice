@@ -8,6 +8,16 @@ import android.os.Build
 import android.util.Log
 import java.util.Calendar
 
+data class PrescriptionSlotConfig(
+    val slotId: String, // "morning", "afternoon", "evening", "bedtime"
+    val titleEn: String,
+    val titleHi: String,
+    val hour: Int,
+    val minute: Int,
+    val isEnabled: Boolean,
+    val timingRule: String
+)
+
 data class ScheduledReminder(
     val id: Int,
     val medicineName: String,
@@ -25,7 +35,7 @@ class MedicationAlarmScheduler(private val context: Context) {
 
     private fun getPatientPrefixEn(): String {
         val name = prefs.getString("patient_name", "")?.trim() ?: ""
-        return if (name.isNotBlank() && name != "Senior Patient") {
+        return if (name.isNotBlank() && name != "Senior Patient" && name != "User") {
             "$name, "
         } else {
             ""
@@ -34,7 +44,7 @@ class MedicationAlarmScheduler(private val context: Context) {
 
     private fun getPatientPrefixHi(): String {
         val name = prefs.getString("patient_name", "")?.trim() ?: ""
-        return if (name.isNotBlank() && name != "Senior Patient") {
+        return if (name.isNotBlank() && name != "Senior Patient" && name != "User") {
             "$name जी, "
         } else {
             ""
@@ -42,11 +52,47 @@ class MedicationAlarmScheduler(private val context: Context) {
     }
 
     /**
-     * Default Senior Daily Prescriptions Schedule:
-     * Now strictly dynamic - returns empty by default so new accounts have no mock alarms.
+     * Retrieve user-customized or default daily prescription time slot configurations
      */
-    fun getDefaultPrescriptionReminders(): List<ScheduledReminder> {
-        return emptyList()
+    fun getSlotConfigs(): List<PrescriptionSlotConfig> {
+        return listOf(
+            PrescriptionSlotConfig(
+                slotId = "morning",
+                titleEn = "Morning",
+                titleHi = "सुबह",
+                hour = prefs.getInt("alarm_slot_morning_hour", 8),
+                minute = prefs.getInt("alarm_slot_morning_minute", 0),
+                isEnabled = prefs.getBoolean("alarm_slot_morning_enabled", true),
+                timingRule = "AFTER_BREAKFAST"
+            ),
+            PrescriptionSlotConfig(
+                slotId = "afternoon",
+                titleEn = "Afternoon",
+                titleHi = "दोपहर",
+                hour = prefs.getInt("alarm_slot_afternoon_hour", 13),
+                minute = prefs.getInt("alarm_slot_afternoon_minute", 30),
+                isEnabled = prefs.getBoolean("alarm_slot_afternoon_enabled", true),
+                timingRule = "AFTER_LUNCH"
+            ),
+            PrescriptionSlotConfig(
+                slotId = "evening",
+                titleEn = "Evening",
+                titleHi = "संध्या / रात",
+                hour = prefs.getInt("alarm_slot_evening_hour", 20),
+                minute = prefs.getInt("alarm_slot_evening_minute", 0),
+                isEnabled = prefs.getBoolean("alarm_slot_evening_enabled", true),
+                timingRule = "BEFORE_DINNER"
+            ),
+            PrescriptionSlotConfig(
+                slotId = "bedtime",
+                titleEn = "Bedtime",
+                titleHi = "सोते समय",
+                hour = prefs.getInt("alarm_slot_bedtime_hour", 21),
+                minute = prefs.getInt("alarm_slot_bedtime_minute", 30),
+                isEnabled = prefs.getBoolean("alarm_slot_bedtime_enabled", true),
+                timingRule = "BEDTIME"
+            )
+        )
     }
 
     /**
@@ -115,48 +161,75 @@ class MedicationAlarmScheduler(private val context: Context) {
     }
 
     /**
-     * Dynamically schedule alarms for user's actual registered medications
+     * Dynamically schedule alarms using user-configured slot times & cabinet medicines
      */
-    fun scheduleRemindersForMedicines(medicines: List<com.medvoice.core.data.local.entity.MedicineEntity>) {
-        if (medicines.isEmpty()) {
-            scheduleAllReminders()
-            return
-        }
-
+    fun scheduleRemindersForMedicines(medicines: List<com.medvoice.core.data.local.entity.MedicineEntity> = emptyList()) {
         val pfxEn = getPatientPrefixEn()
         val pfxHi = getPatientPrefixHi()
+        val slots = getSlotConfigs()
 
-        medicines.take(4).forEachIndexed { index, med ->
-            val (hour, minute, timing, enPhrase, hiPhrase) = when (index) {
-                0 -> {
-                    val isThyroid = med.brandName.contains("Thyro", ignoreCase = true) || med.rawComposition.contains("Levothyroxine", ignoreCase = true)
-                    if (isThyroid) {
-                        Tuple5(7, 0, "STRICT_EMPTY_STOMACH",
-                            "${pfxEn}it is 7:00 AM. Please take ${med.brandName} on an empty stomach with half glass water.",
-                            "${pfxHi}सुबह के 7 बज गए हैं। कृपया ${med.brandName} खाली पेट आधे गिलास पानी के साथ लें।")
+        slots.forEachIndexed { index, slot ->
+            if (!slot.isEnabled) {
+                cancelReminder(201 + index)
+                return@forEachIndexed
+            }
+
+            val med = medicines.getOrNull(index)
+            val medName = med?.brandName ?: "Prescribed Medication"
+            val hasCustomMed = med != null
+
+            val enPhrase = when (slot.slotId) {
+                "morning" -> {
+                    if (hasCustomMed) {
+                        val isThyroid = medName.contains("Thyro", ignoreCase = true) || (med?.rawComposition?.contains("Levothyroxine", ignoreCase = true) == true)
+                        if (isThyroid) {
+                            "${pfxEn}it is morning medicine time. Please take $medName on an empty stomach with water."
+                        } else {
+                            "${pfxEn}morning medicine time. Please take $medName after breakfast."
+                        }
                     } else {
-                        Tuple5(8, 30, "AFTER_MEAL",
-                            "${pfxEn}morning medicine time. Please take ${med.brandName} after breakfast.",
-                            "${pfxHi}सुबह नाश्ते के बाद का समय। कृपया ${med.brandName} लें।")
+                        "${pfxEn}it is morning medicine time. Please take your prescribed morning doses."
                     }
                 }
-                1 -> Tuple5(13, 30, "AFTER_MEAL",
-                    "${pfxEn}afternoon medicine time. Please take ${med.brandName} after lunch.",
-                    "${pfxHi}दोपहर की दवा का समय। कृपया ${med.brandName} भोजन के बाद लें।")
-                2 -> Tuple5(20, 0, "BEFORE_MEAL",
-                    "${pfxEn}night medicine time. Please take ${med.brandName} before dinner.",
-                    "${pfxHi}रात की दवा का समय। कृपया ${med.brandName} रात के खाने से पहले लें।")
-                else -> Tuple5(21, 30, "BEDTIME",
-                    "${pfxEn}bedtime medicine time. Please take ${med.brandName} before sleeping.",
-                    "${pfxHi}सोने से पहले की दवा का समय। कृपया ${med.brandName} लें।")
+                "afternoon" -> {
+                    if (hasCustomMed) "${pfxEn}afternoon medicine time. Please take $medName after lunch."
+                    else "${pfxEn}it is afternoon medicine time. Please take your post-lunch doses."
+                }
+                "evening" -> {
+                    if (hasCustomMed) "${pfxEn}evening medicine time. Please take $medName before dinner."
+                    else "${pfxEn}it is evening dinner medicine time. Please take your evening doses."
+                }
+                else -> {
+                    if (hasCustomMed) "${pfxEn}bedtime medicine time. Please take $medName before sleeping."
+                    else "${pfxEn}it is bedtime. Please take your bedtime medication before sleeping."
+                }
+            }
+
+            val hiPhrase = when (slot.slotId) {
+                "morning" -> {
+                    if (hasCustomMed) "${pfxHi}सुबह की दवा का समय हो गया है। कृपया नाश्ते के बाद $medName लें।"
+                    else "${pfxHi}सुबह की दवा का समय हो गया है। कृपया अपनी निर्धारित दवाएं लें।"
+                }
+                "afternoon" -> {
+                    if (hasCustomMed) "${pfxHi}दोपहर की दवा का समय हो गया है। कृपया भोजन के बाद $medName लें।"
+                    else "${pfxHi}दोपहर की दवा का समय हो गया है। कृपया दोपहर की दवाएं लें।"
+                }
+                "evening" -> {
+                    if (hasCustomMed) "${pfxHi}शाम की दवा का समय हो गया है। कृपया रात के खाने से पहले $medName लें।"
+                    else "${pfxHi}शाम की दवा का समय हो गया है। कृपया रात की दवाएं लें।"
+                }
+                else -> {
+                    if (hasCustomMed) "${pfxHi}सोने का समय हो गया है। कृपया सोने से पहले $medName लें।"
+                    else "${pfxHi}सोने का समय हो गया है। कृपया सोने से पहले की दवा लें।"
+                }
             }
 
             val reminder = ScheduledReminder(
-                id = 200 + index,
-                medicineName = med.brandName,
-                hour = hour,
-                minute = minute,
-                timingRule = timing,
+                id = 201 + index,
+                medicineName = medName,
+                hour = slot.hour,
+                minute = slot.minute,
+                timingRule = slot.timingRule,
                 vernacularEn = enPhrase,
                 vernacularHi = hiPhrase
             )
@@ -164,14 +237,11 @@ class MedicationAlarmScheduler(private val context: Context) {
         }
     }
 
-    private data class Tuple5(val hour: Int, val minute: Int, val timing: String, val en: String, val hi: String)
-
     /**
      * Schedule all default prescription reminders at once
      */
     fun scheduleAllReminders() {
-        val reminders = getDefaultPrescriptionReminders()
-        reminders.forEach { scheduleReminder(it) }
+        scheduleRemindersForMedicines(emptyList())
     }
 
     /**

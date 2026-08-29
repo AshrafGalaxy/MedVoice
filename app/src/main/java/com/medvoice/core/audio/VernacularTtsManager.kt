@@ -119,9 +119,17 @@ class VernacularTtsManager(
         // Voice Selection: Select best offline Google Neural voice matching gender and Indian locale
         selectOptimalGoogleNeuralVoice(targetLocale, selectedGender)
 
-        // Set Cadence and Pitch
-        tts?.setSpeechRate(speechRate)
-        tts?.setPitch(speechPitch)
+        // Set Cadence and Pitch tuned to the selected gender
+        when (selectedGender) {
+            VoiceGender.FEMALE -> {
+                tts?.setPitch(1.24f) // Bright, crisp, authentically female tone
+                tts?.setSpeechRate(0.96f)
+            }
+            VoiceGender.MALE -> {
+                tts?.setPitch(0.84f) // Deep, clear, authoritative male tone
+                tts?.setSpeechRate(0.92f)
+            }
+        }
 
         // Text Pre-Processing for Natural Breathing Pauses & Medical Expansion
         val preprocessedText = preprocessMedicalText(text, if (isHindi) "hi-IN" else "en-IN")
@@ -147,7 +155,7 @@ class VernacularTtsManager(
      * Highest-Quality Local Neural Voice Selector
      * - Inspects device installed voice catalog for hi-IN and en-IN
      * - Ensures voice does not require network connection (!voice.isNetworkConnectionRequired)
-     * - Sorts by quality score (VERY_HIGH > HIGH > NORMAL) and gender variant
+     * - Disambiguates female vs male accurately avoiding substring collisions ("female".contains("male"))
      */
     private fun selectOptimalGoogleNeuralVoice(locale: Locale, gender: VoiceGender) {
         try {
@@ -164,17 +172,22 @@ class VernacularTtsManager(
                 compareByDescending<Voice> { it.quality }
                     .thenByDescending { voice ->
                         val name = voice.name.lowercase()
+                        val features = voice.features?.map { it.lowercase() } ?: emptyList()
                         when (gender) {
                             VoiceGender.FEMALE -> when {
-                                name.contains("female") -> 3
-                                name.contains("hie") || name.contains("ene") || name.contains("network-f") -> 2
-                                name.contains("wavenet") || name.contains("neural") -> 1
+                                features.any { it.contains("gender=female") || it.contains("female") } -> 5
+                                name.contains("female") || name.contains("-f-") || name.contains("_f_") -> 4
+                                name.contains("hia") || name.contains("hid") || name.contains("hie") ||
+                                        name.contains("ena") || name.contains("end") || name.contains("ene") || name.contains("network-f") -> 3
+                                !name.contains("male") && (name.contains("wavenet") || name.contains("neural")) -> 2
                                 else -> 0
                             }
                             VoiceGender.MALE -> when {
-                                name.contains("male") -> 3
-                                name.contains("hid") || name.contains("enc") || name.contains("network-m") -> 2
-                                name.contains("wavenet") || name.contains("neural") -> 1
+                                features.any { it.contains("gender=male") } -> 5
+                                name.contains("male") && !name.contains("female") -> 4
+                                name.contains("hib") || name.contains("hic") || name.contains("hif") ||
+                                        name.contains("enb") || name.contains("enc") || name.contains("enf") || name.contains("network-m") -> 3
+                                !name.contains("female") && (name.contains("wavenet") || name.contains("neural")) -> 2
                                 else -> 0
                             }
                         }
