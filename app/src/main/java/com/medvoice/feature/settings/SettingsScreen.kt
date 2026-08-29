@@ -402,7 +402,7 @@ fun SettingsScreen(viewModel: ScanViewModel) {
                 // Live Hardware Diagnostics Card
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(10.dp),
+                    shape = RoundedCornerShape(12.dp),
                     color = SurfaceCardElevated,
                     border = BorderStroke(1.dp, AccentBorder)
                 ) {
@@ -413,43 +413,83 @@ fun SettingsScreen(viewModel: ScanViewModel) {
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(Icons.Default.Memory, contentDescription = null, tint = SafeGreen, modifier = Modifier.size(14.dp))
+                                Icon(Icons.Default.Memory, contentDescription = null, tint = SafeGreen, modifier = Modifier.size(16.dp))
                                 Spacer(modifier = Modifier.width(6.dp))
                                 Text(
-                                    text = "Device Hardware Specs",
+                                    text = if (locale == "hi") "हार्डवेयर स्पेक्स" else "Hardware Diagnostics",
                                     color = TextWhite,
-                                    fontSize = 12.sp,
+                                    fontSize = 13.sp,
                                     fontWeight = FontWeight.Bold
                                 )
                             }
                             Surface(
                                 color = if (hardwareReport.eligibilityStatus == OnDeviceEligibilityStatus.FULLY_ELIGIBLE) SafeGreen.copy(alpha = 0.15f) else AlertRed.copy(alpha = 0.15f),
-                                shape = RoundedCornerShape(4.dp)
+                                shape = RoundedCornerShape(6.dp)
                             ) {
                                 Text(
-                                    text = if (hardwareReport.eligibilityStatus == OnDeviceEligibilityStatus.FULLY_ELIGIBLE) "6GB+ RAM AUDIT: PASSED" else "AUDIT: CHECK",
+                                    text = if (hardwareReport.eligibilityStatus == OnDeviceEligibilityStatus.FULLY_ELIGIBLE) "✓ 6GB+ ELIGIBLE" else "AUDIT CHECK",
                                     color = if (hardwareReport.eligibilityStatus == OnDeviceEligibilityStatus.FULLY_ELIGIBLE) SafeGreen else AlertRed,
-                                    fontSize = 9.5.sp,
+                                    fontSize = 10.sp,
                                     fontWeight = FontWeight.Bold,
-                                    modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp)
+                                    modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.5.dp),
+                                    maxLines = 1
                                 )
                             }
                         }
-                        Spacer(modifier = Modifier.height(8.dp))
+
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        // Clean 2-column tiles with no text wrapping
                         Row(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text("Device: ${hardwareReport.deviceModel}", color = TextWhite, fontSize = 11.5.sp, fontWeight = FontWeight.Medium)
-                                Text("RAM: ${hardwareReport.totalRamGb} GB (${hardwareReport.availableRamGb} GB Free)", color = if (hardwareReport.isRamEligible) SafeGreen else AlertRed, fontSize = 11.sp)
+                            // Left Tile: Device Model & CPU
+                            Surface(
+                                modifier = Modifier.weight(1f),
+                                shape = RoundedCornerShape(8.dp),
+                                color = SurfaceCardDark.copy(alpha = 0.6f)
+                            ) {
+                                Column(modifier = Modifier.padding(8.dp)) {
+                                    Text(
+                                        text = "📱 ${hardwareReport.deviceModel}",
+                                        color = TextWhite,
+                                        fontSize = 11.5.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                    Spacer(modifier = Modifier.height(2.dp))
+                                    Text(
+                                        text = "⚡ CPU: ${hardwareReport.cpuCores} Cores (${if (hardwareReport.is64Bit) "64-bit" else "32-bit"})",
+                                        color = TextMuted,
+                                        fontSize = 10.5.sp,
+                                        maxLines = 1
+                                    )
+                                }
                             }
-                            Column(modifier = Modifier.weight(1f), horizontalAlignment = Alignment.End) {
-                                Text("CPU: ${hardwareReport.cpuCores} Cores (${if (hardwareReport.is64Bit) "64-bit" else "32-bit"})", color = TextWhite, fontSize = 11.5.sp, fontWeight = FontWeight.Medium)
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(Icons.Default.Thermostat, contentDescription = null, tint = if (hardwareReport.isThermalSafe) SafeGreen else WarningAmber, modifier = Modifier.size(12.dp))
-                                    Spacer(modifier = Modifier.width(2.dp))
-                                    Text("${hardwareReport.batteryTempCelsius}°C • ${hardwareReport.batteryPct}% Batt", color = if (hardwareReport.isThermalSafe) SafeGreen else WarningAmber, fontSize = 11.sp)
+
+                            // Right Tile: RAM & Battery
+                            Surface(
+                                modifier = Modifier.weight(1f),
+                                shape = RoundedCornerShape(8.dp),
+                                color = SurfaceCardDark.copy(alpha = 0.6f)
+                            ) {
+                                Column(modifier = Modifier.padding(8.dp)) {
+                                    Text(
+                                        text = "💾 RAM: ${hardwareReport.totalRamGb} GB",
+                                        color = if (hardwareReport.isRamEligible) SafeGreen else WarningAmber,
+                                        fontSize = 11.5.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        maxLines = 1
+                                    )
+                                    Spacer(modifier = Modifier.height(2.dp))
+                                    Text(
+                                        text = "🔋 ${hardwareReport.batteryPct}% Battery • ${hardwareReport.batteryTempCelsius}°C",
+                                        color = if (hardwareReport.isThermalSafe) SafeGreen else WarningAmber,
+                                        fontSize = 10.5.sp,
+                                        maxLines = 1
+                                    )
                                 }
                             }
                         }
@@ -616,7 +656,7 @@ fun SettingsScreen(viewModel: ScanViewModel) {
                     )
                 }
 
-                if (allowCloudPrivacy || activeAiTier == AiEngineTier.CLOUD_MEDGEMMA_HOSTED) {
+                if (activeAiTier == AiEngineTier.CLOUD_MEDGEMMA_HOSTED) {
                     Spacer(modifier = Modifier.height(12.dp))
                     Text(
                         text = if (locale == "hi") "क्लाउड एपीआई कुंजी (Cloud API Key)" else "Cloud API Key",
