@@ -33,7 +33,7 @@ abstract class AppDatabase : RoomDatabase() {
                     "medvoice_master.db"
                 )
                 .createFromAsset("databases/medvoice_master.db")
-                .fallbackToDestructiveMigration()
+                .fallbackToDestructiveMigration(dropAllTables = true)
                 .build()
                 INSTANCE = instance
                 instance

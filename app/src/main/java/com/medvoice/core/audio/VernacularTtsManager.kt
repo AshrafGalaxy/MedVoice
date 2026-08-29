@@ -159,19 +159,24 @@ class VernacularTtsManager(
 
         requestAudioFocus()
 
+        val mainHandler = android.os.Handler(android.os.Looper.getMainLooper())
         tts?.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
             override fun onStart(utteranceId: String?) {
-                _isSpeaking.value = true
+                mainHandler.post { _isSpeaking.value = true }
             }
             override fun onDone(utteranceId: String?) {
-                _isSpeaking.value = false
-                abandonAudioFocus()
-                onDone()
+                mainHandler.post {
+                    _isSpeaking.value = false
+                    abandonAudioFocus()
+                    onDone()
+                }
             }
             override fun onError(utteranceId: String?) {
-                _isSpeaking.value = false
-                abandonAudioFocus()
-                onDone()
+                mainHandler.post {
+                    _isSpeaking.value = false
+                    abandonAudioFocus()
+                    onDone()
+                }
             }
         })
 

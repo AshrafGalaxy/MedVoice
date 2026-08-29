@@ -144,36 +144,53 @@ fun CaregiverAuditScreen(
                 }
             }
 
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
                 if (logs.isNotEmpty()) {
-                    IconButton(
-                        onClick = {
-                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                            shareAuditReport(context, patientName, caregiverPhone, logs, locale)
-                        },
-                        modifier = Modifier.size(34.dp)
+                    Surface(
+                        shape = RoundedCornerShape(10.dp),
+                        color = SurfaceCardElevated,
+                        border = BorderStroke(1.dp, AccentBorder),
+                        modifier = Modifier.size(44.dp)
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.Share,
-                            contentDescription = "Share Report",
-                            tint = ReticleCyan,
-                            modifier = Modifier.size(20.dp)
-                        )
+                        IconButton(
+                            onClick = {
+                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                shareAuditReport(context, patientName, caregiverPhone, logs, locale)
+                            },
+                            modifier = Modifier.fillMaxSize()
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Share,
+                                contentDescription = "Share Report",
+                                tint = ReticleCyan,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
                     }
 
-                    IconButton(
-                        onClick = {
-                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                            viewModel.clearLogs()
-                        },
-                        modifier = Modifier.size(34.dp)
+                    Surface(
+                        shape = RoundedCornerShape(10.dp),
+                        color = SurfaceCardElevated,
+                        border = BorderStroke(1.dp, AccentBorder),
+                        modifier = Modifier.size(44.dp)
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.Delete,
-                            contentDescription = "Clear Logs",
-                            tint = TextMuted,
-                            modifier = Modifier.size(20.dp)
-                        )
+                        IconButton(
+                            onClick = {
+                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                viewModel.clearLogs()
+                            },
+                            modifier = Modifier.fillMaxSize()
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Delete,
+                                contentDescription = "Clear Logs",
+                                tint = AlertRed.copy(alpha = 0.85f),
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
                     }
                 }
             }

@@ -1141,7 +1141,7 @@ fun SettingsScreen(viewModel: ScanViewModel) {
                             )
                             Spacer(modifier = Modifier.width(4.dp))
                             Text(
-                                text = if (hasSmsPermission) "SMS Ready" else "Grant SMS",
+                                text = if (hasSmsPermission) (if (locale == "hi") "एसएमएस सक्रिय" else "SMS Ready") else (if (locale == "hi") "एसएमएस अनुमति दें" else "Grant SMS"),
                                 color = if (hasSmsPermission) SafeGreen else AlertRed,
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold

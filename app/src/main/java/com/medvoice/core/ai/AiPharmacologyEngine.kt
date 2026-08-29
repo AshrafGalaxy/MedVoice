@@ -170,6 +170,11 @@ class AiPharmacologyEngine(private val context: Context? = null) {
         return (hasStrength && (hasDosageForm || hasPharmaMarker)) || (hasDosageForm && hasPharmaMarker) || hasDosageForm
     }
 
+    fun hasValidCloudApiKey(): Boolean {
+        val key = cloudMedGemmaApiKey.trim()
+        return key.isNotBlank() && key.startsWith("gsk_") && !key.contains("demo_gateway") && key.length > 25
+    }
+
     suspend fun parsePrescriptionText(
         rawOcrText: String,
         bitmap: Bitmap? = null
@@ -182,13 +187,14 @@ class AiPharmacologyEngine(private val context: Context? = null) {
             }
 
             AiEngineTier.CLOUD_MEDGEMMA_HOSTED -> {
-                if (allowCloudPrivacyEgress && cloudMedGemmaApiKey.isNotBlank()) {
+                if (allowCloudPrivacyEgress && hasValidCloudApiKey()) {
                     if (bitmap != null) {
                         runMultimodalVision(bitmap, rawOcrText) ?: runCloudMedGemma(rawOcrText) ?: runClinicalDeterministicParser(rawOcrText)
                     } else {
                         runCloudMedGemma(rawOcrText) ?: runClinicalDeterministicParser(rawOcrText)
                     }
                 } else {
+                    // Fail-fast instantly to local deterministic engine (<5ms)
                     runClinicalDeterministicParser(rawOcrText)
                 }
             }
