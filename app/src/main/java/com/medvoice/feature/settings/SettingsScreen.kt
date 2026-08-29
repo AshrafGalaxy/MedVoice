@@ -710,7 +710,10 @@ fun SettingsScreen(viewModel: ScanViewModel) {
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.SpaceBetween
                             ) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.weight(1f, fill = false)
+                                ) {
                                     Icon(
                                         imageVector = Icons.Default.Memory,
                                         contentDescription = null,
@@ -719,12 +722,16 @@ fun SettingsScreen(viewModel: ScanViewModel) {
                                     )
                                     Spacer(modifier = Modifier.width(6.dp))
                                     Text(
-                                        text = if (locale == "hi") "1B इंस्ट्रक्ट ऑन-डिवाइस मॉडल" else "1B Instruct Neural Model",
+                                        text = if (locale == "hi") "1B ऑन-डिवाइस मॉडल" else "1B Neural Model",
                                         color = TextWhite,
                                         fontSize = 13.sp,
-                                        fontWeight = FontWeight.Bold
+                                        fontWeight = FontWeight.Bold,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
                                     )
                                 }
+
+                                Spacer(modifier = Modifier.width(8.dp))
 
                                 Surface(
                                     color = when (modelStatus) {
@@ -737,10 +744,10 @@ fun SettingsScreen(viewModel: ScanViewModel) {
                                 ) {
                                     Text(
                                         text = when (modelStatus) {
-                                            is ModelDownloadStatus.Ready -> "✓ READY (LOCAL INT4)"
+                                            is ModelDownloadStatus.Ready -> "✓ READY"
                                             is ModelDownloadStatus.Downloading -> "DOWNLOADING"
-                                            is ModelDownloadStatus.Error -> "FAILED"
-                                            else -> "NOT INSTALLED"
+                                            is ModelDownloadStatus.Error -> "ERROR"
+                                            else -> "OPTIONAL"
                                         },
                                         color = when (modelStatus) {
                                             is ModelDownloadStatus.Ready -> SafeGreen
@@ -748,9 +755,10 @@ fun SettingsScreen(viewModel: ScanViewModel) {
                                             is ModelDownloadStatus.Error -> AlertRed
                                             else -> TextMuted
                                         },
-                                        fontSize = 10.sp,
+                                        fontSize = 9.5.sp,
                                         fontWeight = FontWeight.Bold,
-                                        modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.5.dp)
+                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.5.dp),
+                                        maxLines = 1
                                     )
                                 }
                             }
@@ -974,7 +982,7 @@ fun SettingsScreen(viewModel: ScanViewModel) {
                                 Icon(Icons.Default.FlashOn, contentDescription = null, tint = ReticleCyan, modifier = Modifier.size(14.dp))
                                 Spacer(modifier = Modifier.width(6.dp))
                                 Text(
-                                    text = "⚡ Active: On-Device Engine (100% Edge Privacy)",
+                                    text = if (locale == "hi") "सक्रिय: ऑन-डिवाइस इंजन" else "Active: On-Device Engine",
                                     color = ReticleCyan,
                                     fontSize = 12.sp,
                                     fontWeight = FontWeight.Bold

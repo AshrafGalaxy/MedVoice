@@ -85,6 +85,7 @@ import com.medvoice.ui.theme.SurfaceCardDark
 import com.medvoice.ui.theme.SurfaceCardElevated
 import com.medvoice.ui.theme.TextMuted
 import com.medvoice.ui.theme.TextWhite
+import com.medvoice.ui.theme.WarningAmber
 import java.util.Calendar
 
 @Composable
@@ -660,74 +661,112 @@ fun HomeScreen(viewModel: ScanViewModel) {
         Card(
             modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(containerColor = SurfaceCardDark),
-            shape = RoundedCornerShape(14.dp)
+            shape = RoundedCornerShape(14.dp),
+            border = BorderStroke(1.dp, if (caregiverPhone.isNotBlank()) SafeGreen.copy(alpha = 0.35f) else AccentBorder)
         ) {
-            Column(modifier = Modifier.padding(16.dp)) {
+            Column(modifier = Modifier.padding(14.dp)) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Phone,
-                        contentDescription = "Caregiver",
-                        tint = SafeGreen,
-                        modifier = Modifier.size(24.dp)
-                    )
-                    Spacer(modifier = Modifier.width(10.dp))
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = if (locale == "hi") "केयरगिवर आपातकालीन SOS" else "Caregiver Emergency SOS",
-                            style = MaterialTheme.typography.titleMedium.copy(
-                                color = TextWhite,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 15.sp
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(36.dp)
+                                .background(SafeGreen.copy(alpha = 0.15f), CircleShape),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Phone,
+                                contentDescription = "Caregiver SOS",
+                                tint = SafeGreen,
+                                modifier = Modifier.size(18.dp)
                             )
-                        )
-                        Text(
-                            text = caregiverPhone,
-                            style = MaterialTheme.typography.bodySmall.copy(
-                                color = TextMuted,
-                                fontSize = 13.sp
+                        }
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Column {
+                            Text(
+                                text = if (locale == "hi") "केयरगिवर आपातकालीन SOS" else "Caregiver Emergency SOS",
+                                style = MaterialTheme.typography.titleMedium.copy(
+                                    color = TextWhite,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 14.sp
+                                )
                             )
+                            Text(
+                                text = if (caregiverPhone.isNotBlank()) caregiverPhone else (if (locale == "hi") "नंबर सेट नहीं है (सेटिंग्स में जोड़ें)" else "No phone configured (Tap Settings)"),
+                                style = MaterialTheme.typography.bodySmall.copy(
+                                    color = if (caregiverPhone.isNotBlank()) SafeGreen else TextMuted,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Medium
+                                )
+                            )
+                        }
+                    }
+
+                    Surface(
+                        color = if (caregiverPhone.isNotBlank() && hasSmsPermission) SafeGreen.copy(alpha = 0.15f) else WarningAmber.copy(alpha = 0.15f),
+                        shape = RoundedCornerShape(6.dp)
+                    ) {
+                        Text(
+                            text = if (caregiverPhone.isNotBlank() && hasSmsPermission) "✓ ACTIVE" else "CONFIG",
+                            color = if (caregiverPhone.isNotBlank() && hasSmsPermission) SafeGreen else WarningAmber,
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.5.dp)
                         )
                     }
                 }
 
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(10.dp))
 
                 Button(
                     onClick = {
                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                        if (!hasSmsPermission) {
+                        if (caregiverPhone.isBlank()) {
+                            viewModel.navigateToTab(MedVoiceTab.SETTINGS)
+                        } else if (!hasSmsPermission) {
                             smsPermissionLauncher.launch(Manifest.permission.SEND_SMS)
                         } else {
                             viewModel.testEmergencySms()
                         }
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = SurfaceCardElevated),
-                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (caregiverPhone.isBlank()) SurfaceCardElevated else if (!hasSmsPermission) WarningAmber.copy(alpha = 0.2f) else SafeGreen.copy(alpha = 0.18f)
+                    ),
+                    border = BorderStroke(
+                        1.dp,
+                        if (caregiverPhone.isBlank()) AccentBorder else if (!hasSmsPermission) WarningAmber.copy(alpha = 0.6f) else SafeGreen.copy(alpha = 0.6f)
+                    ),
+                    shape = RoundedCornerShape(10.dp),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(56.dp)
+                        .height(44.dp)
                 ) {
-                    Text(
-                        text = if (!hasSmsPermission) {
-                            if (locale == "hi") "SMS अनुमति दें (Grant Permission)" else "Grant Cellular SMS Permission"
-                        } else {
-                            if (locale == "hi") "परीक्षण SOS संदेश भेजें (Test Emergency SOS)" else "Dispatch Test Emergency SOS SMS"
-                        },
-                        color = if (!hasSmsPermission) AlertRed else TextWhite,
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Bold
+                    Icon(
+                        imageVector = if (caregiverPhone.isBlank()) Icons.Default.Edit else Icons.Default.Phone,
+                        contentDescription = null,
+                        tint = if (caregiverPhone.isBlank()) TextMuted else if (!hasSmsPermission) WarningAmber else SafeGreen,
+                        modifier = Modifier.size(16.dp)
                     )
-                }
-
-                if (!hasSmsPermission) {
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
                     Text(
-                        text = if (locale == "hi") "⚠️ आपातकालीन संदेश भेजने के लिए SMS अनुमति आवश्यक है।" else "⚠️ Cellular SMS permission required for emergency dispatch.",
-                        color = AlertRed,
-                        fontSize = 12.sp
+                        text = if (caregiverPhone.isBlank()) {
+                            if (locale == "hi") "फोन नंबर सेट करें (Settings)" else "Configure Caregiver Phone"
+                        } else if (!hasSmsPermission) {
+                            if (locale == "hi") "SMS अनुमति दें (Grant Access)" else "Grant Cellular SMS Permission"
+                        } else {
+                            if (locale == "hi") "आपातकालीन SMS भेजें (Test SOS)" else "Dispatch Test Emergency SOS SMS"
+                        },
+                        color = if (caregiverPhone.isBlank()) TextWhite else if (!hasSmsPermission) WarningAmber else TextWhite,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
             }

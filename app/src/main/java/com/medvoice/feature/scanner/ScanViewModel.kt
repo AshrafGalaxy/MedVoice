@@ -448,20 +448,30 @@ class ScanViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun testEmergencySms(): Boolean {
-        val success = SmsDispatcher.sendEmergencyAlert(
+        val phone = _caregiverPhone.value.trim()
+        val status = SmsDispatcher.sendEmergencyAlert(
             context = getApplication(),
-            recipientPhone = _caregiverPhone.value,
+            recipientPhone = phone,
             patientName = _patientName.value,
             scannedDrug = "TEST_ALARM",
             conflictDetails = "This is a MedVoice test emergency SOS notification."
         )
-        val alert = if (success) {
-            if (_selectedLocale.value == "hi") "परीक्षण आपातकालीन एसएमएस भेज दिया गया है।" else "Test emergency SOS SMS dispatched."
-        } else {
-            if (_selectedLocale.value == "hi") "एसएमएस अनुमति आवश्यक है।" else "SMS permission required to send alert."
+        val alert = when (status) {
+            com.medvoice.ui.util.SmsDispatchStatus.SENT_VIA_CELLULAR_BACKGROUND -> {
+                if (_selectedLocale.value == "hi") "परीक्षण आपातकालीन एसएमएस भेज दिया गया है।" else "Test emergency SOS SMS dispatched."
+            }
+            com.medvoice.ui.util.SmsDispatchStatus.OPENED_IN_SMS_APP -> {
+                if (_selectedLocale.value == "hi") "एसएमएस ऐप खोला गया है।" else "SMS app opened with alert message."
+            }
+            com.medvoice.ui.util.SmsDispatchStatus.MISSING_PHONE_NUMBER -> {
+                if (_selectedLocale.value == "hi") "कृपया पहले केयरगिवर का फोन नंबर दर्ज करें।" else "Please configure caregiver phone number in Settings first."
+            }
+            com.medvoice.ui.util.SmsDispatchStatus.FAILED -> {
+                if (_selectedLocale.value == "hi") "एसएमएस भेजने में असमर्थ।" else "Unable to dispatch emergency SMS."
+            }
         }
         ttsManager.speak(alert, _selectedLocale.value, SpeechTriage.WARNING_ADVISORY)
-        return success
+        return status == com.medvoice.ui.util.SmsDispatchStatus.SENT_VIA_CELLULAR_BACKGROUND || status == com.medvoice.ui.util.SmsDispatchStatus.OPENED_IN_SMS_APP
     }
 
     fun toggleSettingsDialog(show: Boolean) {
