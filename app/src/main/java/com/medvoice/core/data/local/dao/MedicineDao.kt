@@ -15,16 +15,15 @@ interface MedicineDao {
     @Query("""
         SELECT * FROM medicines 
         WHERE LOWER(brand_name) = LOWER(:query)
-           OR LOWER(brand_name) LIKE LOWER(:query) || ' %'
-           OR LOWER(brand_name) LIKE LOWER(:query) || '-%'
+           OR LOWER(brand_name) = LOWER(:query) || ' tablet'
+           OR LOWER(brand_name) = LOWER(:query) || ' capsule'
+           OR LOWER(brand_name) = LOWER(:query) || ' syrup'
            OR LOWER(raw_composition) = LOWER(:query)
-           OR LOWER(raw_composition) LIKE LOWER(:query) || ' %'
         ORDER BY 
            CASE 
              WHEN LOWER(brand_name) = LOWER(:query) THEN 1
-             WHEN LOWER(brand_name) LIKE LOWER(:query) || ' %' THEN 2
-             WHEN LOWER(brand_name) LIKE LOWER(:query) || '-%' THEN 3
-             ELSE 4
+             WHEN LOWER(raw_composition) = LOWER(:query) THEN 2
+             ELSE 3
            END
         LIMIT 1
     """)
@@ -33,9 +32,7 @@ interface MedicineDao {
     @Query("""
         SELECT * FROM medicines 
         WHERE LOWER(brand_name) = LOWER(:query)
-           OR LOWER(brand_name) LIKE LOWER(:query) || ' %'
            OR LOWER(raw_composition) = LOWER(:query)
-           OR LOWER(raw_composition) LIKE LOWER(:query) || ' %'
         LIMIT 1
     """)
     suspend fun findMedicineByFts(query: String): MedicineEntity?

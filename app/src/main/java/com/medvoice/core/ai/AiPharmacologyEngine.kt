@@ -49,37 +49,34 @@ class AiPharmacologyEngine(private val context: Context? = null) {
         }
     }
 
-    // Known Chemical & Botanical Dictionary for On-Device Clinical Tokenizer
+    // Known Canonical Active Chemical & Botanical Compounds for On-Device Clinical Tokenizer
     private val knownChemicalDictionary = mapOf(
-        // Topical Hair & Scalp Solutions (Anti-Dandruff, Hair Oils, Lotions)
-        "DANDRUFF AID" to Triple("Anti-Dandruff Scalp Care", 0.0, "TOPICAL_LOTION"),
-        "BAKSON" to Triple("Homeopathic Healthcare", 0.0, "TOPICAL_LOTION"),
-        "THUJA" to Triple("Homeopathic Scalp & Skin Care", 0.0, "TOPICAL_LOTION"),
-        "COCHLEARIA" to Triple("Homeopathic Hair Care", 0.0, "TOPICAL_LOTION"),
-        "CANTHARIS" to Triple("Homeopathic Hair & Burn Care", 0.0, "TOPICAL_LOTION"),
-        "KETOCONAZOLE" to Triple("Antifungal Scalp Care", 2.0, "SHAMPOO"),
+        // Dermatology & Antifungal Actives
+        "KETOCONAZOLE" to Triple("Antifungal Scalp & Skin Care", 2.0, "SHAMPOO"),
         "MINOXIDIL" to Triple("Hair Regrowth Solution", 5.0, "TOPICAL_LOTION"),
-        "SALICYLIC ACID" to Triple("Keratolytic Scalp Solution", 2.0, "TOPICAL_LOTION"),
+        "SALICYLIC ACID" to Triple("Keratolytic Solution", 2.0, "TOPICAL_LOTION"),
         "ZINC PYRITHIONE" to Triple("Anti-Dandruff Scalp Care", 1.0, "SHAMPOO"),
+        "CLOTRIMAZOLE" to Triple("Antifungal Cream", 1.0, "OINTMENT"),
+        "BETAMETHASONE" to Triple("Topical Corticosteroid", 0.05, "OINTMENT"),
+        "CLOBETASOL" to Triple("Topical Corticosteroid", 0.05, "OINTMENT"),
+        "MUPIROCIN" to Triple("Antibacterial Ointment", 2.0, "OINTMENT"),
+        "POVIDONE IODINE" to Triple("Antiseptic Solution / Ointment", 5.0, "OINTMENT"),
 
-        // Ophthalmic / Eye Drops
-        "EUPHRASIA" to Triple("Ophthalmic Eye Care", 0.0, "EYE_DROPS"),
-        "CINERARIA" to Triple("Ophthalmic Eye Drops", 0.0, "EYE_DROPS"),
-        "MARITIMA" to Triple("Ophthalmic Eye Drops", 0.0, "EYE_DROPS"),
+        // Ophthalmic Actives
         "CARBOXYMETHYLCELLULOSE" to Triple("Artificial Tears / Eye Lubricant", 0.5, "EYE_DROPS"),
         "MOXIFLOXACIN" to Triple("Ophthalmic Antibiotic", 0.5, "EYE_DROPS"),
         "TOBRAMYCIN" to Triple("Ophthalmic Antibiotic", 0.3, "EYE_DROPS"),
         "TIMOLOL" to Triple("Glaucoma Eye Drops", 0.5, "EYE_DROPS"),
         "OLOPATADINE" to Triple("Antiallergic Eye Drops", 0.1, "EYE_DROPS"),
 
-        // Nasal / Inhalers
+        // Respiratory & Nasal Actives
         "XYLOMETAZOLINE" to Triple("Nasal Decongestant", 0.1, "NASAL_SPRAY"),
         "OXYMETAZOLINE" to Triple("Nasal Decongestant", 0.05, "NASAL_SPRAY"),
         "SALBUTAMOL" to Triple("Bronchodilator Inhaler", 100.0, "INHALER"),
         "BUDESONIDE" to Triple("Corticosteroid Inhaler", 200.0, "INHALER"),
         "FLUTICASONE" to Triple("Nasal Spray / Inhaler", 50.0, "NASAL_SPRAY"),
 
-        // Syrups & Tonics
+        // Gastrointestinal & Cough Actives
         "DEXTROMETHORPHAN" to Triple("Cough Suppressant Syrup", 10.0, "SYRUP"),
         "GUAIFENESIN" to Triple("Expectorant Cough Syrup", 100.0, "SYRUP"),
         "AMBROXOL" to Triple("Mucolytic Syrup", 30.0, "SYRUP"),
@@ -89,16 +86,17 @@ class AiPharmacologyEngine(private val context: Context? = null) {
         "LACTULOSE" to Triple("Laxative Syrup", 10.0, "SYRUP"),
         "CYPROHEPTADINE" to Triple("Appetite Stimulant Tonic", 2.0, "TONIC"),
 
-        // Topical Ointments & Gels
-        "CLOTRIMAZOLE" to Triple("Antifungal Cream", 1.0, "OINTMENT"),
-        "BETAMETHASONE" to Triple("Topical Corticosteroid", 0.05, "OINTMENT"),
-        "CLOBETASOL" to Triple("Topical Corticosteroid", 0.05, "OINTMENT"),
-        "MUPIROCIN" to Triple("Antibacterial Ointment", 2.0, "OINTMENT"),
-        "POVIDONE" to Triple("Antiseptic Solution / Ointment", 5.0, "OINTMENT"),
-        "VOLINI" to Triple("Pain Relief Gel", 0.0, "GEL"),
-        "MOOV" to Triple("Pain Relief Ointment", 0.0, "OINTMENT"),
+        // Homeopathic & Botanical Actives
+        "THUJA OCCIDENTALIS" to Triple("Homeopathic Botanical", 0.0, "TABLET"),
+        "THUJA" to Triple("Homeopathic Botanical", 0.0, "TABLET"),
+        "COCHLEARIA ARMORACIA" to Triple("Homeopathic Botanical", 0.0, "TABLET"),
+        "CANTHARIS" to Triple("Homeopathic Compound", 0.0, "TABLET"),
+        "EUPHRASIA" to Triple("Homeopathic Botanical", 0.0, "EYE_DROPS"),
+        "CINERARIA MARITIMA" to Triple("Homeopathic Botanical", 0.0, "EYE_DROPS"),
+        "ARNICA MONTANA" to Triple("Homeopathic Botanical", 0.0, "TABLET"),
+        "BERBERIS AQUIFOLIUM" to Triple("Homeopathic Botanical", 0.0, "TABLET"),
 
-        // Common Oral Solid Forms
+        // Systemic Allopathic Actives
         "METFORMIN" to Triple("Antidiabetic (Sugar Control)", 500.0, "TABLET"),
         "GLIMEPIRIDE" to Triple("Antidiabetic (Sugar Control)", 2.0, "TABLET"),
         "VILDAGLIPTIN" to Triple("Antidiabetic (Sugar Control)", 50.0, "TABLET"),
@@ -109,9 +107,7 @@ class AiPharmacologyEngine(private val context: Context? = null) {
         "ACECLOFENAC" to Triple("NSAID Pain Reliever", 100.0, "TABLET"),
         "DICLOFENAC" to Triple("NSAID Pain Reliever", 50.0, "TABLET"),
         "ASPIRIN" to Triple("Blood Thinner / Antiplatelet", 75.0, "TABLET"),
-        "ECOSPRIN" to Triple("Blood Thinner / Antiplatelet", 75.0, "TABLET"),
         "LEVOTHYROXINE" to Triple("Thyroid Hormone", 50.0, "TABLET"),
-        "THYRONORM" to Triple("Thyroid Hormone", 50.0, "TABLET"),
         "PANTOPRAZOLE" to Triple("Proton Pump Inhibitor (Gas/Acidity)", 40.0, "TABLET"),
         "RABEPRAZOLE" to Triple("Proton Pump Inhibitor (Gas/Acidity)", 20.0, "TABLET"),
         "OMEPRAZOLE" to Triple("Proton Pump Inhibitor (Gas/Acidity)", 20.0, "CAPSULE"),

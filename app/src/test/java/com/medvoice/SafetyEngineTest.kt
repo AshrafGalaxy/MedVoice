@@ -440,4 +440,60 @@ class SafetyEngineTest {
         assertEquals(SafetyVerdict.CRITICAL_INTERACTION_BLOCKED, conflict.safetyVerdict)
         assertTrue("Expected clinical reason to mention Thyroid", conflict.clinicalReason.contains("Thyroid"))
     }
+
+    @Test
+    fun testCosmeticSkincareMoisturizer_RejectsFalsePositiveInjectionMatch() = runBlocking {
+        fakeDao.clearAllLogs()
+        val orchestrator = ClinicalSafetyOrchestrator()
+        val engine = SafetyEvaluationEngine(fakeDao, orchestrator)
+
+        val scannedTokens = listOf(
+            "Minimalist Vitamin B5 Moisturizer",
+            "Oil-Free Daily Face Moisturiser with Magnesium Aspartate and Zinc Gluconate",
+            "Ingredients: Aqua, Glycerin, Betaine, Magnesium Aspartate, Zinc Gluconate, Copper Gluconate, Sodium Hyaluronate",
+            "Net Vol: 50ml"
+        )
+
+        val result = engine.evaluateCandidateTokens(
+            tokens = scannedTokens,
+            locale = "en",
+            isExplicitSnap = true
+        )
+
+        assertTrue(
+            "Expected UnidentifiedMedicineBlocked for cosmetic skincare, got: $result",
+            result is SafetyEvaluationResult.UnidentifiedMedicineBlocked
+        )
+        val nonDrugResult = (result as SafetyEvaluationResult.UnidentifiedMedicineBlocked).safetyResult
+        assertEquals(SafetyVerdict.UNIDENTIFIED_MEDICINE_BLOCKED, nonDrugResult.safetyVerdict)
+        assertEquals("COSMETIC_NON_DRUG", nonDrugResult.therapeuticClass)
+        assertTrue("Expected brandName to not be Magnesium Sulfate Injection", nonDrugResult.brandName != "Magnesium Sulfate 50% Injection")
+    }
+
+    @Test
+    fun testFaceWashCleanser_ClassifiedAsCosmeticNonDrug() = runBlocking {
+        fakeDao.clearAllLogs()
+        val orchestrator = ClinicalSafetyOrchestrator()
+        val engine = SafetyEvaluationEngine(fakeDao, orchestrator)
+
+        val scannedTokens = listOf(
+            "Salicylic Acid Daily Cleanser Face Wash",
+            "For Oily & Acne Prone Skin",
+            "Aqua, Sodium Laureth Sulfate, Cocamidopropyl Betaine, Salicylic Acid, Glycerin",
+            "100ml"
+        )
+
+        val result = engine.evaluateCandidateTokens(
+            tokens = scannedTokens,
+            locale = "en",
+            isExplicitSnap = true
+        )
+
+        assertTrue(
+            "Expected UnidentifiedMedicineBlocked for Face Wash, got: $result",
+            result is SafetyEvaluationResult.UnidentifiedMedicineBlocked
+        )
+        val nonDrugResult = (result as SafetyEvaluationResult.UnidentifiedMedicineBlocked).safetyResult
+        assertEquals("COSMETIC_NON_DRUG", nonDrugResult.therapeuticClass)
+    }
 }

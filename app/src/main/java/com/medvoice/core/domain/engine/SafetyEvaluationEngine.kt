@@ -65,6 +65,16 @@ class SafetyEvaluationEngine(
     private val medicineDao: MedicineDao,
     private val clinicalOrchestrator: ClinicalSafetyOrchestrator = ClinicalSafetyOrchestrator()
 ) {
+    companion object {
+        private val GENERIC_OR_COSMETIC_WORDS = setOf(
+            "AQUA", "WATER", "GLYCERIN", "ZINC", "COPPER", "MAGNESIUM", "SODIUM", "POTASSIUM",
+            "ACID", "ALCOHOL", "EXTRACT", "OIL", "CREAM", "LOTION", "MOISTURIZER", "MOISTURISER",
+            "WASH", "FACEWASH", "FACE", "BODY", "CLEANSER", "SERUM", "SUNSCREEN", "SUN", "GEL",
+            "SHAMPOO", "BOTTLE", "PACK", "NET", "BATCH", "MFG", "DATE", "EXP", "LTD", "PVT",
+            "PHARMACEUTICALS", "LABORATORIES", "HEALTHCARE", "MINIMALIST", "DERMA", "CARE", "DAILY"
+        )
+    }
+
     suspend fun evaluateCandidateTokens(
         tokens: List<String>,
         locale: String = "hi",
@@ -95,7 +105,43 @@ class SafetyEvaluationEngine(
 
         val combinedText = tokens.joinToString(" ")
 
-        // Step 1: Scan for Expiry Date across all tokens
+        // Step 1: Cosmetic / Skincare Non-Pharmaceutical Guard
+        val isCosmeticOrSkincare = Regex(
+            """\b(?:moisturizer|moisturiser|face\s*wash|body\s*wash|cleanser|sunscreen|body\s*lotion|serum|facewash|skin\s*cleanser)\b""",
+            RegexOption.IGNORE_CASE
+        ).containsMatchIn(combinedText) && !Regex(
+            """\b(?:schedule\s+[hghx]|i\.?p\.?|b\.?p\.?|u\.?s\.?p\.?|rx\s+only|oral\s+drops|injection|tablets?|capsules?|syrup)\b""",
+            RegexOption.IGNORE_CASE
+        ).containsMatchIn(combinedText)
+
+        if (isCosmeticOrSkincare) {
+            val spokenText = if (locale == "hi") {
+                "यह कोई दवा नहीं है। यह स्किनकेयर या कॉस्मेटिक उत्पाद है। इसका सेवन न करें।"
+            } else {
+                "This item is a cosmetic skincare product, not a pharmaceutical medication. Do not ingest."
+            }
+            val displayTitle = if (locale == "hi") {
+                "कॉस्मेटिक उत्पाद (Skincare / Cosmetic)"
+            } else {
+                "Cosmetic Skincare Product"
+            }
+            return SafetyEvaluationResult.UnidentifiedMedicineBlocked(
+                ClinicalSafetyResult(
+                    brandName = if (locale == "hi") "कॉस्मेटिक / स्किनकेयर उत्पाद" else "Cosmetic Skincare Product",
+                    parsedSalts = emptyList(),
+                    therapeuticClass = "COSMETIC_NON_DRUG",
+                    safetyVerdict = SafetyVerdict.UNIDENTIFIED_MEDICINE_BLOCKED,
+                    clinicalReason = if (locale == "hi") "स्कैन किया गया उत्पाद स्किनकेयर/कॉस्मेटिक है (जैसे मॉइस्चराइज़र या फेसवॉश)। यह डॉक्टर द्वारा निर्धारित दवा नहीं है।" else "The scanned item is a cosmetic skincare product (e.g. moisturizer/cleanser), not a regulated prescription drug.",
+                    foodTimingRule = FoodTimingRule.AFTER_FOOD,
+                    isEmergencyAlert = false,
+                    spokenVernacularText = spokenText,
+                    displayTitle = displayTitle,
+                    dosageForm = "COSMETIC"
+                )
+            )
+        }
+
+        // Step 2: Scan for Expiry Date across all tokens
         val expiryInfo = ExpiryParser.parse(combinedText)
 
         // Strict Pre-Filter Gate: Must contain pharmaceutical strength, dosage form, pharmacopeia standards, or active chemical
@@ -105,14 +151,36 @@ class SafetyEvaluationEngine(
         }
 
         var matchedMedicine: MedicineEntity? = null
+        val upperCombined = combinedText.uppercase(Locale.ROOT)
 
-        // Step 2: Strict Catalog Lookup on clean non-noise lines
-        for (rawToken in tokens) {
-            val cleanLine = rawToken.replace(Regex("[^a-zA-Z0-9 ]"), "").trim()
+        // Step 3: Strict Multi-Token Catalog Lookup with Two-Way Verification
+        for (rawToken in tokens.take(8)) {
+            val cleanLine = rawToken.replace(Regex("[^a-zA-Z0-9 ]"), " ").trim().replace(Regex("\\s+"), " ")
+            val words = cleanLine.split(" ").filter { it.isNotBlank() }
+
+            // Skip isolated single generic words (like "Magnesium", "Zinc", "Aqua")
+            if (words.size == 1 && (cleanLine.length < 5 || GENERIC_OR_COSMETIC_WORDS.contains(cleanLine.uppercase(Locale.ROOT)))) {
+                continue
+            }
+
             if (cleanLine.length in 4..40) {
-                matchedMedicine = medicineDao.searchCatalog(cleanLine)
+                val candidate = medicineDao.searchCatalog(cleanLine)
                     ?: medicineDao.findMedicineByFts(cleanLine)
-                if (matchedMedicine != null) break
+
+                if (candidate != null) {
+                    // Two-Way Safety Verification:
+                    // Check if candidate's brandName or primary active salt actually appears in the scanned text!
+                    val candBrand = candidate.brandName.uppercase(Locale.ROOT).split(" ").firstOrNull() ?: ""
+                    val candSalt = candidate.rawComposition.uppercase(Locale.ROOT).split(" ").take(2).joinToString(" ")
+
+                    val isBrandVerified = candBrand.length >= 3 && upperCombined.contains(candBrand)
+                    val isSaltVerified = candSalt.length >= 5 && upperCombined.contains(candSalt)
+
+                    if (isBrandVerified || isSaltVerified) {
+                        matchedMedicine = candidate
+                        break
+                    }
+                }
             }
         }
 
@@ -120,7 +188,7 @@ class SafetyEvaluationEngine(
         val threshold24h = System.currentTimeMillis() - (24 * 3600 * 1000L)
         val recentLogs = medicineDao.getRecentLogs(threshold24h)
 
-        // Step 3: Deep Clinical Safety Reasoning (Preserves authentic packaging text)
+        // Step 4: Deep Clinical Safety Reasoning (Preserves authentic packaging text)
         val safetyResult = clinicalOrchestrator.evaluateSafety(
             scannedText = combinedText,
             matchedMedicine = matchedMedicine,
