@@ -14,7 +14,7 @@ data class OcrSideCapture(
     val sideIndex: Int, // 1 for Front, 2 for Back
     val rawText: String,
     val textLines: List<String>,
-    val thumbnailBitmap: Bitmap? = null
+    val highResBitmap: Bitmap? = null
 )
 
 class DualSideOcrManager {
@@ -27,45 +27,65 @@ class DualSideOcrManager {
         private set
 
     /**
-     * Process high-resolution bitmap captured directly from CameraX ImageCapture.
+     * Process high-resolution bitmap with:
+     * 1. Multi-orientation OCR pass (0° normal + 90° vertical + 270° vertical) to capture curved and side text.
+     * 2. Glare and contrast enhancement via ImagePreprocessingEngine.
      */
     suspend fun processHighResBitmap(
         bitmap: Bitmap,
         rotationDegrees: Int = 0,
         sideIndex: Int = 1
     ): OcrSideCapture = withContext(Dispatchers.Default) {
-        val inputImage = InputImage.fromBitmap(bitmap, rotationDegrees)
+        val enhancedBitmap = ImagePreprocessingEngine.enhanceContrastForOcr(bitmap)
+        
+        // Pass 1: Primary orientation
+        val pass1Lines = recognizeTextFromBitmap(enhancedBitmap, rotationDegrees)
+        
+        // Pass 2: Vertical 90° orientation for vertical side-printed compositions
+        val rotated90 = ImagePreprocessingEngine.rotateBitmap(enhancedBitmap, 90f)
+        val pass2Lines = recognizeTextFromBitmap(rotated90, 0)
 
-        suspendCancellableCoroutine { continuation ->
-            recognizer.process(inputImage)
-                .addOnSuccessListener { visionText ->
-                    val rawText = visionText.text
-                    val lines = visionText.textBlocks.flatMap { block ->
-                        block.lines.map { it.text.trim() }
-                    }.filter { it.isNotBlank() }
+        // Pass 3: Vertical 270° orientation
+        val rotated270 = ImagePreprocessingEngine.rotateBitmap(enhancedBitmap, 270f)
+        val pass3Lines = recognizeTextFromBitmap(rotated270, 0)
 
-                    val capture = OcrSideCapture(
-                        sideIndex = sideIndex,
-                        rawText = rawText,
-                        textLines = lines,
-                        thumbnailBitmap = bitmap
-                    )
+        // Combine and deduplicate extracted lines
+        val combinedLines = (pass1Lines + pass2Lines + pass3Lines).distinct().filter { it.isNotBlank() && it.length > 2 }
+        val rawText = combinedLines.joinToString("\n")
 
-                    if (sideIndex == 1) {
-                        side1Capture = capture
-                    } else {
-                        side2Capture = capture
-                    }
+        val capture = OcrSideCapture(
+            sideIndex = sideIndex,
+            rawText = rawText,
+            textLines = combinedLines,
+            highResBitmap = bitmap
+        )
 
-                    Log.d("DualSideOcrManager", "Side $sideIndex OCR Extracted ${lines.size} lines: ${lines.take(3)}")
-                    continuation.resume(capture)
-                }
-                .addOnFailureListener { error ->
-                    Log.e("DualSideOcrManager", "ML Kit High-Res OCR failed on side $sideIndex", error)
-                    val emptyCapture = OcrSideCapture(sideIndex, "", emptyList(), bitmap)
-                    continuation.resume(emptyCapture)
-                }
+        if (sideIndex == 1) {
+            side1Capture = capture
+        } else {
+            side2Capture = capture
         }
+
+        Log.d("DualSideOcrManager", "Side $sideIndex Multi-Pass OCR Extracted ${combinedLines.size} unique lines: ${combinedLines.take(4)}")
+        capture
+    }
+
+    private suspend fun recognizeTextFromBitmap(
+        bitmap: Bitmap,
+        rotationDegrees: Int
+    ): List<String> = suspendCancellableCoroutine { continuation ->
+        val inputImage = InputImage.fromBitmap(bitmap, rotationDegrees)
+        recognizer.process(inputImage)
+            .addOnSuccessListener { visionText ->
+                val lines = visionText.textBlocks.flatMap { block ->
+                    block.lines.map { it.text.trim() }
+                }.filter { it.isNotBlank() }
+                continuation.resume(lines)
+            }
+            .addOnFailureListener { error ->
+                Log.w("DualSideOcrManager", "ML Kit sub-pass failed: ${error.message}")
+                continuation.resume(emptyList())
+            }
     }
 
     /**
@@ -85,6 +105,10 @@ class DualSideOcrManager {
             text1.isNotBlank() -> text1
             else -> text2
         }
+    }
+
+    fun getLatestBitmap(): Bitmap? {
+        return side2Capture?.highResBitmap ?: side1Capture?.highResBitmap
     }
 
     fun clear() {
