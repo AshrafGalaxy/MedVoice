@@ -310,6 +310,28 @@ class SafetyEngineTest {
     }
 
     @Test
+    fun testBaksonDandruffAidTablets_ClassifiedAsOralTablet() = runBlocking {
+        fakeDao.clearAllLogs()
+        val orchestrator = ClinicalSafetyOrchestrator()
+        val engine = SafetyEvaluationEngine(fakeDao, orchestrator)
+
+        val scannedTokens = listOf(
+            "Bakson's Dandruff Aid Tablets",
+            "Dr. Bakshi Homeopathy - B41",
+            "Thuja Occidentalis, Natrum Muriaticum",
+            "75 Tablets",
+            "Composition: Each tablet contains..."
+        )
+        val result = engine.evaluateCandidateTokens(scannedTokens, locale = "en", isExplicitSnap = true)
+
+        assertTrue("Expected SafeToTake for Oral Homeopathic Tablets, got: $result", result is SafetyEvaluationResult.SafeToTake)
+        val safe = (result as SafetyEvaluationResult.SafeToTake).safetyResult
+        assertEquals(SafetyVerdict.SAFE_TO_TAKE, safe.safetyVerdict)
+        assertEquals("TABLET", safe.dosageForm)
+        assertEquals(com.medvoice.core.ai.FoodTimingRule.AFTER_FOOD, safe.foodTimingRule)
+    }
+
+    @Test
     fun testExternalTopicalLotion_BaksonDandruffAid() = runBlocking {
         fakeDao.clearAllLogs()
         val orchestrator = ClinicalSafetyOrchestrator()
@@ -319,13 +341,14 @@ class SafetyEngineTest {
             "Bakson's Dandruff Aid",
             "Thuja Occidentalis, Cantharis, Cochlearia",
             "For External Application Only",
-            "Hair and Scalp Care"
+            "Hair and Scalp Care Lotion"
         )
         val result = engine.evaluateCandidateTokens(scannedTokens, locale = "hi", isExplicitSnap = true)
 
         assertTrue("Expected SafeToTake for Topical Lotion, got: $result", result is SafetyEvaluationResult.SafeToTake)
         val safe = (result as SafetyEvaluationResult.SafeToTake).safetyResult
         assertEquals(SafetyVerdict.SAFE_TO_TAKE, safe.safetyVerdict)
+        assertEquals("TOPICAL_LOTION", safe.dosageForm)
         assertEquals(com.medvoice.core.ai.FoodTimingRule.NOT_APPLICABLE_EXTERNAL, safe.foodTimingRule)
         assertTrue("Expected external instruction in Hindi", safe.spokenVernacularText.contains("बाहरी उपयोग") || safe.spokenVernacularText.contains("सिर"))
     }

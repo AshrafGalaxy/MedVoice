@@ -176,20 +176,31 @@ class ClinicalSafetyOrchestrator(
                 firstLine.split(" ").take(3).joinToString(" ")
             }
 
-        // 2. Classify Dosage Form & Administration Route
+        // 2. Classify Dosage Form & Administration Route (Strict Specificity Hierarchy)
         val dosageForm = when {
             matchedMedicine != null -> matchedMedicine.dosageForm
-            extractedComposition != null -> extractedComposition.dosageForm
-            upperText.contains("DANDRUFF") || upperText.contains("HAIR TONIC") || upperText.contains("SCALP") -> "TOPICAL_LOTION"
-            upperText.contains("SHAMPOO") -> "SHAMPOO"
-            upperText.contains("LOTION") -> "TOPICAL_LOTION"
+            // A. Ophthalmic / Otic / Nasal / Inhaled (Specific Local Routes)
             upperText.contains("EYE DROP") || upperText.contains("OPHTHALMIC") -> "EYE_DROPS"
             upperText.contains("EAR DROP") -> "EAR_DROPS"
             upperText.contains("NASAL") || upperText.contains("SPRAY") -> "NASAL_SPRAY"
-            upperText.contains("SYRUP") || upperText.contains("SUSPENSION") || upperText.contains("TONIC") || upperText.contains("LIQUID") -> "SYRUP"
-            upperText.contains("GEL") || upperText.contains("OINTMENT") || upperText.contains("CREAM") || upperText.contains("EMULGEL") -> "OINTMENT"
-            upperText.contains("INHALER") || upperText.contains("RESPICAPS") -> "INHALER"
-            upperText.contains("CAPSULE") || upperText.contains("CAP") -> "CAPSULE"
+            upperText.contains("INHALER") || upperText.contains("RESPICAPS") || upperText.contains("ROTACAPS") -> "INHALER"
+            // B. Specific Topical Preparations (Gels, Ointments, Shampoos, Lotions)
+            upperText.contains("GEL") || upperText.contains("EMULGEL") -> "GEL"
+            upperText.contains("OINTMENT") || upperText.contains("CREAM") -> "OINTMENT"
+            upperText.contains("SHAMPOO") -> "SHAMPOO"
+            upperText.contains("LOTION") || upperText.contains("HAIR OIL") || upperText.contains("SCALP LOTION") -> "TOPICAL_LOTION"
+            // C. Explicit Oral Solids (Tablets, Capsules, Pellets)
+            upperText.contains("TABLET") || upperText.contains("TABLETS") || upperText.contains("TAB ") || upperText.contains("TABS") ||
+                    upperText.contains("PILULES") || upperText.contains("GLOBULES") || upperText.contains("PELLETS") ||
+                    upperText.contains("B41") || upperText.contains("B-41") -> "TABLET"
+            upperText.contains("CAPSULE") || upperText.contains("CAPSULES") || upperText.contains("CAP ") -> "CAPSULE"
+            // D. Oral Liquids & Drops
+            upperText.contains("SYRUP") || upperText.contains("SUSPENSION") -> "SYRUP"
+            upperText.contains("TONIC") || upperText.contains("ELIXIR") -> "TONIC"
+            upperText.contains("DROPS") || upperText.contains("DILUTION") || upperText.contains("TINCTURE") -> "ORAL_DROPS"
+            // E. Generic External Markers Fallback
+            upperText.contains("EXTERNAL APPLICATION") || upperText.contains("EXTERNAL USE") -> "TOPICAL_LOTION"
+            extractedComposition != null -> extractedComposition.dosageForm
             else -> "TABLET"
         }
 

@@ -458,21 +458,9 @@ class AiPharmacologyEngine(private val context: Context? = null) {
             }
         }
 
-        // 3. Refine Dosage Form & Route from Keywords
+        // 3. Refine Dosage Form & Route from Keywords (Strict Specificity Hierarchy)
         when {
-            upperText.contains("DANDRUFF") || upperText.contains("HAIR TONIC") || upperText.contains("SCALP") -> {
-                detectedForm = "TOPICAL_LOTION"
-                route = "EXTERNAL_TOPICAL"
-                primaryCategory = "ANTI-DANDRUFF SCALP CARE"
-            }
-            upperText.contains("SHAMPOO") -> {
-                detectedForm = "SHAMPOO"
-                route = "EXTERNAL_TOPICAL"
-            }
-            upperText.contains("LOTION") -> {
-                detectedForm = "TOPICAL_LOTION"
-                route = "EXTERNAL_TOPICAL"
-            }
+            // A. Ophthalmic / Otic / Nasal / Inhaled (Specific Local Routes)
             upperText.contains("EYE DROP") || upperText.contains("OPHTHALMIC") -> {
                 detectedForm = "EYE_DROPS"
                 route = "OPHTHALMIC"
@@ -485,6 +473,42 @@ class AiPharmacologyEngine(private val context: Context? = null) {
                 detectedForm = "NASAL_SPRAY"
                 route = "NASAL"
             }
+            upperText.contains("INHALER") || upperText.contains("RESPICAPS") || upperText.contains("ROTACAPS") -> {
+                detectedForm = "INHALER"
+                route = "RESPIRATORY"
+            }
+            // B. Specific Topical Preparations (Gels, Ointments, Shampoos, Lotions)
+            upperText.contains("GEL") || upperText.contains("EMULGEL") -> {
+                detectedForm = "GEL"
+                route = "EXTERNAL_TOPICAL"
+            }
+            upperText.contains("OINTMENT") || upperText.contains("CREAM") -> {
+                detectedForm = "OINTMENT"
+                route = "EXTERNAL_TOPICAL"
+            }
+            upperText.contains("SHAMPOO") -> {
+                detectedForm = "SHAMPOO"
+                route = "EXTERNAL_TOPICAL"
+            }
+            upperText.contains("LOTION") || upperText.contains("HAIR OIL") || upperText.contains("SCALP LOTION") -> {
+                detectedForm = "TOPICAL_LOTION"
+                route = "EXTERNAL_TOPICAL"
+                if (upperText.contains("DANDRUFF") || upperText.contains("SCALP")) {
+                    primaryCategory = "ANTI-DANDRUFF SCALP CARE"
+                }
+            }
+            // C. Explicit Oral Solids (Tablets, Capsules, Pellets)
+            upperText.contains("TABLET") || upperText.contains("TABLETS") || upperText.contains("TAB ") || upperText.contains("TABS") ||
+                    upperText.contains("PILULES") || upperText.contains("GLOBULES") || upperText.contains("PELLETS") ||
+                    upperText.contains("B41") || upperText.contains("B-41") -> {
+                detectedForm = "TABLET"
+                route = "ORAL"
+            }
+            upperText.contains("CAPSULE") || upperText.contains("CAPSULES") || upperText.contains("CAP ") -> {
+                detectedForm = "CAPSULE"
+                route = "ORAL"
+            }
+            // D. Oral Liquids & Drops
             upperText.contains("SYRUP") || upperText.contains("SUSPENSION") -> {
                 detectedForm = "SYRUP"
                 route = "ORAL"
@@ -493,21 +517,14 @@ class AiPharmacologyEngine(private val context: Context? = null) {
                 detectedForm = "TONIC"
                 route = "ORAL"
             }
-            upperText.contains("GEL") -> {
-                detectedForm = "GEL"
-                route = "EXTERNAL_TOPICAL"
-            }
-            upperText.contains("OINTMENT") || upperText.contains("CREAM") -> {
-                detectedForm = "OINTMENT"
-                route = "EXTERNAL_TOPICAL"
-            }
-            upperText.contains("INHALER") || upperText.contains("RESPICAPS") -> {
-                detectedForm = "INHALER"
-                route = "RESPIRATORY"
-            }
-            upperText.contains("CAPSULE") || upperText.contains("CAP") -> {
-                detectedForm = "CAPSULE"
+            upperText.contains("DROPS") || upperText.contains("DILUTION") || upperText.contains("TINCTURE") -> {
+                detectedForm = "ORAL_DROPS"
                 route = "ORAL"
+            }
+            // E. Generic External Markers Fallback
+            upperText.contains("EXTERNAL APPLICATION") || upperText.contains("EXTERNAL USE") -> {
+                detectedForm = "TOPICAL_LOTION"
+                route = "EXTERNAL_TOPICAL"
             }
         }
 

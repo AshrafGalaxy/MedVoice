@@ -145,15 +145,6 @@ fun ScanScreen(viewModel: ScanViewModel) {
                                 val preview = Preview.Builder().build().also {
                                     it.setSurfaceProvider(previewView.surfaceProvider)
                                 }
-                                val imageAnalysis = ImageAnalysis.Builder()
-                                    .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
-                                    .build()
-                                    .also {
-                                        it.setAnalyzer(cameraExecutor, TextAnalyzer { tokens ->
-                                            viewModel.processOcrTokens(tokens)
-                                        })
-                                    }
-
                                 val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
                                 try {
                                     cameraProvider.unbindAll()
@@ -161,7 +152,6 @@ fun ScanScreen(viewModel: ScanViewModel) {
                                         lifecycleOwner,
                                         cameraSelector,
                                         preview,
-                                        imageAnalysis,
                                         imageCapture
                                     )
                                     cameraControl = camera.cameraControl
@@ -191,36 +181,34 @@ fun ScanScreen(viewModel: ScanViewModel) {
                             .border(width = 3.dp, color = reticleColor, shape = RoundedCornerShape(16.dp))
                     )
 
-                    // Live OCR HUD Viewfinder Overlay (Real-Time Reading Feedback)
-                    if (uiState is ScanUiState.Scanning && liveOcrSnippet.isNotBlank()) {
+                    // On-Demand Shutter Viewfinder Guidance Banner
+                    if (uiState is ScanUiState.Scanning) {
                         Surface(
                             modifier = Modifier
                                 .align(Alignment.Center)
-                                .padding(top = 180.dp, start = 20.dp, end = 20.dp),
+                                .padding(top = 190.dp, start = 20.dp, end = 20.dp),
                             color = Color(0xE60B0F17),
                             shape = RoundedCornerShape(12.dp),
-                            border = BorderStroke(1.dp, SafeGreen.copy(alpha = 0.6f))
+                            border = BorderStroke(1.dp, ReticleCyan.copy(alpha = 0.5f))
                         ) {
                             Row(
-                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                                modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Icon(
-                                    imageVector = Icons.Default.Search,
+                                    imageVector = Icons.Default.CameraAlt,
                                     contentDescription = null,
-                                    tint = SafeGreen,
-                                    modifier = Modifier.size(14.dp)
+                                    tint = ReticleCyan,
+                                    modifier = Modifier.size(16.dp)
                                 )
-                                Spacer(modifier = Modifier.width(6.dp))
+                                Spacer(modifier = Modifier.width(8.dp))
                                 Text(
-                                    text = liveOcrSnippet,
+                                    text = if (locale == "hi") "पट्टी को बॉक्स में रखें और नीचे बटन दबाएं" else "Align medicine label & tap Snap to analyze",
                                     style = MaterialTheme.typography.bodySmall.copy(
                                         color = TextWhite,
-                                        fontSize = 12.sp,
-                                        fontWeight = FontWeight.Medium
-                                    ),
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
+                                        fontSize = 12.5.sp,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
                                 )
                             }
                         }

@@ -189,7 +189,7 @@ fun SettingsScreen(viewModel: ScanViewModel) {
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
-                    text = if (locale == "hi") "आवाज, आपातकालीन संपर्क और AI" else "Vernacular voice, SOS & MedGemma AI",
+                    text = if (locale == "hi") "आवाज, आपातकालीन संपर्क एवं प्रोफाइल" else "Vernacular voice, SOS & health profile",
                     style = MaterialTheme.typography.bodySmall.copy(
                         color = TextMuted,
                         fontSize = 11.5.sp
