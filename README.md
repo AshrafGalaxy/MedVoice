@@ -14,8 +14,8 @@
 
 MedVoice operates with a **Hybrid Edge-Cloud Architecture**:
 - **On-Device Clinical Safety Matrix**: All drug contraindications, salt matches, duplicate dose warnings, and the ~30,000 Indian pharmaceutical brand SQLite FTS5 database execute deterministically on the physical device.
-- **Multimodal Visual AI & OCR**: Combines on-device Google ML Kit Vision with cloud-hosted visual language models (Groq `llama-3.2-11b-vision-preview` & MedGemma Qwen 27B) to extract high-accuracy pharmaceutical brand names and active compositions from complex blister packs.
-- **Vernacular Audio & Hands-Free Interaction**: Delivers instant spoken guidance in vernacular Indian languages (Hindi, Marathi, English) with voice confirmation.
+- **Multimodal Visual AI & OCR**: Combines on-device Google ML Kit Vision with cloud-hosted visual language models (Groq `llama-3.2-11b-vision-preview` & `Qwen 2.5`) to extract high-accuracy pharmaceutical brand names and active compositions from complex blister packs.
+- **Vernacular Audio & Hands-Free Interaction**: Delivers instant spoken guidance in vernacular Indian languages (Hindi and English) with voice confirmation.
 
 ```mermaid
 graph TD
@@ -35,7 +35,7 @@ graph TD
 
     subgraph Hybrid_AI_Layer ["🧠 Hybrid Intelligence & Pharmacology Engine"]
         C1["⚡ On-Device Google ML Kit OCR<br/>(Zero Latency Fast Tokenizer)"]:::visionNode
-        C2["☁️ Groq Multimodal Visual AI<br/>(Llama 3.2 11B Vision / MedGemma)"]:::aiNode
+        C2["☁️ Groq Multimodal Visual AI<br/>(Llama 3.2 11B Vision / Qwen 2.5)"]:::aiNode
         D["🗄️ On-Device SQLite FTS5 Database<br/>(~30,000 Indian Pharmaceutical Brands & Salts)"]:::visionNode
         E["🔍 FuzzySaltMatcher<br/>(Levenshtein ≤ 2 Chemical Matcher)"]:::visionNode
         
@@ -61,7 +61,7 @@ graph TD
     end
 
     subgraph Outcomes ["🔊 Output & Caregiver Response"]
-        SAFE["✅ SAFE TO TAKE<br/>• Natural Vernacular TTS (Hindi / Marathi / English)<br/>• Voice & Touch Confirmation<br/>• Logged to Patient Adherence Database"]:::actionNode
+        SAFE["✅ SAFE TO TAKE<br/>• Natural Vernacular TTS (Hindi / English)<br/>• Voice & Touch Confirmation<br/>• Logged to Patient Adherence Database"]:::actionNode
         ALERT["🚨 CRITICAL ALERT / DUPLICATE BLOCKED<br/>• High-Contrast Red Warning Banner<br/>• Spoken Emergency Warning Audio<br/>• Automatic Cellular SOS SMS to Caregiver"]:::alertNode
         
         F1 -->|Active Dose Found| ALERT
@@ -78,7 +78,7 @@ graph TD
 - **🛡️ Deterministic Clinical Safety Matrix:** All duplicate dose warnings, contraindications, and active salt evaluations run deterministically on the local SQLite FTS5 database before any action is confirmed.
 - **👁️ Multimodal Visual AI & OCR:** Intelligently recognizes Blister Packs, Ophthalmic Eye Drops, Cough Syrups/Tonics, Topical Gels/Ointments, Inhalers, and Capsules using a hybrid edge-cloud vision pipeline.
 - **📦 ~30,000 Indian Medicines Catalog:** Pre-indexed SQLite database with FTS5 virtual table covering commercial brands, salts, and manufacturers across India.
-- **🎙️ Vernacular Speech & Hands-Free Confirmation:** Natural voice announcements in Hindi (`hi-IN`), Marathi (`mr-IN`), and English (`en-IN`) with speech recognition for hands-free confirmation (*"हाँ ले ली"* / *"Yes taken"*).
+- **🎙️ Vernacular Speech & Hands-Free Confirmation:** Natural voice announcements in Hindi (`hi-IN`) and English (`en-IN`) with speech recognition for hands-free confirmation (*"हाँ ले ली"* / *"Yes taken"*).
 - **⏰ Daily Spoken Voice Alarms:** `AlarmManager` wakeup alarms that announce prescription times aloud even when the phone is locked.
 - **🚨 Direct Cellular SOS Dispatcher:** Offline GSM cellular SMS automatically sent to caregivers if a critical drug interaction or duplicate dose is attempted.
 - **♿ Senior Accessibility (WCAG AAA):** High-contrast palette (`#00875A` Safe, `#DE350B` Alert), 48dp+ accessible touch targets, and zero layout cutoffs.
@@ -95,7 +95,7 @@ MedVoice/
 │   ├── src/main/java/com/medvoice/
 │   │   ├── core/
 │   │   │   ├── ai/
-│   │   │   │   ├── AiPharmacologyEngine.kt     # Multimodal Vision & MedGemma engine
+│   │   │   │   ├── AiPharmacologyEngine.kt     # Multimodal Vision & Qwen AI engine
 │   │   │   │   └── FuzzySaltMatcher.kt         # On-device fuzzy chemical matcher
 │   │   │   ├── audio/
 │   │   │   │   ├── VernacularTtsManager.kt     # Multi-engine TTS (Device / Sarvam / ElevenLabs)
@@ -132,7 +132,7 @@ MedVoice/
 * Tap the **Capture** button. MedVoice instantly analyzes the packaging, extracting the **Brand Name**, **Active Chemical Salts**, **Dosage Form**, and **Food/Timing Rules**.
 
 ### 2️⃣ Listen to Vernacular Spoken Guidance
-* The app automatically announces the medicine details and dosage instructions aloud in your selected language (**Hindi**, **Marathi**, or **English**).
+* The app automatically announces the medicine details and dosage instructions aloud in your selected language (**Hindi** or **English**).
 * Confirm your dose with a single tap on **"Confirm Dose Taken"** or hands-free via voice (*"हाँ ले ली"* / *"Yes taken"*).
 
 ### 3️⃣ Active Duplicate Dosage Protection
@@ -156,8 +156,8 @@ UI Toolkit           : Jetpack Compose + Material 3 (WCAG AAA High Contrast)
 Target Android SDK   : Min SDK: 28 (Android 9.0) | Target SDK: 34 (Android 14)
 Local Storage        : Android Jetpack Room 2.6+ with Native SQLite FTS5 (~30k medicines)
 Vision Engine        : Google ML Kit On-Device Text Recognition v2 + Groq Multimodal Vision
-AI Inference         : Groq llama-3.2-11b-vision-preview / MedGemma Qwen 27B + LiteRT INT4
-Speech Engine        : Native Android TextToSpeech (`hi-IN`, `mr-IN`, `en-IN`) + SpeechRecognizer
+AI Inference         : Groq llama-3.2-11b-vision-preview / Qwen 2.5 + LiteRT INT4
+Speech Engine        : Native Android TextToSpeech (`hi-IN`, `en-IN`) + SpeechRecognizer
 SMS Safety Gateway   : Android Telephony SmsManager (Offline Direct Cellular)
 ```
 
